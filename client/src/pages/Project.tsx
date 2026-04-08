@@ -52,13 +52,16 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           </div>
         </div>
       ) : (
-        <div className="aspect-video bg-white/5 flex items-center justify-center">
-          <div className="text-white/20">
-            {deliverable.fileType === "document" ? (
-              <FileText className="w-12 h-12" />
-            ) : (
-              <Film className="w-12 h-12" />
-            )}
+        <div className="relative aspect-video overflow-hidden bg-black">
+          <img
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/archive-footage-icon-v2_4e48baa2.png"
+            alt={deliverable.title}
+            className="w-full h-full object-contain p-6 opacity-70"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
+            {fileTypeIcon}
+            <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
           </div>
         </div>
       )}

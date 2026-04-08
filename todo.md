@@ -108,3 +108,6 @@
 
 ## Asset Updates
 - [x] Replace Archive Footage project icon with user-provided neon film reel image
+
+## Visual Fixes (Round 5)
+- [x] Fix DeliverableCard missing image placeholder — use Archive Footage icon as fallback

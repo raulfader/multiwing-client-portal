@@ -146,14 +146,6 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
     reader.readAsDataURL(file);
   };
 
-  if (trackCount >= 2) {
-    return (
-      <div className="text-xs py-2 px-3 rounded-lg" style={{ background: "#1A1A1A", color: "#555555" }}>
-        Maximum 2 tracks reached for this pillar
-      </div>
-    );
-  }
-
   if (!open) {
     return (
       <button
@@ -236,11 +228,73 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
   );
 }
 
-// ── Pillar Admin Row ───────────────────────────────────────────────────────────
+
+// ── Track Admin Row (with per-track approvals) ────────────────────────────────
+function TrackAdminRow({ track, trackIndex, accentColor, onDelete }: { track: any; trackIndex: number; accentColor: string; onDelete: () => void }) {
+  const { data: approvals } = trpc.trackApprovals.byTrack.useQuery({ trackId: track.id });
+
+  const approvedCount = approvals?.filter((a) => a.status === "approved").length ?? 0;
+  const needsChangesCount = approvals?.filter((a) => a.status === "needs_changes").length ?? 0;
+  const rejectedCount = approvals?.filter((a) => a.status === "rejected").length ?? 0;
+
+  return (
+    <div className="rounded-lg overflow-hidden" style={{ background: "#111111", border: "1px solid #2A2A2A" }}>
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <Music2 size={14} style={{ color: accentColor, flexShrink: 0 }} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate" style={{ color: "#FAFAFA" }}>{track.title}</p>
+            {track.description && (
+              <p className="text-xs truncate" style={{ color: "#666666" }}>{track.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1A1A1A", color: "#888888" }}>Track {trackIndex + 1}</span>
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded transition-colors"
+            style={{ color: "#555555" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#EF4444")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#555555")}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+      {/* Per-track approval summary */}
+      {approvals && approvals.length > 0 && (
+        <div className="px-3 pb-2.5 flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-widest" style={{ color: "#555" }}>Decisions:</span>
+          {approvedCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(100,221,23,0.1)", color: "#64DD17" }}>
+              {approvedCount} Approved
+            </span>
+          )}
+          {needsChangesCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(251,146,60,0.1)", color: "#FB923C" }}>
+              {needsChangesCount} Needs Changes
+            </span>
+          )}
+          {rejectedCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
+              {rejectedCount} Rejected
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Pillar Admin Row ──────────────────────────────────────────────────────────
 function PillarAdminRow({ pillar, accentColor, onRefresh }: { pillar: any; accentColor: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(pillar.title);
+  const [editDesc, setEditDesc] = useState(pillar.description ?? "");
   const { data: tracks, refetch: refetchTracks } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
-  const { data: approvals } = trpc.approvals.byPillar.useQuery({ pillarId: pillar.id });
+
   const deleteTrack = trpc.tracks.delete.useMutation({
     onSuccess: () => { refetchTracks(); toast.success("Track deleted"); },
     onError: (e) => toast.error(e.message),
@@ -249,88 +303,98 @@ function PillarAdminRow({ pillar, accentColor, onRefresh }: { pillar: any; accen
     onSuccess: () => { onRefresh(); toast.success("Pillar deleted"); },
     onError: (e) => toast.error(e.message),
   });
-
-  const approvedCount = approvals?.filter((a) => a.status === "approved").length ?? 0;
-  const rejectedCount = approvals?.filter((a) => a.status === "rejected").length ?? 0;
+  const updatePillar = trpc.pillars.update.useMutation({
+    onSuccess: () => { setEditing(false); onRefresh(); toast.success("Pillar updated"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   return (
     <div className="fl-card overflow-hidden">
+      {/* Header */}
       <div
-        className="flex items-center justify-between p-4 cursor-pointer"
+        className="flex items-center justify-between p-4"
         style={{ borderBottom: expanded ? "1px solid #2A2A2A" : "none" }}
-        onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-black" style={{ color: accentColor, opacity: 0.5 }}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <span className="text-lg font-black shrink-0" style={{ color: accentColor, opacity: 0.5 }}>
             {String((pillar.sortOrder ?? 0) + 1).padStart(2, "0")}
           </span>
-          <div>
-            <h3 className="font-bold" style={{ color: "#FAFAFA" }}>{pillar.title}</h3>
-            {pillar.description && (
-              <p className="text-xs mt-0.5" style={{ color: "#888888" }}>{pillar.description}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Approval summary */}
-          {approvals && approvals.length > 0 && (
-            <div className="flex gap-2">
-              {approvedCount > 0 && (
-                <span className="status-approved text-xs px-2 py-0.5 rounded-full font-semibold">
-                  {approvedCount} ✓
-                </span>
-              )}
-              {rejectedCount > 0 && (
-                <span className="status-rejected text-xs px-2 py-0.5 rounded-full font-semibold">
-                  {rejectedCount} ✗
-                </span>
+          {editing ? (
+            <div className="flex-1 space-y-2">
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full text-sm px-3 py-1.5 rounded-lg outline-none font-bold"
+                style={{ background: "#0A0A0A", border: "1px solid #FFD600", color: "#FAFAFA" }}
+                autoFocus
+              />
+              <input
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Description (optional)"
+                className="w-full text-xs px-3 py-1.5 rounded-lg outline-none"
+                style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => updatePillar.mutate({ id: pillar.id, title: editTitle, description: editDesc || undefined })}
+                  disabled={!editTitle.trim() || updatePillar.isPending}
+                  className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                  style={{ background: "#FFD600", color: "#0A0A0A" }}
+                >
+                  {updatePillar.isPending ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => { setEditing(false); setEditTitle(pillar.title); setEditDesc(pillar.description ?? ""); }}
+                  className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                  style={{ background: "#1A1A1A", color: "#888888", border: "1px solid #2A2A2A" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold" style={{ color: "#FAFAFA" }}>{pillar.title}</h3>
+              {pillar.description && (
+                <p className="text-xs mt-0.5" style={{ color: "#888888" }}>{pillar.description}</p>
               )}
             </div>
           )}
-          <span className="text-xs" style={{ color: "#555555" }}>
-            {tracks?.length ?? 0}/2 tracks
-          </span>
-          {expanded ? <ChevronUp size={16} style={{ color: "#555555" }} /> : <ChevronDown size={16} style={{ color: "#555555" }} />}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs" style={{ color: "#555555" }}>{tracks?.length ?? 0}/2 tracks</span>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="p-1.5 rounded transition-colors"
+              style={{ color: "#555555" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#FFD600")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#555555")}
+              title="Edit pillar"
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
+          <button onClick={() => setExpanded(!expanded)} className="p-1.5 rounded" style={{ color: "#555555" }}>
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
         </div>
       </div>
 
       {expanded && (
         <div className="p-4 space-y-4">
-          {/* Tracks */}
+          {/* Tracks with per-track approvals */}
           {tracks && tracks.length > 0 && (
             <div className="space-y-2">
               {tracks.map((track, ti) => (
-                <div
+                <TrackAdminRow
                   key={track.id}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg"
-                  style={{ background: "#111111", border: "1px solid #2A2A2A" }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Music2 size={14} style={{ color: accentColor, flexShrink: 0 }} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#FAFAFA" }}>{track.title}</p>
-                      {track.description && (
-                        <p className="text-xs truncate" style={{ color: "#666666" }}>{track.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1A1A1A", color: "#888888" }}>
-                      Track {ti + 1}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete "${track.title}"?`)) deleteTrack.mutate({ id: track.id });
-                      }}
-                      className="p-1.5 rounded transition-colors"
-                      style={{ color: "#555555" }}
-                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#EF4444")}
-                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#555555")}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
+                  track={track}
+                  trackIndex={ti}
+                  accentColor={accentColor}
+                  onDelete={() => { if (confirm(`Delete "${track.title}"?`)) deleteTrack.mutate({ id: track.id }); }}
+                />
               ))}
             </div>
           )}
@@ -341,46 +405,6 @@ function PillarAdminRow({ pillar, accentColor, onRefresh }: { pillar: any; accen
             trackCount={tracks?.length ?? 0}
             onUploaded={() => refetchTracks()}
           />
-
-          {/* Approvals */}
-          {approvals && approvals.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#555555" }}>
-                Client Decisions
-              </p>
-              <div className="space-y-1.5">
-                {approvals.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg"
-                    style={{ background: "#111111", border: "1px solid #2A2A2A" }}
-                  >
-                    <span className="text-sm" style={{ color: "#CCCCCC" }}>{a.userName ?? "Client"}</span>
-                    <div className="flex items-center gap-2">
-                      {a.note && (
-                        <span className="text-xs italic max-w-32 truncate" style={{ color: "#666666" }}>
-                          "{a.note}"
-                        </span>
-                      )}
-                      {a.status === "approved" ? (
-                        <span className="status-approved text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                          <CheckCircle2 size={10} /> Approved
-                        </span>
-                      ) : a.status === "rejected" ? (
-                        <span className="status-rejected text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                          <XCircle size={10} /> Changes Requested
-                        </span>
-                      ) : (
-                        <span className="status-pending text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                          <Clock size={10} /> Pending
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Delete pillar */}
           <div className="pt-2" style={{ borderTop: "1px solid #1A1A1A" }}>
@@ -404,6 +428,7 @@ function PillarAdminRow({ pillar, accentColor, onRefresh }: { pillar: any; accen
     </div>
   );
 }
+
 
 // ── Recent Comments Panel ──────────────────────────────────────────────────────
 function RecentComments() {

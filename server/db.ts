@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, comments, InsertUser, pillars, tracks, users } from "../drizzle/schema";
+import { approvals, comments, InsertUser, pillars, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -437,6 +437,75 @@ export async function createDeliverableComment(data: {
     userId: data.userId,
     content: data.content,
   });
+}
+
+// ── Per-Track Approvals ──────────────────────────────────────────────────────
+
+export async function getTrackApprovalByTrackAndUser(trackId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(trackApprovals)
+    .where(and(eq(trackApprovals.trackId, trackId), eq(trackApprovals.userId, userId)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertTrackApproval(data: {
+  trackId: number;
+  userId: number;
+  status: "approved" | "needs_changes" | "rejected" | "pending";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await getTrackApprovalByTrackAndUser(data.trackId, data.userId);
+  if (existing) {
+    await db
+      .update(trackApprovals)
+      .set({ status: data.status })
+      .where(eq(trackApprovals.id, existing.id));
+  } else {
+    await db.insert(trackApprovals).values({
+      trackId: data.trackId,
+      userId: data.userId,
+      status: data.status,
+    });
+  }
+}
+
+export async function getTrackApprovalsByTrack(trackId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: trackApprovals.id,
+      trackId: trackApprovals.trackId,
+      userId: trackApprovals.userId,
+      status: trackApprovals.status,
+      updatedAt: trackApprovals.updatedAt,
+      userName: users.name,
+    })
+    .from(trackApprovals)
+    .leftJoin(users, eq(trackApprovals.userId, users.id))
+    .where(eq(trackApprovals.trackId, trackId));
+}
+
+export async function getAllTrackApprovals() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: trackApprovals.id,
+      trackId: trackApprovals.trackId,
+      userId: trackApprovals.userId,
+      status: trackApprovals.status,
+      updatedAt: trackApprovals.updatedAt,
+      userName: users.name,
+    })
+    .from(trackApprovals)
+    .leftJoin(users, eq(trackApprovals.userId, users.id))
+    .orderBy(desc(trackApprovals.updatedAt));
 }
 
 export async function getAllDeliverableComments() {

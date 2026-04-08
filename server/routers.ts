@@ -19,6 +19,10 @@ import {
   getTracksByPillar,
   updatePillar,
   upsertApproval,
+  getTrackApprovalByTrackAndUser,
+  upsertTrackApproval,
+  getTrackApprovalsByTrack,
+  getAllTrackApprovals,
   // Projects & Deliverables
   getAllProjects,
   getAllProjectsAdmin,
@@ -213,7 +217,54 @@ export const appRouter = router({
     }),
   }),
 
-  // ── Approvals ─────────────────────────────────────────────────────────────────
+  // ── Per-Track Approvals ──────────────────────────────────────────────────────
+  trackApprovals: router({
+    myApproval: protectedProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const approval = await getTrackApprovalByTrackAndUser(input.trackId, ctx.user.id);
+        return approval ?? null;
+      }),
+
+    set: protectedProcedure
+      .input(z.object({
+        trackId: z.number(),
+        status: z.enum(["approved", "needs_changes", "rejected", "pending"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const track = await getTrackById(input.trackId);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+
+        await upsertTrackApproval({
+          trackId: input.trackId,
+          userId: ctx.user.id,
+          status: input.status,
+        });
+
+        const statusLabel =
+          input.status === "approved" ? "✅ Approved" :
+          input.status === "needs_changes" ? "🔄 Needs Changes" :
+          input.status === "rejected" ? "❌ Rejected" : "⏳ Pending";
+        await notifyOwner({
+          title: `Track "${track.title}" — ${statusLabel}`,
+          content: `${ctx.user.name ?? "A client"} marked track "${track.title}" as ${input.status}`,
+        });
+
+        return { success: true };
+      }),
+
+    byTrack: adminProcedure
+      .input(z.object({ trackId: z.number() }))
+      .query(async ({ input }) => {
+        return getTrackApprovalsByTrack(input.trackId);
+      }),
+
+    all: adminProcedure.query(async () => {
+      return getAllTrackApprovals();
+    }),
+  }),
+
+  // ── Approvals (legacy per-pillar) ──────────────────────────────────────────
   approvals: router({
     myApproval: protectedProcedure
       .input(z.object({ pillarId: z.number() }))

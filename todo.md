@@ -111,3 +111,14 @@
 
 ## Visual Fixes (Round 5)
 - [x] Fix DeliverableCard missing image placeholder — use Archive Footage icon as fallback
+
+## Sonic Branding Improvements
+- [x] Extend DB: add trackTimestamp field to track_comments; add track_approvals table (per-track, not per-pillar)
+- [x] Backend: add/update procedures for timestamped comments and per-track approvals (approve/needs_changes/reject)
+- [x] Client UI: Frame.io-style timestamped comments on audio player (click waveform/progress to set timestamp)
+- [x] Client UI: Three per-track buttons — Approve (green), Needs Changes (yellow), Reject (red)
+- [x] Client UI: Remove the "optional note" box from pillar approval section
+- [x] Admin: Add pillar form (title + description)
+- [x] Admin: Edit pillar title and description inline
+- [x] Admin: Upload tracks per pillar (unlimited) with title and description
+- [x] Admin: Delete pillar and tracks

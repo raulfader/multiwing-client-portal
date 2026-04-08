@@ -58,7 +58,7 @@ export const comments = mysqlTable("comments", {
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = typeof comments.$inferInsert;
 
-// ── Client Approvals per Pillar ───────────────────────────────────────────────
+// ── Client Approvals per Pillar (legacy, kept for migration compat) ──────────
 export const approvals = mysqlTable("approvals", {
   id: int("id").autoincrement().primaryKey(),
   pillarId: int("pillarId").notNull(),
@@ -71,6 +71,19 @@ export const approvals = mysqlTable("approvals", {
 
 export type Approval = typeof approvals.$inferSelect;
 export type InsertApproval = typeof approvals.$inferInsert;
+
+// ── Per-Track Approvals (approve / needs_changes / reject) ────────────────────
+export const trackApprovals = mysqlTable("track_approvals", {
+  id: int("id").autoincrement().primaryKey(),
+  trackId: int("trackId").notNull(),
+  userId: int("userId").notNull(),
+  status: mysqlEnum("status", ["approved", "needs_changes", "rejected", "pending"]).default("pending").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TrackApproval = typeof trackApprovals.$inferSelect;
+export type InsertTrackApproval = typeof trackApprovals.$inferInsert;
 
 // ── Content Hub Projects ──────────────────────────────────────────────────────
 export const projects = mysqlTable("projects", {

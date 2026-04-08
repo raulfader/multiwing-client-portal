@@ -144,7 +144,7 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
 function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: string; index: number }) {
   const { data: tracks, isLoading: tracksLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
   const { data: myApproval, refetch: refetchApproval } = trpc.approvals.myApproval.useQuery({ pillarId: pillar.id });
-  const [approvalNote, setApprovalNote] = useState("");
+
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<"approved" | "rejected" | null>(null);
   const [currentTimes, setCurrentTimes] = useState<Record<number, number>>({});
@@ -152,7 +152,6 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
   const setApproval = trpc.approvals.set.useMutation({
     onSuccess: () => {
       refetchApproval();
-      setApprovalNote("");
       setShowNoteInput(false);
       setPendingStatus(null);
       toast.success("Decision submitted — Faderlabs has been notified.");
@@ -167,7 +166,7 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
 
   const handleApprovalSubmit = () => {
     if (!pendingStatus) return;
-    setApproval.mutate({ pillarId: pillar.id, status: pendingStatus, note: approvalNote || undefined });
+    setApproval.mutate({ pillarId: pillar.id, status: pendingStatus });
   };
 
   const pillarNum = String(index + 1).padStart(2, "0");
@@ -273,14 +272,7 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
                 {pendingStatus === "approved" ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                 {pendingStatus === "approved" ? "Approving this pillar" : "Requesting changes"}
               </div>
-              <textarea
-                value={approvalNote}
-                onChange={(e) => setApprovalNote(e.target.value)}
-                placeholder="Optional: add a note for Faderlabs…"
-                rows={2}
-                className="w-full text-sm px-3 py-2 rounded-lg outline-none resize-none"
-                style={{ background: "#111111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
-              />
+
               <div className="flex gap-2">
                 <button
                   onClick={handleApprovalSubmit}

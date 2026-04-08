@@ -231,22 +231,20 @@ function SonicTrackRow({ track, trackIndex, accentColor }: { track: any; trackIn
 export default function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading, isAuthenticated } = useAuth();
-
-  // Sonic Branding project is handled by the Home page's SonicBrandingView
-  // We render a redirect-like inline view for the sonic-branding slug
-  if (slug === "sonic-branding" && isAuthenticated) {
-    return <SonicBrandingProjectView loading={loading} />;
-  }
-
+  const isSonicBranding = slug === "sonic-branding";
+  // Always call all hooks unconditionally — no early returns before hooks
   const { data: project, isLoading: loadingProject } = trpc.projects.bySlug.useQuery(
     { slug: slug ?? "" },
-    { enabled: !!slug && isAuthenticated }
+    { enabled: !!slug && isAuthenticated && !isSonicBranding }
   );
-
   const { data: deliverables = [], isLoading: loadingDeliverables } = trpc.deliverables.byProject.useQuery(
     { projectId: project?.id ?? 0 },
-    { enabled: !!project?.id }
+    { enabled: !!project?.id && !isSonicBranding }
   );
+  // Sonic Branding has its own dedicated view — render after all hooks are declared
+  if (isSonicBranding) {
+    return <SonicBrandingProjectView loading={loading} />;
+  }
 
   if (loading) {
     return (

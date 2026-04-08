@@ -98,3 +98,6 @@
 
 ## UX Cleanup
 - [x] Remove comment buttons from next to My Files buttons on deliverable cards
+
+## Bug Fixes (Round 2)
+- [x] Fix React hooks ordering violation in ProjectPage (/projects/sonic-branding crashes with "fewer hooks than expected")

@@ -554,6 +554,27 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   );
 }
 
+// ── Deliverable fallback icons by title keyword ───────────────────────────────
+const DELIVERABLE_FALLBACK_ICONS: { keywords: string[]; url: string }[] = [
+  {
+    keywords: ["shot list", "shotlist"],
+    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/shot-list-icon-neon-APQ2af52KRZG5yEjnXD6Bn.webp",
+  },
+  {
+    keywords: ["storyboard", "story board"],
+    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/storyboard-icon-neon-8Lg6wo7yrveaSSqrNW6WxN.webp",
+  },
+];
+const ARCHIVE_ICON_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/archive-footage-icon-v2_4e48baa2.png";
+
+function getFallbackIcon(title: string): string {
+  const lower = (title ?? "").toLowerCase();
+  for (const entry of DELIVERABLE_FALLBACK_ICONS) {
+    if (entry.keywords.some((kw) => lower.includes(kw))) return entry.url;
+  }
+  return ARCHIVE_ICON_URL;
+}
+
 // ── Deliverable Card ──────────────────────────────────────────────────────────
 
 function DeliverableCard({ deliverable }: { deliverable: any }) {
@@ -561,6 +582,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
     deliverable.fileType === "document" ? <FileText className="w-4 h-4" /> :
     deliverable.fileType === "archive" ? <Archive className="w-4 h-4" /> :
     <Film className="w-4 h-4" />;
+  const fallbackIcon = getFallbackIcon(deliverable.title ?? "");
 
   return (
     <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
@@ -574,7 +596,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           />
         ) : (
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/archive-footage-icon-v2_4e48baa2.png"
+            src={fallbackIcon}
             alt={deliverable.title}
             className="w-full h-full object-contain p-6 opacity-70"
           />

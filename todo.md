@@ -87,3 +87,7 @@
 - [x] Remove white background from ACREX, CONEXPO, AHR logos on project cards (mix-blend-mode: lighten on #0A0A0A bg)
 - [x] Change Sonic Branding icon color to yellow (#FFD600) - regenerated icon, updated DB
 - [x] Fill project card image boxes edge-to-edge (object-cover, no padding)
+
+## Icon Consistency
+- [x] Regenerate Sonic Branding icon to match Brand Video icon style/size (golden neon waveform, 16:9, same glow)
+- [x] Regenerate Archive Footage icon to match Brand Video icon style/size (golden neon film reel, 16:9, same glow)

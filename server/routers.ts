@@ -19,6 +19,22 @@ import {
   getTracksByPillar,
   updatePillar,
   upsertApproval,
+  // Projects & Deliverables
+  getAllProjects,
+  getAllProjectsAdmin,
+  getProjectBySlug,
+  getProjectById,
+  createProject,
+  updateProject,
+  deleteProject,
+  getDeliverablesByProject,
+  getDeliverableById,
+  createDeliverable,
+  updateDeliverable,
+  deleteDeliverable,
+  getCommentsByDeliverable,
+  createDeliverableComment,
+  getAllDeliverableComments,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
@@ -241,6 +257,145 @@ export const appRouter = router({
 
     all: adminProcedure.query(async () => {
       return getAllApprovals();
+    }),
+  }),
+
+  // ── Projects (content hub) ───────────────────────────────────────────────────
+  projects: router({
+    list: protectedProcedure.query(async () => {
+      return getAllProjects();
+    }),
+
+    listAdmin: adminProcedure.query(async () => {
+      return getAllProjectsAdmin();
+    }),
+
+    bySlug: protectedProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const project = await getProjectBySlug(input.slug);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+        return project;
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        slug: z.string().min(1),
+        description: z.string().optional(),
+        coverImageUrl: z.string().optional(),
+        category: z.string().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await createProject(input);
+        return { success: true };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        coverImageUrl: z.string().optional(),
+        category: z.string().optional(),
+        sortOrder: z.number().optional(),
+        isPublished: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateProject(id, data);
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteProject(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── Deliverables ──────────────────────────────────────────────────────────────
+  deliverables: router({
+    byProject: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return getDeliverablesByProject(input.projectId);
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        projectId: z.number(),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        thumbnailUrl: z.string().optional(),
+        downloadUrl: z.string().optional(),
+        fileType: z.string().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await createDeliverable(input);
+        return { success: true };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        thumbnailUrl: z.string().optional(),
+        downloadUrl: z.string().optional(),
+        fileType: z.string().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateDeliverable(id, data);
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteDeliverable(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── Deliverable Comments ──────────────────────────────────────────────────────
+  deliverableComments: router({
+    byDeliverable: protectedProcedure
+      .input(z.object({ deliverableId: z.number() }))
+      .query(async ({ input }) => {
+        return getCommentsByDeliverable(input.deliverableId);
+      }),
+
+    add: protectedProcedure
+      .input(z.object({
+        deliverableId: z.number(),
+        content: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const deliverable = await getDeliverableById(input.deliverableId);
+        if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+
+        await createDeliverableComment({
+          deliverableId: input.deliverableId,
+          userId: ctx.user.id,
+          content: input.content,
+        });
+
+        await notifyOwner({
+          title: `New comment on "${deliverable.title}"`,
+          content: `${ctx.user.name ?? "A client"} commented on "${deliverable.title}": "${input.content}"`,
+        });
+
+        return { success: true };
+      }),
+
+    all: adminProcedure.query(async () => {
+      return getAllDeliverableComments();
     }),
   }),
 });

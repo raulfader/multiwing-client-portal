@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import AudioPlayer from "@/components/AudioPlayer";
 import {
@@ -15,13 +15,25 @@ import {
   Music2,
   Loader2,
   ShieldCheck,
+  Film,
+  Archive,
+  FileText,
+  Download,
+  Folder,
 } from "lucide-react";
 import { Link } from "wouter";
 
-const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_8bb403fd.webp";
+const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_0d44da07.webp";
 const FL_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
 
 const PILLAR_ACCENT_COLORS = ["#FFD600", "#64DD17", "#EF4444", "#A78BFA", "#38BDF8"];
+
+const CATEGORY_ICONS: Record<string, any> = {
+  video: Film,
+  archive: Archive,
+  brand: Film,
+  document: FileText,
+};
 
 // ── Approval Badge ─────────────────────────────────────────────────────────────
 function ApprovalBadge({ status }: { status?: string }) {
@@ -49,7 +61,6 @@ function ApprovalBadge({ status }: { status?: string }) {
 // ── Track Comment Section ──────────────────────────────────────────────────────
 function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: string }) {
   const [comment, setComment] = useState("");
-  const [currentTime, setCurrentTime] = useState<number | undefined>(undefined);
   const { data: comments, refetch } = trpc.comments.byTrack.useQuery({ trackId });
   const addComment = trpc.comments.add.useMutation({
     onSuccess: () => {
@@ -63,7 +74,7 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
-    addComment.mutate({ trackId, content: comment.trim(), timestampSeconds: currentTime ? Math.floor(currentTime) : undefined });
+    addComment.mutate({ trackId, content: comment.trim() });
   };
 
   const formatTime = (s?: number | null) => {
@@ -80,7 +91,6 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
         </span>
       </div>
 
-      {/* Comment list */}
       {comments && comments.length > 0 && (
         <div className="space-y-2 mb-4 max-h-48 overflow-y-auto pr-1">
           {comments.map((c) => (
@@ -106,7 +116,6 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
         </div>
       )}
 
-      {/* Comment form */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
@@ -114,11 +123,7 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
           onChange={(e) => setComment(e.target.value)}
           placeholder={`Add a comment on "${trackTitle}"...`}
           className="flex-1 text-sm px-3 py-2 rounded-lg outline-none transition-colors"
-          style={{
-            background: "#111111",
-            border: "1px solid #2A2A2A",
-            color: "#FAFAFA",
-          }}
+          style={{ background: "#111111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
           onFocus={(e) => (e.target.style.borderColor = "rgba(255,214,0,0.4)")}
           onBlur={(e) => (e.target.style.borderColor = "#2A2A2A")}
         />
@@ -169,7 +174,6 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
 
   return (
     <div className="fl-card overflow-hidden">
-      {/* Pillar header */}
       <div className="p-6 pb-4" style={{ borderBottom: "1px solid #2A2A2A" }}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
@@ -189,7 +193,6 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
         </div>
       </div>
 
-      {/* Tracks */}
       <div className="p-6 space-y-6">
         {tracksLoading ? (
           <div className="flex items-center gap-2 py-4" style={{ color: "#555555" }}>
@@ -205,10 +208,7 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
           tracks.map((track, ti) => (
             <div key={track.id}>
               <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded"
-                  style={{ background: `${accentColor}20`, color: accentColor }}
-                >
+                <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: `${accentColor}20`, color: accentColor }}>
                   Track {ti + 1}
                 </span>
                 <span className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>{track.title}</span>
@@ -227,7 +227,6 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
         )}
       </div>
 
-      {/* Approval section */}
       {tracks && tracks.length > 0 && (
         <div className="px-6 pb-6" style={{ borderTop: "1px solid #2A2A2A", paddingTop: "1.25rem" }}>
           <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#888888" }}>
@@ -306,6 +305,57 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
   );
 }
 
+// ── Project Card ───────────────────────────────────────────────────────────────
+function ProjectCard({ project }: { project: any }) {
+  const Icon = CATEGORY_ICONS[project.category ?? "video"] ?? Folder;
+
+  return (
+    <Link href={`/projects/${project.slug}`}>
+      <div
+        className="group relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+        style={{ background: "#141414", border: "1px solid #2A2A2A" }}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,214,0,0.3)")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "#2A2A2A")}
+      >
+        {/* Thumbnail */}
+        {project.coverImageUrl ? (
+          <div className="relative aspect-video overflow-hidden">
+            <img
+              src={project.coverImageUrl}
+              alt={project.title}
+              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          </div>
+        ) : (
+          <div className="aspect-video flex items-center justify-center" style={{ background: "#1A1A1A" }}>
+            <Icon size={32} style={{ color: "#333333" }} />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded"
+              style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600" }}
+            >
+              {project.category ?? "project"}
+            </span>
+          </div>
+          <h3 className="font-bold text-base mb-1" style={{ color: "#FAFAFA" }}>{project.title}</h3>
+          {project.description && (
+            <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "#666666" }}>{project.description}</p>
+          )}
+          <div className="flex items-center gap-1 mt-3 text-xs font-semibold" style={{ color: "#FFD600" }}>
+            View Deliverables <ChevronRight size={12} />
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 // ── Login Screen ───────────────────────────────────────────────────────────────
 function LoginScreen() {
   return (
@@ -313,7 +363,6 @@ function LoginScreen() {
       className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden fl-grain"
       style={{ background: "#0A0A0A" }}
     >
-      {/* Background glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -322,25 +371,21 @@ function LoginScreen() {
       />
 
       <div className="relative z-10 text-center max-w-md w-full">
-        {/* Logos */}
         <div className="flex items-center justify-center gap-6 mb-10">
-          <img src={FL_LOGO} alt="Faderlabs" className="h-8 object-contain" style={{ filter: "brightness(1)" }} />
+          <img src={FL_LOGO} alt="Faderlabs" className="h-8 object-contain" />
           <div className="w-px h-8" style={{ background: "#2A2A2A" }} />
-          <img src={MW_LOGO} alt="MultiWing" className="h-10 object-contain" />
+          <img src={MW_LOGO} alt="Multi-Wing" className="h-10 object-contain" />
         </div>
 
-        <div className="fl-label mb-4 mx-auto w-fit">Sonic Branding Portal</div>
+        <div className="fl-label mb-4 mx-auto w-fit">Client Portal</div>
         <h1 className="text-3xl font-black mb-3" style={{ color: "#FAFAFA" }}>
-          MultiWing × Faderlabs
+          Multi-Wing × Faderlabs
         </h1>
         <p className="text-base mb-8 leading-relaxed" style={{ color: "#888888" }}>
-          Review your sonic branding proposals, listen to the tracks, leave feedback, and approve your preferred direction.
+          Access your personalised content hub — review deliverables, download files, leave feedback, and approve your sonic branding.
         </p>
 
-        <a
-          href={getLoginUrl()}
-          className="fl-btn-primary w-full justify-center text-base py-4"
-        >
+        <a href={getLoginUrl()} className="fl-btn-primary w-full justify-center text-base py-4">
           <ShieldCheck size={18} />
           Sign In to Access Portal
         </a>
@@ -356,6 +401,12 @@ function LoginScreen() {
 // ── Main Portal ────────────────────────────────────────────────────────────────
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<"hub" | "sonic">("hub");
+
+  const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -385,7 +436,6 @@ export default function Home() {
             <img src={FL_LOGO} alt="Faderlabs" className="h-6 object-contain" />
           </div>
           <div className="flex items-center gap-4">
-            <div className="fl-label hidden sm:inline-flex">Sonic Branding</div>
             <span className="text-sm hidden sm:block" style={{ color: "#888888" }}>
               {user?.name}
             </span>
@@ -414,7 +464,7 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <section
-        className="relative py-16 md:py-24 overflow-hidden fl-grain"
+        className="relative py-14 md:py-20 overflow-hidden fl-grain"
         style={{ background: "linear-gradient(180deg, #0F0F0F 0%, #0A0A0A 100%)" }}
       >
         <div
@@ -424,72 +474,133 @@ export default function Home() {
           }}
         />
         <div className="container relative z-10">
-          {/* Client logo in hero */}
-          <div className="flex items-center gap-4 mb-8">
+          <div className="flex items-center gap-4 mb-6">
             <img src={MW_LOGO} alt="Multi-Wing" className="h-10 object-contain" />
             <div className="w-px h-8" style={{ background: "#2A2A2A" }} />
-            <div className="fl-label">Sonic Branding Proposal</div>
+            <div className="fl-label">Client Hub</div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black mb-4 leading-tight" style={{ color: "#FAFAFA" }}>
-            Multi-Wing<br />
-            <span style={{ color: "#FFD600" }}>Sound Identity</span>
+          <h1 className="text-4xl md:text-5xl font-black mb-3 leading-tight" style={{ color: "#FAFAFA" }}>
+            Welcome to Your<br />
+            <span style={{ color: "#FFD600" }}>Content Hub</span>
           </h1>
           <p className="text-base md:text-lg max-w-xl leading-relaxed" style={{ color: "#888888" }}>
-            Below are the sonic branding pillars crafted for Multi-Wing. Listen to each track, leave your feedback, and approve your preferred direction for each pillar.
+            Your personalised space to manage your projects — review, comment, download files, and approve deliverables seamlessly.
           </p>
-
-          {/* Progress overview */}
-          {pillars && pillars.length > 0 && (
-            <div className="mt-8 flex flex-wrap gap-3">
-              {pillars.map((p, i) => (
-                <a
-                  key={p.id}
-                  href={`#pillar-${p.id}`}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                  style={{ background: "#141414", border: "1px solid #2A2A2A", color: "#888888" }}
-                >
-                  <span style={{ color: PILLAR_ACCENT_COLORS[i % PILLAR_ACCENT_COLORS.length] }}>●</span>
-                  {p.title}
-                  <ChevronRight size={12} />
-                </a>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* ── Pillars ── */}
-      <main className="container py-12">
-        {pillarsLoading ? (
-          <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
-            <Loader2 size={20} className="animate-spin" />
-            <span>Loading pillars…</span>
-          </div>
-        ) : !pillars || pillars.length === 0 ? (
-          <div className="text-center py-24">
-            <Music2 size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
-            <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No pillars yet</h3>
-            <p className="text-sm" style={{ color: "#555555" }}>
-              Faderlabs is preparing your sonic branding proposal. Check back soon.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-10">
-            {pillars.map((pillar, i) => (
-              <div key={pillar.id} id={`pillar-${pillar.id}`}>
-                <PillarCard
-                  pillar={pillar}
-                  accentColor={PILLAR_ACCENT_COLORS[i % PILLAR_ACCENT_COLORS.length]}
-                  index={i}
-                />
+      {/* ── Tab Navigation ── */}
+      <div className="container pt-8">
+        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "#141414", border: "1px solid #2A2A2A" }}>
+          <button
+            onClick={() => setActiveTab("hub")}
+            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
+            style={
+              activeTab === "hub"
+                ? { background: "#FFD600", color: "#0A0A0A" }
+                : { color: "#888888" }
+            }
+          >
+            <span className="flex items-center gap-2">
+              <Folder size={14} />
+              Projects
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("sonic")}
+            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
+            style={
+              activeTab === "sonic"
+                ? { background: "#FFD600", color: "#0A0A0A" }
+                : { color: "#888888" }
+            }
+          >
+            <span className="flex items-center gap-2">
+              <Music2 size={14} />
+              Sonic Branding
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <main className="container py-8 pb-16">
+
+        {/* Projects Tab */}
+        {activeTab === "hub" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>
+              <p className="text-sm" style={{ color: "#555555" }}>
+                Click a project to view and download your deliverables.
+              </p>
+            </div>
+
+            {projectsLoading ? (
+              <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
+                <Loader2 size={20} className="animate-spin" />
+                <span>Loading projects…</span>
               </div>
-            ))}
+            ) : !projects || projects.length === 0 ? (
+              <div className="text-center py-24">
+                <Folder size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
+                <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No projects yet</h3>
+                <p className="text-sm" style={{ color: "#555555" }}>
+                  Faderlabs is preparing your deliverables. Check back soon.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {projects.map((project: any) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sonic Branding Tab */}
+        {activeTab === "sonic" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Sonic Branding Proposal</h2>
+              <p className="text-sm" style={{ color: "#555555" }}>
+                Listen to each track, leave feedback, and approve your preferred direction for each pillar.
+              </p>
+            </div>
+
+            {pillarsLoading ? (
+              <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
+                <Loader2 size={20} className="animate-spin" />
+                <span>Loading pillars…</span>
+              </div>
+            ) : !pillars || pillars.length === 0 ? (
+              <div className="text-center py-24">
+                <Music2 size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
+                <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No pillars yet</h3>
+                <p className="text-sm" style={{ color: "#555555" }}>
+                  Faderlabs is preparing your sonic branding proposal. Check back soon.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-10">
+                {pillars.map((pillar, i) => (
+                  <div key={pillar.id} id={`pillar-${pillar.id}`}>
+                    <PillarCard
+                      pillar={pillar}
+                      accentColor={PILLAR_ACCENT_COLORS[i % PILLAR_ACCENT_COLORS.length]}
+                      index={i}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
 
       {/* ── Footer ── */}
-      <footer className="mt-16 py-8" style={{ borderTop: "1px solid #1A1A1A" }}>
+      <footer className="py-8" style={{ borderTop: "1px solid #1A1A1A" }}>
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <img src={FL_LOGO} alt="Faderlabs" className="h-5 object-contain opacity-40" />
           <p className="text-xs" style={{ color: "#444444" }}>

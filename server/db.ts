@@ -278,3 +278,180 @@ export async function getApprovalsByPillar(pillarId: number) {
     .leftJoin(users, eq(approvals.userId, users.id))
     .where(eq(approvals.pillarId, pillarId));
 }
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+
+import { deliverableComments, deliverables, projects } from "../drizzle/schema";
+
+export async function getAllProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projects).where(eq(projects.isPublished, 1)).orderBy(asc(projects.sortOrder), asc(projects.createdAt));
+}
+
+export async function getAllProjectsAdmin() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projects).orderBy(asc(projects.sortOrder), asc(projects.createdAt));
+}
+
+export async function getProjectBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(projects).where(eq(projects.slug, slug)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getProjectById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createProject(data: {
+  title: string;
+  slug: string;
+  description?: string;
+  coverImageUrl?: string;
+  category?: string;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(projects).values({
+    title: data.title,
+    slug: data.slug,
+    description: data.description ?? null,
+    coverImageUrl: data.coverImageUrl ?? null,
+    category: data.category ?? null,
+    sortOrder: data.sortOrder ?? 0,
+    isPublished: 1,
+  });
+}
+
+export async function updateProject(id: number, data: Partial<{
+  title: string;
+  description: string;
+  coverImageUrl: string;
+  category: string;
+  sortOrder: number;
+  isPublished: number;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(projects).set(data).where(eq(projects.id, id));
+}
+
+export async function deleteProject(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(projects).where(eq(projects.id, id));
+}
+
+// ── Deliverables ──────────────────────────────────────────────────────────────
+
+export async function getDeliverablesByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(deliverables).where(eq(deliverables.projectId, projectId)).orderBy(asc(deliverables.sortOrder), asc(deliverables.createdAt));
+}
+
+export async function getDeliverableById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(deliverables).where(eq(deliverables.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createDeliverable(data: {
+  projectId: number;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+  downloadUrl?: string;
+  fileType?: string;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(deliverables).values({
+    projectId: data.projectId,
+    title: data.title,
+    description: data.description ?? null,
+    thumbnailUrl: data.thumbnailUrl ?? null,
+    downloadUrl: data.downloadUrl ?? null,
+    fileType: data.fileType ?? "video",
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+
+export async function updateDeliverable(id: number, data: Partial<{
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  downloadUrl: string;
+  fileType: string;
+  sortOrder: number;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(deliverables).set(data).where(eq(deliverables.id, id));
+}
+
+export async function deleteDeliverable(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(deliverables).where(eq(deliverables.id, id));
+}
+
+// ── Deliverable Comments ──────────────────────────────────────────────────────
+
+export async function getCommentsByDeliverable(deliverableId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: deliverableComments.id,
+      deliverableId: deliverableComments.deliverableId,
+      userId: deliverableComments.userId,
+      content: deliverableComments.content,
+      createdAt: deliverableComments.createdAt,
+      userName: users.name,
+    })
+    .from(deliverableComments)
+    .leftJoin(users, eq(deliverableComments.userId, users.id))
+    .where(eq(deliverableComments.deliverableId, deliverableId))
+    .orderBy(asc(deliverableComments.createdAt));
+}
+
+export async function createDeliverableComment(data: {
+  deliverableId: number;
+  userId: number;
+  content: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return db.insert(deliverableComments).values({
+    deliverableId: data.deliverableId,
+    userId: data.userId,
+    content: data.content,
+  });
+}
+
+export async function getAllDeliverableComments() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: deliverableComments.id,
+      deliverableId: deliverableComments.deliverableId,
+      userId: deliverableComments.userId,
+      content: deliverableComments.content,
+      createdAt: deliverableComments.createdAt,
+      userName: users.name,
+    })
+    .from(deliverableComments)
+    .leftJoin(users, eq(deliverableComments.userId, users.id))
+    .orderBy(desc(deliverableComments.createdAt));
+}

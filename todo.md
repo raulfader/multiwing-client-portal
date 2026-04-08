@@ -50,3 +50,14 @@
 - [x] Seed Pillar 3: Engineering & Technology
 - [x] Remove Multi-Wing logo from header bar
 - [x] Place Multi-Wing logo in hero section of main page
+
+## Content Hub Extension
+- [x] Scrape all content from faderlabs.com/multiwing (5 projects: ACREX 2026, CONEXPO 2026, AHR 2026, Brand Video, Archive Footage)
+- [x] Download and upload all project thumbnails to CDN
+- [x] Extend DB schema: projects, deliverables, deliverable_comments tables
+- [x] Seed all 5 projects with deliverables in database
+- [x] Build Projects tab on client Home page with project cards grid
+- [x] Build Project detail page (/projects/:slug) with deliverables, download links, and comments
+- [x] Add deliverable comments with owner notifications
+- [x] Update Admin dashboard with Projects tab (create/delete projects and deliverables)
+- [x] Add /projects/:slug route in App.tsx

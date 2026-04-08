@@ -3,7 +3,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, FolderOpen, FileText, MessageSquare, Send, Film, Archive, Music2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, FolderOpen, FileText, Film, Archive, Music2, CheckCircle2, XCircle, Clock, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -89,70 +89,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
               </Button>
             </a>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowComments(!showComments)}
-            className="border-white/20 text-white/70 hover:text-white hover:border-white/40 text-xs gap-1.5 bg-transparent"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            {comments.length > 0 ? `${comments.length}` : "Comment"}
-          </Button>
         </div>
-
-        {/* Comments section */}
-        {showComments && (
-          <div className="space-y-3 pt-2 border-t border-white/10">
-            {loadingComments ? (
-              <p className="text-white/40 text-xs">Loading comments...</p>
-            ) : comments.length === 0 ? (
-              <p className="text-white/40 text-xs italic">No comments yet. Be the first to leave feedback.</p>
-            ) : (
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {comments.map((c: any) => (
-                  <div key={c.id} className="bg-white/5 rounded-lg p-2.5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[#FFD600] text-xs font-medium">{c.userName ?? "Client"}</span>
-                      <span className="text-white/30 text-xs">
-                        {new Date(c.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-white/70 text-xs leading-relaxed">{c.content}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Add comment */}
-            <div className="flex gap-2">
-              <Textarea
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Leave your feedback..."
-                className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/30 text-xs resize-none min-h-[60px]"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    if (commentText.trim()) {
-                      addComment.mutate({ deliverableId: deliverable.id, content: commentText.trim() });
-                    }
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (commentText.trim()) {
-                    addComment.mutate({ deliverableId: deliverable.id, content: commentText.trim() });
-                  }
-                }}
-                disabled={!commentText.trim() || addComment.isPending}
-                className="bg-[#FFD600] hover:bg-[#FFD600]/90 text-black self-end"
-              >
-                <Send className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

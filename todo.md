@@ -95,3 +95,6 @@
 ## Project Page Visual Edits
 - [x] Add archive footage icon in project detail page header
 - [x] Replace Download icon with FolderOpen icon on all My Files buttons
+
+## UX Cleanup
+- [x] Remove comment buttons from next to My Files buttons on deliverable cards

@@ -324,12 +324,23 @@ function ProjectCard({ project }: { project: any }) {
               src={project.coverImageUrl}
               alt={project.title}
               className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+              onError={(e) => {
+                const target = e.currentTarget;
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<div class="aspect-video w-full h-full flex flex-col items-center justify-center gap-3" style="background:#1A1A1A">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+                    <span style="color:#444;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em">${project.title}</span>
+                  </div>`;
+                }
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           </div>
         ) : (
-          <div className="aspect-video flex items-center justify-center" style={{ background: "#1A1A1A" }}>
-            <Icon size={32} style={{ color: "#333333" }} />
+          <div className="aspect-video flex flex-col items-center justify-center gap-3" style={{ background: "#1A1A1A" }}>
+            <Icon size={40} style={{ color: "#333333" }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#444444" }}>{project.title}</span>
           </div>
         )}
 

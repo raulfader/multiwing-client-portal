@@ -61,3 +61,7 @@
 - [x] Add deliverable comments with owner notifications
 - [x] Update Admin dashboard with Projects tab (create/delete projects and deliverables)
 - [x] Add /projects/:slug route in App.tsx
+
+## Visual Fixes (Content Hub)
+- [x] Fix broken project card cover images on Home page (re-uploaded to correct CDN, updated DB)
+- [x] Add archive icon/placeholder for Archive Footage project card (no thumbnail) + onError fallback for all cards

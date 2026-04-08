@@ -592,13 +592,13 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           <img
             src={deliverable.thumbnailUrl}
             alt={deliverable.title}
-            className="w-full h-full object-contain p-4 opacity-90 hover:opacity-100 transition-opacity bg-black"
+            className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black"
           />
         ) : (
           <img
             src={fallbackIcon}
             alt={deliverable.title}
-            className="w-full h-full object-contain p-6 opacity-70"
+            className="w-full h-full object-cover opacity-70"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

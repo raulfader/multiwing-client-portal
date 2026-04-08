@@ -897,13 +897,90 @@ function AddDeliverableForm({ projectId, onCreated }: { projectId: number; onCre
   );
 }
 
+// ── Deliverable Edit Row ──────────────────────────────────────────────────────
+function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(d.title);
+  const [description, setDescription] = useState(d.description ?? "");
+  const [downloadUrl, setDownloadUrl] = useState(d.downloadUrl ?? "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(d.thumbnailUrl ?? "");
+  const [fileType, setFileType] = useState(d.fileType ?? "video");
+
+  const update = trpc.deliverables.update.useMutation({
+    onSuccess: () => { setEditing(false); onSaved(); toast.success("Deliverable updated"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
+        {d.thumbnailUrl
+          ? <img src={d.thumbnailUrl} alt={d.title} className="w-10 h-7 object-cover rounded flex-shrink-0" />
+          : <div className="w-10 h-7 rounded flex-shrink-0" style={{ background: "#1A1A1A" }} />}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
+          <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
+        </div>
+        {d.downloadUrl && (
+          <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
+            <Link2 size={12} />
+          </a>
+        )}
+        <button onClick={() => setEditing(true)} className="p-1 rounded" style={{ color: "#888" }} title="Edit">
+          <Edit2 size={12} />
+        </button>
+        <button onClick={() => { if (confirm(`Delete "${d.title}"?`)) onDelete(); }} className="p-1 rounded" style={{ color: "#EF4444" }} title="Delete">
+          <Trash2 size={12} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 rounded-lg space-y-2" style={{ background: "#111", border: "1px solid rgba(255,214,0,0.3)" }}>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+        <select value={fileType} onChange={(e) => setFileType(e.target.value)} className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}>
+          <option value="video">Video</option>
+          <option value="document">Document</option>
+          <option value="archive">Archive</option>
+          <option value="image">Image</option>
+        </select>
+      </div>
+      <input value={downloadUrl} onChange={(e) => setDownloadUrl(e.target.value)} placeholder="Download / link URL" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+      <ImageUploadButton value={thumbnailUrl} onChange={setThumbnailUrl} label="Replace Thumbnail" folder="deliverable-thumbnails" size="xs" />
+      <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+      <div className="flex gap-2">
+        <button
+          onClick={() => update.mutate({ id: d.id, title: title || undefined, description: description || undefined, downloadUrl: downloadUrl || undefined, thumbnailUrl: thumbnailUrl || undefined, fileType })}
+          disabled={!title.trim() || update.isPending}
+          className="fl-btn-primary flex-1 justify-center py-2 text-xs flex items-center gap-1.5"
+        >
+          {update.isPending ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+        </button>
+        <button onClick={() => { setTitle(d.title); setDescription(d.description ?? ""); setDownloadUrl(d.downloadUrl ?? ""); setThumbnailUrl(d.thumbnailUrl ?? ""); setFileType(d.fileType ?? "video"); setEditing(false); }} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Project Admin Row ──────────────────────────────────────────────────────────
 function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [editingProject, setEditingProject] = useState(false);
+  const [editTitle, setEditTitle] = useState(project.title);
+  const [editDescription, setEditDescription] = useState(project.description ?? "");
+  const [editCoverImageUrl, setEditCoverImageUrl] = useState(project.coverImageUrl ?? "");
+
   const { data: deliverables, refetch: refetchDeliverables } = trpc.deliverables.byProject.useQuery(
     { projectId: project.id },
     { enabled: expanded }
   );
+
+  const updateProject = trpc.projects.update.useMutation({
+    onSuccess: () => { setEditingProject(false); onRefresh(); toast.success("Project updated"); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const deleteProject = trpc.projects.delete.useMutation({
     onSuccess: () => { onRefresh(); toast.success("Project deleted"); },
@@ -917,31 +994,64 @@ function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () =
 
   return (
     <div className="fl-card overflow-hidden">
+      {/* Header row */}
       <div className="p-4 flex items-center gap-3">
-        {project.coverImageUrl ? (
-          <img src={project.coverImageUrl} alt={project.title} className="w-14 h-10 object-cover rounded" />
+        {editingProject ? (
+          <ImageUploadButton value={editCoverImageUrl} onChange={setEditCoverImageUrl} label="" folder="project-covers" size="xs" />
+        ) : project.coverImageUrl ? (
+          <img src={project.coverImageUrl} alt={project.title} className="w-14 h-10 object-cover rounded flex-shrink-0" />
         ) : (
-          <div className="w-14 h-10 rounded flex items-center justify-center" style={{ background: "#1A1A1A" }}>
+          <div className="w-14 h-10 rounded flex items-center justify-center flex-shrink-0" style={{ background: "#1A1A1A" }}>
             <Folder size={16} style={{ color: "#444" }} />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm" style={{ color: "#FAFAFA" }}>{project.title}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600" }}>{project.category}</span>
-          </div>
-          <p className="text-xs" style={{ color: "#555" }}>/projects/{project.slug}</p>
+          {editingProject ? (
+            <div className="space-y-1.5">
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title" className="w-full text-sm px-2.5 py-1.5 rounded-lg outline-none" style={{ background: "#111", border: "1px solid rgba(255,214,0,0.4)", color: "#FAFAFA" }} />
+              <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)" className="w-full text-xs px-2.5 py-1.5 rounded-lg outline-none" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm" style={{ color: "#FAFAFA" }}>{project.title}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600" }}>{project.category}</span>
+              </div>
+              <p className="text-xs" style={{ color: "#555" }}>/projects/{project.slug}</p>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <a href={`/projects/${project.slug}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded" style={{ color: "#888" }}>
-            <Globe size={14} />
-          </a>
-          <button onClick={() => setExpanded(!expanded)} className="p-1.5 rounded" style={{ color: "#888" }}>
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          <button onClick={() => { if (confirm(`Delete project "${project.title}"?`)) deleteProject.mutate({ id: project.id }); }} className="p-1.5 rounded" style={{ color: "#EF4444" }}>
-            <Trash2 size={14} />
-          </button>
+          {editingProject ? (
+            <>
+              <button
+                onClick={() => updateProject.mutate({ id: project.id, title: editTitle || undefined, description: editDescription || undefined, coverImageUrl: editCoverImageUrl || undefined })}
+                disabled={!editTitle.trim() || updateProject.isPending}
+                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
+                style={{ background: "#FFD600", color: "#0A0A0A" }}
+              >
+                {updateProject.isPending ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+              </button>
+              <button onClick={() => { setEditTitle(project.title); setEditDescription(project.description ?? ""); setEditCoverImageUrl(project.coverImageUrl ?? ""); setEditingProject(false); }} className="p-1.5 rounded" style={{ color: "#888" }}>
+                <X size={14} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setEditingProject(true)} className="p-1.5 rounded" style={{ color: "#888" }} title="Edit project">
+                <Edit2 size={14} />
+              </button>
+              <a href={`/projects/${project.slug}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded" style={{ color: "#888" }}>
+                <Globe size={14} />
+              </a>
+              <button onClick={() => setExpanded(!expanded)} className="p-1.5 rounded" style={{ color: "#888" }}>
+                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              <button onClick={() => { if (confirm(`Delete project "${project.title}"?`)) deleteProject.mutate({ id: project.id }); }} className="p-1.5 rounded" style={{ color: "#EF4444" }}>
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -952,21 +1062,12 @@ function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () =
               <p className="text-xs py-2" style={{ color: "#555" }}>No deliverables yet.</p>
             ) : (
               deliverables.map((d: any) => (
-                <div key={d.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
-                  {d.thumbnailUrl && <img src={d.thumbnailUrl} alt={d.title} className="w-10 h-7 object-cover rounded" />}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
-                    <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
-                  </div>
-                  {d.downloadUrl && (
-                    <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
-                      <Link2 size={12} />
-                    </a>
-                  )}
-                  <button onClick={() => deleteDeliverable.mutate({ id: d.id })} className="p-1 rounded" style={{ color: "#EF4444" }}>
-                    <Trash2 size={12} />
-                  </button>
-                </div>
+                <DeliverableEditRow
+                  key={d.id}
+                  d={d}
+                  onDelete={() => deleteDeliverable.mutate({ id: d.id })}
+                  onSaved={refetchDeliverables}
+                />
               ))
             )}
             <AddDeliverableForm projectId={project.id} onCreated={refetchDeliverables} />

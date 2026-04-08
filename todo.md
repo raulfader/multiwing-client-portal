@@ -140,3 +140,9 @@
 - [x] Server: add sendNotification procedure (renders template, sends email via Gmail SMTP)
 - [x] Admin UI: contacts management panel per project
 - [x] Admin UI: send notification panel with editable subject line and preview
+
+## Inline Editing in Admin
+- [x] Backend: add projects.update procedure (title, description, coverImageUrl) — already existed
+- [x] Backend: add deliverables.update procedure (title, description, thumbnailUrl, downloadUrl, fileType) — already existed
+- [x] Admin UI: inline edit on ProjectAdminRow (edit title, description, cover image)
+- [x] Admin UI: inline edit on each deliverable row (edit title, description, thumbnail, download URL)

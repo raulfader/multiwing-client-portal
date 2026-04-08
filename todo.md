@@ -91,3 +91,7 @@
 ## Icon Consistency
 - [x] Regenerate Sonic Branding icon to match Brand Video icon style/size (golden neon waveform, 16:9, same glow)
 - [x] Regenerate Archive Footage icon to match Brand Video icon style/size (golden neon film reel, 16:9, same glow)
+
+## Project Page Visual Edits
+- [x] Add archive footage icon in project detail page header
+- [x] Replace Download icon with FolderOpen icon on all My Files buttons

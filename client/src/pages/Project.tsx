@@ -3,7 +3,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Download, FileText, MessageSquare, Send, Film, Archive, Music2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, FolderOpen, FileText, MessageSquare, Send, Film, Archive, Music2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -84,7 +84,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
                 size="sm"
                 className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5"
               >
-                <Download className="w-3.5 h-3.5" />
+                <FolderOpen className="w-3.5 h-3.5" />
                 My Files
               </Button>
             </a>
@@ -387,11 +387,19 @@ export default function ProjectPage() {
           </div>
         )}
         <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <div className="inline-flex items-center gap-2 bg-[#FFD600]/10 border border-[#FFD600]/20 rounded-full px-3 py-1 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FFD600]" />
-            <span className="text-[#FFD600] text-xs font-medium uppercase tracking-widest">
-              {project.category ?? "Project"}
-            </span>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="inline-flex items-center gap-2 bg-[#FFD600]/10 border border-[#FFD600]/20 rounded-full px-3 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FFD600]" />
+              <span className="text-[#FFD600] text-xs font-medium uppercase tracking-widest">
+                {project.category ?? "Project"}
+              </span>
+            </div>
+            {slug === "archive-footage" && (
+              <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+                <Archive className="w-3.5 h-3.5 text-white/50" />
+                <span className="text-white/50 text-xs font-medium uppercase tracking-widest">Archive</span>
+              </div>
+            )}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{project.title}</h1>
           {project.description && (

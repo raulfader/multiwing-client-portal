@@ -24,7 +24,79 @@ import {
   Link2,
   Edit2,
   Globe,
+  ImagePlus,
+  X,
 } from "lucide-react";
+
+// ── Reusable Image Upload Button ───────────────────────────────────────────────
+function ImageUploadButton({
+  value,
+  onChange,
+  label = "Upload Image",
+  folder = "images",
+  size = "sm",
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  label?: string;
+  folder?: string;
+  size?: "xs" | "sm";
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadImage = trpc.uploadImage.upload.useMutation({
+    onSuccess: (data) => { onChange(data.url); setUploading(false); toast.success("Image uploaded"); },
+    onError: (e) => { setUploading(false); toast.error(e.message); },
+  });
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Image must be under 10 MB"); return; }
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = (e.target?.result as string).split(",")[1];
+      uploadImage.mutate({ filename: file.name, contentType: file.type, fileBase64: base64, folder });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const textSm = size === "xs" ? "text-[11px]" : "text-xs";
+  const py = size === "xs" ? "py-1.5" : "py-2";
+
+  return (
+    <div className="space-y-1.5">
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+      {value ? (
+        <div className="relative inline-flex items-center gap-2">
+          <img src={value} alt="preview" className="h-10 w-16 object-cover rounded" style={{ border: "1px solid #2A2A2A" }} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className={`flex items-center gap-1.5 ${textSm} font-semibold px-3 ${py} rounded-lg`}
+            style={{ background: "#1A1A1A", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+          >
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+            {uploading ? "Uploading…" : "Replace"}
+          </button>
+          <button onClick={() => onChange("")} className={`${textSm} px-2 ${py} rounded-lg`} style={{ color: "#555", background: "#1A1A1A" }}>
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className={`flex items-center gap-1.5 ${textSm} font-semibold px-3 ${py} rounded-lg`}
+          style={{ background: "#1A1A1A", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+        >
+          {uploading ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />}
+          {uploading ? "Uploading…" : label}
+        </button>
+      )}
+    </div>
+  );
+}
 
 const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_8bb403fd.webp";
 const FL_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
@@ -543,7 +615,7 @@ function CreateProjectForm({ onCreated }: { onCreated: () => void }) {
           <option value="document">Document</option>
           <option value="event">Event</option>
         </select>
-        <input value={coverImageUrl} onChange={(e) => setCoverImageUrl(e.target.value)} placeholder="Cover image URL (optional)" className="text-sm px-3 py-2.5 rounded-lg outline-none" style={{ background: "#111111", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+        <ImageUploadButton value={coverImageUrl} onChange={setCoverImageUrl} label="Upload Cover Image" folder="project-covers" />
       </div>
       <div className="flex gap-2">
         <button onClick={() => createProject.mutate({ title, slug, description: description || undefined, category, coverImageUrl: coverImageUrl || undefined })} disabled={!title.trim() || !slug.trim() || createProject.isPending} className="fl-btn-primary flex-1 justify-center py-2.5 text-sm">
@@ -592,7 +664,7 @@ function AddDeliverableForm({ projectId, onCreated }: { projectId: number; onCre
         </select>
       </div>
       <input value={downloadUrl} onChange={(e) => setDownloadUrl(e.target.value)} placeholder="Download / link URL" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
-      <input value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} placeholder="Thumbnail image URL (optional)" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+      <ImageUploadButton value={thumbnailUrl} onChange={setThumbnailUrl} label="Upload Thumbnail" folder="deliverable-thumbnails" size="xs" />
       <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
       <div className="flex gap-2">
         <button onClick={() => create.mutate({ projectId, title, description: description || undefined, downloadUrl: downloadUrl || undefined, thumbnailUrl: thumbnailUrl || undefined, fileType })} disabled={!title.trim() || create.isPending} className="fl-btn-primary flex-1 justify-center py-2 text-xs">

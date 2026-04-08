@@ -125,3 +125,8 @@
 
 ## Pillar Color Customization
 - [x] Pillar 1 border/accent: green (#64DD17); Pillar 2: yellow (#FFD600); Pillar 3: red (#d60000)
+
+## Image Upload in Admin
+- [x] Add image upload tRPC procedure (base64 → S3) for project cover and deliverable thumbnail
+- [x] Replace project cover URL input in CreateProjectForm with file upload button
+- [x] Add deliverable thumbnail upload in CreateDeliverableForm (no separate edit form exists)

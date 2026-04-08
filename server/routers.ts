@@ -445,10 +445,27 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    all: adminProcedure.query(async () => {
+     all: adminProcedure.query(async () => {
       return getAllDeliverableComments();
     }),
   }),
+  // ── Image Upload ──────────────────────────────────────────────────────────────
+  uploadImage: router({
+    upload: adminProcedure
+      .input(z.object({
+        filename: z.string(),
+        contentType: z.string().regex(/^image\//),
+        fileBase64: z.string(),
+        folder: z.string().default("images"),
+      }))
+      .mutation(async ({ input }) => {
+        const suffix = nanoid(8);
+        const ext = input.filename.split(".").pop() ?? "jpg";
+        const key = `${input.folder}/${suffix}.${ext}`;
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const { url } = await storagePut(key, buffer, input.contentType);
+        return { success: true, url, key };
+      }),
+  }),
 });
-
 export type AppRouter = typeof appRouter;

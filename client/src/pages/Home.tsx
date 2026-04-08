@@ -384,7 +384,7 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <img src={FL_LOGO} alt="Faderlabs" className="h-6 object-contain" />
             <div className="w-px h-5" style={{ background: "#2A2A2A" }} />
-            <img src={MW_LOGO} alt="MultiWing" className="h-8 object-contain" />
+            <img src={MW_LOGO} alt="Multi-Wing" className="h-7 object-contain" />
           </div>
           <div className="flex items-center gap-4">
             <div className="fl-label hidden sm:inline-flex">Sonic Branding</div>
@@ -428,11 +428,11 @@ export default function Home() {
         <div className="container relative z-10">
           <div className="fl-label mb-5">Sonic Branding Proposal</div>
           <h1 className="text-4xl md:text-5xl font-black mb-4 leading-tight" style={{ color: "#FAFAFA" }}>
-            MultiWing<br />
+            Multi-Wing<br />
             <span style={{ color: "#FFD600" }}>Sound Identity</span>
           </h1>
           <p className="text-base md:text-lg max-w-xl leading-relaxed" style={{ color: "#888888" }}>
-            Below are the sonic branding pillars crafted for MultiWing. Listen to each track, leave your feedback, and approve your preferred direction for each pillar.
+            Below are the sonic branding pillars crafted for Multi-Wing. Listen to each track, leave your feedback, and approve your preferred direction for each pillar.
           </p>
 
           {/* Progress overview */}

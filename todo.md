@@ -38,3 +38,7 @@
 
 ## Bug Fixes
 - [x] Fix approvals.myApproval returning undefined when no record exists (tRPC requires non-undefined)
+
+## Visual Edits
+- [x] Make Multi-Wing logo in header 10% smaller (h-8 → h-7)
+- [x] Update hero text "MultiWing" → "Multi-Wing"

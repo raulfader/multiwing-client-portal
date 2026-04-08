@@ -466,9 +466,9 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
   const { data: tracks = [], isLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}22`, background: "#111111" }}>
-      <div className="p-6 border-b" style={{ borderColor: `${accentColor}22` }}>
-        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2" style={{ color: accentColor }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(214,0,0,0.13)", background: "#111111" }}>
+      <div className="p-6 border-b" style={{ borderColor: "rgba(214,0,0,0.13)" }}>
+        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#d60000' }}>
           Pillar {index + 1}
         </div>
         <h3 className="text-xl font-bold text-white mb-1">{pillar.title}</h3>

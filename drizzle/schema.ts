@@ -130,3 +130,30 @@ export const deliverableComments = mysqlTable("deliverable_comments", {
 
 export type DeliverableComment = typeof deliverableComments.$inferSelect;
 export type InsertDeliverableComment = typeof deliverableComments.$inferInsert;
+
+// ── Project Contacts (email recipients per project) ──────────────────────────
+export const projectContacts = mysqlTable("project_contacts", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  firstName: varchar("firstName", { length: 100 }).notNull(),
+  lastName: varchar("lastName", { length: 100 }),
+  email: varchar("email", { length: 320 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProjectContact = typeof projectContacts.$inferSelect;
+export type InsertProjectContact = typeof projectContacts.$inferInsert;
+
+// ── Email Log (sent notification history) ───────────────────────────────────
+export const emailLog = mysqlTable("email_log", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  contactId: int("contactId").notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  status: mysqlEnum("status", ["sent", "failed"]).default("sent").notNull(),
+  errorMessage: text("errorMessage"),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+
+export type EmailLog = typeof emailLog.$inferSelect;
+export type InsertEmailLog = typeof emailLog.$inferInsert;

@@ -26,7 +26,228 @@ import {
   Globe,
   ImagePlus,
   X,
+  Mail,
+  Send,
+  UserPlus,
+  History,
 } from "lucide-react";
+
+// ── Email Notifications Tab ────────────────────────────────────────────────────
+function EmailNotificationsTab({ projects }: { projects: any[] }) {
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(projects[0]?.id ?? null);
+  const [subject, setSubject] = useState("");
+  const [customMessage, setCustomMessage] = useState("");
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
+  const [addFirstName, setAddFirstName] = useState("");
+  const [addLastName, setAddLastName] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+
+  const { data: contacts, refetch: refetchContacts } = trpc.contacts.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: selectedProjectId != null }
+  );
+  const { data: emailLogs, refetch: refetchLogs } = trpc.email.log.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: selectedProjectId != null }
+  );
+
+  const addContact = trpc.contacts.add.useMutation({
+    onSuccess: () => {
+      setAddFirstName(""); setAddLastName(""); setAddEmail("");
+      refetchContacts();
+      toast.success("Contact added");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteContact = trpc.contacts.delete.useMutation({
+    onSuccess: () => { refetchContacts(); toast.success("Contact removed"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const sendNotification = trpc.email.sendNotification.useMutation({
+    onSuccess: (data) => {
+      const sent = data.results.filter((r) => r.success).length;
+      const failed = data.results.filter((r) => !r.success).length;
+      toast.success(`Sent to ${sent} contact${sent !== 1 ? "s" : ""}${failed > 0 ? `, ${failed} failed` : ""}`);
+      setSubject(""); setCustomMessage(""); setSelectedContactIds([]);
+      refetchLogs();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
+
+  const toggleContact = (id: number) => {
+    setSelectedContactIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-6">
+        {/* Project selector */}
+        <div>
+          <label className="text-xs font-bold uppercase tracking-widest mb-2 block" style={{ color: "#FFD600" }}>Select Project</label>
+          <select
+            value={selectedProjectId ?? ""}
+            onChange={(e) => { setSelectedProjectId(Number(e.target.value)); setSelectedContactIds([]); }}
+            className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+            style={{ background: "#141414", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Contacts */}
+        <div className="fl-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Users size={16} style={{ color: "#FFD600" }} />
+            <h3 className="font-bold text-sm" style={{ color: "#FAFAFA" }}>Contacts for {selectedProject?.title}</h3>
+            <span className="text-xs ml-auto" style={{ color: "#555" }}>{contacts?.length ?? 0} contact{contacts?.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Add contact form */}
+          <div className="grid grid-cols-3 gap-2">
+            <input value={addFirstName} onChange={(e) => setAddFirstName(e.target.value)} placeholder="First name *" className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+            <input value={addLastName} onChange={(e) => setAddLastName(e.target.value)} placeholder="Last name" className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+            <input value={addEmail} onChange={(e) => setAddEmail(e.target.value)} placeholder="Email *" type="email" className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
+          </div>
+          <button
+            onClick={() => selectedProjectId && addContact.mutate({ projectId: selectedProjectId, firstName: addFirstName, lastName: addLastName || undefined, email: addEmail })}
+            disabled={!addFirstName.trim() || !addEmail.trim() || addContact.isPending}
+            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg"
+            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+          >
+            {addContact.isPending ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+            Add Contact
+          </button>
+
+          {/* Contact list */}
+          {contacts && contacts.length > 0 ? (
+            <div className="space-y-2">
+              {contacts.map((c: any) => (
+                <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "#111", border: `1px solid ${selectedContactIds.includes(c.id) ? "rgba(255,214,0,0.4)" : "#2A2A2A"}` }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedContactIds.includes(c.id)}
+                    onChange={() => toggleContact(c.id)}
+                    className="accent-yellow-400"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>{c.firstName}{c.lastName ? " " + c.lastName : ""}</p>
+                    <p className="text-xs" style={{ color: "#555" }}>{c.email}</p>
+                  </div>
+                  <button onClick={() => deleteContact.mutate({ id: c.id })} className="p-1 rounded" style={{ color: "#EF4444" }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-center py-4" style={{ color: "#444" }}>No contacts yet. Add one above.</p>
+          )}
+        </div>
+
+        {/* Compose email */}
+        <div className="fl-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Mail size={16} style={{ color: "#FFD600" }} />
+            <h3 className="font-bold text-sm" style={{ color: "#FAFAFA" }}>Compose Notification</h3>
+          </div>
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: "#888" }}>Subject line</label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={`Your ${selectedProject?.title ?? "project"} is ready for review`}
+              className="w-full text-sm px-3 py-2.5 rounded-lg outline-none"
+              style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: "#888" }}>Custom message (optional)</label>
+            <textarea
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              placeholder="Add a personal note to include in the email body…"
+              rows={3}
+              className="w-full text-sm px-3 py-2.5 rounded-lg outline-none resize-none"
+              style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+            />
+          </div>
+          <div className="p-3 rounded-lg text-xs" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#888" }}>
+            <p className="font-semibold mb-1" style={{ color: "#FFD600" }}>Email preview</p>
+            <p>Dear [First Name],</p>
+            <p className="mt-1">{customMessage || `Your ${selectedProject?.title ?? "project"} deliverables are now ready for your review.`}</p>
+            <p className="mt-1">🔗 Project link + 🔑 Login password included automatically.</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs" style={{ color: "#555" }}>
+              {selectedContactIds.length > 0
+                ? `Sending to ${selectedContactIds.length} selected contact${selectedContactIds.length !== 1 ? "s" : ""}`
+                : `Sending to all ${contacts?.length ?? 0} contact${contacts?.length !== 1 ? "s" : ""}`}
+            </p>
+            <button
+              onClick={() => selectedProjectId && sendNotification.mutate({
+                projectId: selectedProjectId,
+                subject: subject || `Your ${selectedProject?.title ?? "project"} is ready for review`,
+                customMessage: customMessage || undefined,
+                contactIds: selectedContactIds.length > 0 ? selectedContactIds : undefined,
+              })}
+              disabled={!selectedProjectId || !contacts?.length || sendNotification.isPending}
+              className="fl-btn-primary flex items-center gap-2"
+            >
+              {sendNotification.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {sendNotification.isPending ? "Sending…" : "Send Email"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Email log sidebar */}
+      <div className="space-y-4">
+        <div className="fl-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <History size={16} style={{ color: "#FFD600" }} />
+            <h3 className="font-bold text-sm" style={{ color: "#FAFAFA" }}>Send History</h3>
+            <span className="text-xs ml-auto" style={{ color: "#555" }}>{emailLogs?.length ?? 0} sent</span>
+          </div>
+          {!emailLogs || emailLogs.length === 0 ? (
+            <p className="text-xs text-center py-6" style={{ color: "#444" }}>No emails sent yet</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {emailLogs.slice().reverse().map((log: any) => (
+                <div key={log.id} className="px-3 py-2.5 rounded-lg" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: log.status === "sent" ? "#64DD17" : "#EF4444" }} />
+                    <span className="text-xs font-semibold" style={{ color: log.status === "sent" ? "#64DD17" : "#EF4444" }}>{log.status}</span>
+                    <span className="text-xs ml-auto" style={{ color: "#444" }}>{new Date(log.sentAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-xs truncate" style={{ color: "#CCCCCC" }}>{log.subject}</p>
+                  {log.errorMessage && <p className="text-xs mt-0.5" style={{ color: "#EF4444" }}>{log.errorMessage}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="fl-card p-5">
+          <h3 className="font-bold text-sm mb-3" style={{ color: "#FFD600" }}>Email Guide</h3>
+          <div className="space-y-2 text-xs" style={{ color: "#888" }}>
+            <p>1. Select the project to notify clients about</p>
+            <p>2. Add client contacts (first name + email)</p>
+            <p>3. Optionally select specific contacts to send to</p>
+            <p>4. Customise the subject and message</p>
+            <p>5. Every email includes the project link and login password automatically</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Reusable Image Upload Button ───────────────────────────────────────────────
 function ImageUploadButton({
@@ -759,7 +980,7 @@ function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () =
 // ── Admin Page ─────────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<"sonic" | "projects">("projects");
+  const [activeTab, setActiveTab] = useState<"sonic" | "projects" | "email">("projects");
   const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery();
   const { data: allApprovals } = trpc.approvals.all.useQuery();
   const { data: allComments } = trpc.comments.all.useQuery();
@@ -846,7 +1067,17 @@ export default function Admin() {
           >
             <Music2 size={14} /> Sonic Branding
           </button>
+          <button
+            onClick={() => setActiveTab("email")}
+            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            style={activeTab === "email" ? { background: "#FFD600", color: "#0A0A0A" } : { color: "#888888" }}
+          >
+            <Mail size={14} /> Email Notifications
+          </button>
         </div>
+
+        {/* Email Notifications Tab */}
+        {activeTab === "email" && <EmailNotificationsTab projects={projects ?? []} />}
 
         {/* Projects Tab */}
         {activeTab === "projects" && (

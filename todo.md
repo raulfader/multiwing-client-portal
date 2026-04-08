@@ -130,3 +130,13 @@
 - [x] Add image upload tRPC procedure (base64 → S3) for project cover and deliverable thumbnail
 - [x] Replace project cover URL input in CreateProjectForm with file upload button
 - [x] Add deliverable thumbnail upload in CreateDeliverableForm (no separate edit form exists)
+
+## Email Notification Module
+- [x] Research Manus API hub for email sending capability (used Gmail SMTP via nodemailer)
+- [x] DB: add project_contacts table (firstName, lastName, email, projectId)
+- [x] DB: add email_log table (contactId, projectId, subject, sentAt, status)
+- [x] Server: build branded HTML email template (Faderlabs logo, salutation, project link, password MW@2025)
+- [x] Server: add contacts CRUD procedures (add, list, delete)
+- [x] Server: add sendNotification procedure (renders template, sends email via Gmail SMTP)
+- [x] Admin UI: contacts management panel per project
+- [x] Admin UI: send notification panel with editable subject line and preview

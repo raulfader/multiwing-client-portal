@@ -41,6 +41,10 @@ import {
   getAllDeliverableComments,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
+import { sendProjectNotification } from "./email";
+import { getDb } from "./db";
+import { projectContacts, emailLog } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -449,7 +453,108 @@ export const appRouter = router({
       return getAllDeliverableComments();
     }),
   }),
-  // ── Image Upload ──────────────────────────────────────────────────────────────
+  // ── Project Contacts ─────────────────────────────────────────────────────
+  contacts: router({
+    list: adminProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(projectContacts).where(eq(projectContacts.projectId, input.projectId));
+      }),
+
+    add: adminProcedure
+      .input(z.object({
+        projectId: z.number(),
+        firstName: z.string().min(1),
+        lastName: z.string().optional(),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        await db.insert(projectContacts).values({
+          projectId: input.projectId,
+          firstName: input.firstName,
+          lastName: input.lastName ?? null,
+          email: input.email,
+        });
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        await db.delete(projectContacts).where(eq(projectContacts.id, input.id));
+        return { success: true };
+      }),
+  }),
+
+  // ── Email Notifications ────────────────────────────────────────────────────
+  email: router({
+    sendNotification: adminProcedure
+      .input(z.object({
+        projectId: z.number(),
+        subject: z.string().min(1),
+        customMessage: z.string().optional(),
+        contactIds: z.array(z.number()).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const project = await getProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+
+        const appUrl = (process.env.VITE_OAUTH_PORTAL_URL ?? "")
+          .replace(/\/login.*$/, "")
+          .replace(/\/api.*$/, "")
+          || "https://multiwing-sonic-portal.manus.space";
+        const projectUrl = `${appUrl}/project/${project.slug}`;
+
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+        let allContacts = await db.select().from(projectContacts).where(eq(projectContacts.projectId, input.projectId));
+        const targets = (input.contactIds && input.contactIds.length > 0)
+          ? allContacts.filter((c) => input.contactIds!.includes(c.id))
+          : allContacts;
+
+        if (targets.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No contacts found for this project" });
+        }
+
+        const results: { contactId: number; email: string; success: boolean; error?: string }[] = [];
+        for (const contact of targets) {
+          const result = await sendProjectNotification({
+            to: contact.email,
+            firstName: contact.firstName,
+            projectTitle: project.title,
+            projectUrl,
+            subject: input.subject,
+            customMessage: input.customMessage,
+          });
+          await db.insert(emailLog).values({
+            projectId: input.projectId,
+            contactId: contact.id,
+            subject: input.subject,
+            status: result.success ? "sent" : "failed",
+            errorMessage: result.error ?? null,
+          });
+          results.push({ contactId: contact.id, email: contact.email, ...result });
+        }
+        return { success: true, results };
+      }),
+
+    log: adminProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select().from(emailLog).where(eq(emailLog.projectId, input.projectId));
+      }),
+  }),
+
+  // ── Image Upload ──────────────────────────────────────────────────────────
   uploadImage: router({
     upload: adminProcedure
       .input(z.object({

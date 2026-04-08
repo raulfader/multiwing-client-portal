@@ -51,6 +51,14 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { nanoid } from "nanoid";
+import {
+  checkClientPassword,
+  checkAdminCredentials,
+  createSession,
+  deleteSession,
+  validateSession,
+  SESSION_COOKIE,
+} from "./customAuth";
 
 // ── Admin guard middleware ─────────────────────────────────────────────────────
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -64,8 +72,56 @@ export const appRouter = router({
   system: systemRouter,
 
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    // Returns current session info from custom session cookie
+    me: publicProcedure.query(async ({ ctx }) => {
+      const token = ctx.req.cookies?.[SESSION_COOKIE];
+      if (!token) return null;
+      const session = await validateSession(token);
+      if (!session) return null;
+      return { role: session.role };
+    }),
+
+    // Client login: portal password only
+    clientLogin: publicProcedure
+      .input(z.object({ password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!checkClientPassword(input.password)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect password" });
+        }
+        const token = await createSession("client");
+        ctx.res.cookie(SESSION_COOKIE, token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+          path: "/",
+        });
+        return { success: true, role: "client" as const };
+      }),
+
+    // Admin login: email + password
+    adminLogin: publicProcedure
+      .input(z.object({ email: z.string(), password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!checkAdminCredentials(input.email, input.password)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid admin credentials" });
+        }
+        const token = await createSession("admin");
+        ctx.res.cookie(SESSION_COOKIE, token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          path: "/",
+        });
+        return { success: true, role: "admin" as const };
+      }),
+
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      const token = ctx.req.cookies?.[SESSION_COOKIE];
+      if (token) await deleteSession(token);
+      ctx.res.clearCookie(SESSION_COOKIE, { path: "/" });
+      // Also clear old OAuth cookie if present
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;

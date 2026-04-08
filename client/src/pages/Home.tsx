@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -361,40 +360,26 @@ function ProjectCard({ project }: { project: any }) {
 }
 
 // ─// ── Login Screen ──────────────────────────────────────────────────────────
-const PORTAL_PASSWORD = "MW@2025";
-
 function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("portal_unlocked") === "1");
+  const utils = trpc.useUtils();
+
+  const clientLogin = trpc.auth.clientLogin.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+    },
+    onError: (err) => {
+      setError(err.message || "Incorrect password. Please try again.");
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === PORTAL_PASSWORD) {
-      sessionStorage.setItem("portal_unlocked", "1");
-      setUnlocked(true);
-      setError("");
-    } else {
-      setError("Incorrect password. Please try again.");
-    }
+    if (!password) return;
+    setError("");
+    clientLogin.mutate({ password });
   };
-
-  useEffect(() => {
-    if (unlocked) {
-      window.location.href = getLoginUrl();
-    }
-  }, [unlocked]);
-
-  if (unlocked) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: "#0A0A0A" }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
-          <span className="text-sm" style={{ color: "#888888" }}>Signing you in…</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -409,7 +394,6 @@ function LoginScreen() {
       />
 
       <div className="relative z-10 text-center max-w-sm w-full">
-        {/* Faderlabs logo only */}
         <div className="flex items-center justify-center mb-10">
           <img src={FL_LOGO} alt="Faderlabs" className="h-8 object-contain" />
         </div>
@@ -443,11 +427,15 @@ function LoginScreen() {
           )}
           <button
             type="submit"
-            disabled={!password}
+            disabled={!password || clientLogin.isPending}
             className="fl-btn-primary w-full justify-center text-base py-4"
           >
-            <ShieldCheck size={18} />
-            Sign In
+            {clientLogin.isPending ? (
+              <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              <ShieldCheck size={18} />
+            )}
+            {clientLogin.isPending ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
@@ -498,7 +486,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm hidden sm:block" style={{ color: "#888888" }}>
-              {user?.name}
+              {user?.role === "admin" ? "Admin" : ""}
             </span>
             {user?.role === "admin" && (
               <Link

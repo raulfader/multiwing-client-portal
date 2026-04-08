@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import {
@@ -1078,6 +1078,76 @@ function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () =
   );
 }
 
+// ── Admin Login Screen ───────────────────────────────────────────────────────
+function AdminLoginScreen() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const utils = trpc.useUtils();
+
+  const adminLogin = trpc.auth.adminLogin.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+    },
+    onError: (err) => {
+      setError(err.message || "Invalid credentials. Please try again.");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setError("");
+    adminLogin.mutate({ email, password });
+  };
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden"
+      style={{ background: "#0A0A0A" }}
+    >
+      <div className="relative z-10 text-center max-w-sm w-full">
+        <div className="flex items-center justify-center mb-10">
+          <img src={FL_LOGO} alt="Faderlabs" className="h-8 object-contain" />
+        </div>
+        <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4" style={{ background: "rgba(255,214,0,0.08)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}>Admin Portal</div>
+        <h1 className="text-3xl font-black mb-3" style={{ color: "#FAFAFA" }}>Sign In</h1>
+        <p className="text-sm mb-8 leading-relaxed" style={{ color: "#888888" }}>Enter your admin credentials to access the portal.</p>
+        <form onSubmit={handleSubmit} className="space-y-3 text-left">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            placeholder="Email"
+            autoFocus
+            className="w-full text-sm px-4 py-3.5 rounded-xl outline-none"
+            style={{ background: "#111111", border: error ? "1px solid #EF4444" : "1px solid #2A2A2A", color: "#FAFAFA" }}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(""); }}
+            placeholder="Password"
+            className="w-full text-sm px-4 py-3.5 rounded-xl outline-none"
+            style={{ background: "#111111", border: error ? "1px solid #EF4444" : "1px solid #2A2A2A", color: "#FAFAFA" }}
+          />
+          {error && <p className="text-xs" style={{ color: "#EF4444" }}>{error}</p>}
+          <button
+            type="submit"
+            disabled={!email || !password || adminLogin.isPending}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3.5 rounded-xl transition-all"
+            style={{ background: "#FFD600", color: "#0A0A0A" }}
+          >
+            {adminLogin.isPending ? <Loader2 size={16} className="animate-spin" /> : null}
+            {adminLogin.isPending ? "Signing in…" : "Sign In"}
+          </button>
+        </form>
+        <p className="text-xs mt-8" style={{ color: "#333333" }}>Powered by Faderlabs</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Admin Page ─────────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -1095,27 +1165,8 @@ export default function Admin() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
-        <div className="text-center">
-          <p className="mb-4" style={{ color: "#888888" }}>Please sign in to access admin.</p>
-          <a href="/" className="fl-btn-primary">Go to Portal</a>
-        </div>
-      </div>
-    );
-  }
-
-  if (user?.role !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
-        <div className="text-center">
-          <p className="text-lg font-bold mb-2" style={{ color: "#EF4444" }}>Access Denied</p>
-          <p className="mb-4" style={{ color: "#888888" }}>Admin access required.</p>
-          <Link href="/" className="fl-btn-primary">Back to Portal</Link>
-        </div>
-      </div>
-    );
+  if (!isAuthenticated || user?.role !== "admin") {
+    return <AdminLoginScreen />;
   }
 
   return (

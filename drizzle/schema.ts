@@ -157,3 +157,15 @@ export const emailLog = mysqlTable("email_log", {
 
 export type EmailLog = typeof emailLog.$inferSelect;
 export type InsertEmailLog = typeof emailLog.$inferInsert;
+
+// ── Custom Auth Sessions ───────────────────────────────────────────────
+export const customSessions = mysqlTable("custom_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  role: mysqlEnum("role", ["client", "admin"]).default("client").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+});
+
+export type CustomSession = typeof customSessions.$inferSelect;
+export type InsertCustomSession = typeof customSessions.$inferInsert;

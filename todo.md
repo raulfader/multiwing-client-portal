@@ -154,14 +154,14 @@
 - [x] Replace OAuth login with password-only gate (MW@2025)
 
 ## Custom Password Auth (Remove OAuth)
-- [ ] Add custom_sessions table to DB (token, role, createdAt, expiresAt)
-- [ ] Server: add auth.clientLogin procedure (checks portal password, issues session token)
-- [ ] Server: add auth.adminLogin procedure (checks email + admin password, issues admin session)
-- [ ] Server: add auth.me procedure using custom session token (replace Manus OAuth me)
-- [ ] Server: add auth.logout procedure (invalidates session token)
-- [ ] Store admin password securely via env secret (ADMIN_PASSWORD)
-- [ ] Client: update LoginScreen to password-only (no OAuth redirect)
-- [ ] Client: add AdminLogin page/modal for admin email+password
-- [ ] Client: update useAuth to use custom session cookie/token
-- [ ] Remove all Manus OAuth references (getLoginUrl, VITE_OAUTH_PORTAL_URL usage in login flow)
-- [ ] Update Admin page to use custom admin auth
+- [x] Add custom_sessions table to DB (token, role, createdAt, expiresAt)
+- [x] Server: add auth.clientLogin procedure (checks portal password, issues session token)
+- [x] Server: add auth.adminLogin procedure (checks email + admin password, issues admin session)
+- [x] Server: add auth.me procedure using custom session token (replace Manus OAuth me)
+- [x] Server: add auth.logout procedure (invalidates session token)
+- [x] Store admin password securely via env secret (ADMIN_PASSWORD)
+- [x] Client: update LoginScreen to password-only (no OAuth redirect)
+- [x] Client: add AdminLogin page/modal for admin email+password
+- [x] Client: update useAuth to use custom session cookie/token
+- [x] Remove all Manus OAuth references (getLoginUrl, VITE_OAUTH_PORTAL_URL usage in login flow)
+- [x] Update Admin page to use custom admin auth

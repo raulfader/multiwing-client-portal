@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, Link } from "wouter";
@@ -664,7 +663,7 @@ export default function ProjectPage() {
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-white/60">Please sign in to access this content.</p>
-          <a href={getLoginUrl()}>
+          <a href="/">
             <Button className="bg-[#FFD600] text-black font-semibold hover:bg-[#FFD600]/90">Sign In</Button>
           </a>
         </div>

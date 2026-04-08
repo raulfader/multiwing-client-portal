@@ -202,7 +202,8 @@ export const appRouter = router({
     myApproval: protectedProcedure
       .input(z.object({ pillarId: z.number() }))
       .query(async ({ input, ctx }) => {
-        return getApprovalByPillarAndUser(input.pillarId, ctx.user.id);
+        const approval = await getApprovalByPillarAndUser(input.pillarId, ctx.user.id);
+        return approval ?? null;
       }),
 
     set: protectedProcedure

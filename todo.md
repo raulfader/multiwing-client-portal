@@ -35,3 +35,6 @@
 
 ## Assets
 - [x] Upload MWlogo.webp to CDN
+
+## Bug Fixes
+- [x] Fix approvals.myApproval returning undefined when no record exists (tRPC requires non-undefined)

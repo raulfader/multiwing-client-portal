@@ -62,9 +62,9 @@ export async function getAllPillars() {
 
 export async function getPillarById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db.select().from(pillars).where(eq(pillars.id, id)).limit(1);
-  return result[0];
+  return result[0] ?? null;
 }
 
 export async function createPillar(data: { title: string; description?: string; sortOrder?: number }) {
@@ -100,9 +100,9 @@ export async function getTracksByPillar(pillarId: number) {
 
 export async function getTrackById(id: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db.select().from(tracks).where(eq(tracks.id, id)).limit(1);
-  return result[0];
+  return result[0] ?? null;
 }
 
 export async function countTracksByPillar(pillarId: number): Promise<number> {
@@ -209,13 +209,13 @@ export async function createComment(data: {
 
 export async function getApprovalByPillarAndUser(pillarId: number, userId: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) return null;
   const result = await db
     .select()
     .from(approvals)
     .where(and(eq(approvals.pillarId, pillarId), eq(approvals.userId, userId)))
     .limit(1);
-  return result[0];
+  return result[0] ?? null;
 }
 
 export async function getAllApprovals() {

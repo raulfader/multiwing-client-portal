@@ -42,3 +42,11 @@
 ## Visual Edits
 - [x] Make Multi-Wing logo in header 10% smaller (h-8 → h-7)
 - [x] Update hero text "MultiWing" → "Multi-Wing"
+
+## Pillar Seeding & Layout
+- [x] Delete test "TEst" pillar from database
+- [x] Seed Pillar 1: People & Brand Storytelling
+- [x] Seed Pillar 2: Products & Solutions
+- [x] Seed Pillar 3: Engineering & Technology
+- [x] Remove Multi-Wing logo from header bar
+- [x] Place Multi-Wing logo in hero section of main page

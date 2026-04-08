@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import AudioPlayer from "@/components/AudioPlayer";
 import {
@@ -360,8 +360,42 @@ function ProjectCard({ project }: { project: any }) {
   );
 }
 
-// ── Login Screen ───────────────────────────────────────────────────────────────
+// ─// ── Login Screen ──────────────────────────────────────────────────────────
+const PORTAL_PASSWORD = "MW@2025";
+
 function LoginScreen() {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("portal_unlocked") === "1");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === PORTAL_PASSWORD) {
+      sessionStorage.setItem("portal_unlocked", "1");
+      setUnlocked(true);
+      setError("");
+    } else {
+      setError("Incorrect password. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    if (unlocked) {
+      window.location.href = getLoginUrl();
+    }
+  }, [unlocked]);
+
+  if (unlocked) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: "#0A0A0A" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+          <span className="text-sm" style={{ color: "#888888" }}>Signing you in…</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden fl-grain"
@@ -374,28 +408,51 @@ function LoginScreen() {
         }}
       />
 
-      <div className="relative z-10 text-center max-w-md w-full">
-        <div className="flex items-center justify-center gap-6 mb-10">
+      <div className="relative z-10 text-center max-w-sm w-full">
+        {/* Faderlabs logo only */}
+        <div className="flex items-center justify-center mb-10">
           <img src={FL_LOGO} alt="Faderlabs" className="h-8 object-contain" />
-          <div className="w-px h-8" style={{ background: "#2A2A2A" }} />
-          <img src={MW_LOGO} alt="Multi-Wing" className="h-10 object-contain" />
         </div>
 
-        <div className="fl-label mb-4 mx-auto w-fit">Client Portal</div>
+        <div className="fl-label mb-4 mx-auto w-fit">Content Hub</div>
         <h1 className="text-3xl font-black mb-3" style={{ color: "#FAFAFA" }}>
-          Multi-Wing × Faderlabs
+          Welcome Back
         </h1>
-        <p className="text-base mb-8 leading-relaxed" style={{ color: "#888888" }}>
-          Access your personalised content hub — review deliverables, download files, leave feedback, and approve your sonic branding.
+        <p className="text-sm mb-8 leading-relaxed" style={{ color: "#888888" }}>
+          Enter your access password to view your projects.
         </p>
 
-        <a href={getLoginUrl()} className="fl-btn-primary w-full justify-center text-base py-4">
-          <ShieldCheck size={18} />
-          Sign In to Access Portal
-        </a>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="Password"
+              autoFocus
+              className="w-full text-base px-4 py-3.5 rounded-xl outline-none text-center tracking-widest"
+              style={{
+                background: "#111111",
+                border: error ? "1px solid #EF4444" : "1px solid #2A2A2A",
+                color: "#FAFAFA",
+              }}
+            />
+          </div>
+          {error && (
+            <p className="text-xs" style={{ color: "#EF4444" }}>{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={!password}
+            className="fl-btn-primary w-full justify-center text-base py-4"
+          >
+            <ShieldCheck size={18} />
+            Sign In
+          </button>
+        </form>
 
-        <p className="text-xs mt-6" style={{ color: "#555555" }}>
-          Secure access via Manus OAuth · Powered by Faderlabs
+        <p className="text-xs mt-8" style={{ color: "#333333" }}>
+          Powered by Faderlabs
         </p>
       </div>
     </div>

@@ -146,3 +146,9 @@
 - [x] Backend: add deliverables.update procedure (title, description, thumbnailUrl, downloadUrl, fileType) — already existed
 - [x] Admin UI: inline edit on ProjectAdminRow (edit title, description, cover image)
 - [x] Admin UI: inline edit on each deliverable row (edit title, description, thumbnail, download URL)
+
+## Sign-in Page Redesign
+- [x] Remove client logo from sign-in page
+- [x] Rename portal to "Content Hub" on sign-in page
+- [x] Remove sonic branding mention from sign-in copy
+- [x] Replace OAuth login with password-only gate (MW@2025)

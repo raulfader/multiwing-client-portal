@@ -65,3 +65,15 @@
 ## Visual Fixes (Content Hub)
 - [x] Fix broken project card cover images on Home page (re-uploaded to correct CDN, updated DB)
 - [x] Add archive icon/placeholder for Archive Footage project card (no thumbnail) + onError fallback for all cards
+
+## Portal Restructure & Visual Updates
+- [x] Move Sonic Branding from separate tab into a project card on the Projects grid
+- [x] Change 'Download' button text to 'My Files' on project detail page
+- [x] Use ACREX 2026 thumbnail image for Archive Footage project card
+- [x] Find and use real ACREX India logo for ACREX 2026 project card
+- [x] Find and use real CONEXPO 2026 logo for CONEXPO project card
+- [x] Find and use real AHR 2026 logo for AHR project card
+- [x] Generate a video/film icon image for Brand Video project card
+- [x] Move Multi-Wing logo to the right empty space in the hero section
+- [x] Sonic Branding project page shows full pillar/track/approval UI at /projects/sonic-branding
+- [x] Add audio category icon (Music2) for Sonic Branding project card

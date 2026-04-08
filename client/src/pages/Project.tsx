@@ -3,7 +3,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Download, FileText, MessageSquare, Send, Film, Archive } from "lucide-react";
+import { ArrowLeft, Download, FileText, MessageSquare, Send, Film, Archive, Music2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -85,7 +85,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
                 className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                Download
+                My Files
               </Button>
             </a>
           )}
@@ -158,9 +158,148 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
   );
 }
 
+const PILLAR_ACCENT_COLORS = ["#FFD600", "#64DD17", "#EF4444", "#A78BFA", "#38BDF8"];
+const FL_LOGO_P = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
+
+function ApprovalBadgeP({ status }: { status?: string }) {
+  if (!status || status === "pending") return <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}><Clock size={12} /> Awaiting Decision</span>;
+  if (status === "approved") return <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(100,221,23,0.1)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}><CheckCircle2 size={12} /> Approved</span>;
+  return <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}><XCircle size={12} /> Needs Changes</span>;
+}
+
+function SonicBrandingProjectView({ loading }: { loading: boolean }) {
+  const { isAuthenticated } = useAuth();
+  const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  if (loading || pillarsLoading) {
+    return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] text-white">
+      <header className="border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Hub</span>
+              </button>
+            </Link>
+          </div>
+          <img src={FL_LOGO_P} alt="Faderlabs" className="h-6 object-contain" />
+        </div>
+      </header>
+
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,214,0,0.06) 0%, transparent 60%)" }} />
+        <div className="relative max-w-6xl mx-auto px-6 py-16">
+          <div className="inline-flex items-center gap-2 bg-[#FFD600]/10 border border-[#FFD600]/20 rounded-full px-3 py-1 mb-4">
+            <Music2 size={12} className="text-[#FFD600]" />
+            <span className="text-[#FFD600] text-xs font-medium uppercase tracking-widest">Sonic Branding</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Sonic Branding Proposal</h1>
+          <p className="text-white/60 text-lg max-w-2xl leading-relaxed">Listen to each track, leave feedback, and approve your preferred direction for each pillar.</p>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
+        {!pillars || pillars.length === 0 ? (
+          <div className="text-center py-20"><p className="text-white/40">No pillars available yet. Check back soon.</p></div>
+        ) : (
+          pillars.map((pillar: any, i: number) => (
+            <SonicPillarCard key={pillar.id} pillar={pillar} accentColor={PILLAR_ACCENT_COLORS[i % PILLAR_ACCENT_COLORS.length]} index={i} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: string; index: number }) {
+  const { data: tracks = [], isLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
+  const { data: approvalData } = trpc.approvals.myApproval.useQuery({ pillarId: pillar.id });
+  const utils = trpc.useUtils();
+  const [approvalNote, setApprovalNote] = useState("");
+  const setApproval = trpc.approvals.set.useMutation({
+    onSuccess: () => { utils.approvals.myApproval.invalidate({ pillarId: pillar.id }); toast.success("Decision saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}22`, background: "#111111" }}>
+      <div className="p-6 border-b" style={{ borderColor: `${accentColor}22` }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Pillar {index + 1}</div>
+            <h3 className="text-xl font-bold text-white mb-1">{pillar.title}</h3>
+            {pillar.description && <p className="text-white/50 text-sm leading-relaxed">{pillar.description}</p>}
+          </div>
+          <ApprovalBadgeP status={approvalData?.status} />
+        </div>
+      </div>
+      <div className="p-6">
+        {isLoading ? <div className="text-white/40 text-sm">Loading tracks…</div> : tracks.length === 0 ? (
+          <div className="text-white/30 text-sm italic">No tracks uploaded yet.</div>
+        ) : (
+          <div className="space-y-6">
+            {tracks.map((track: any, ti: number) => (
+              <SonicTrackRow key={track.id} track={track} trackIndex={ti} accentColor={accentColor} />
+            ))}
+          </div>
+        )}
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: `${accentColor}22` }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: accentColor }}>Your Decision</p>
+          <Textarea value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} placeholder="Optional note..." className="mb-3 bg-white/5 border-white/20 text-white placeholder:text-white/30 text-xs resize-none min-h-[60px]" />
+          <div className="flex gap-3">
+            <Button size="sm" onClick={() => setApproval.mutate({ pillarId: pillar.id, status: "approved", note: approvalNote })} disabled={setApproval.isPending} className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 gap-1.5"><CheckCircle2 size={14} /> Approve</Button>
+            <Button size="sm" onClick={() => setApproval.mutate({ pillarId: pillar.id, status: "rejected", note: approvalNote })} disabled={setApproval.isPending} className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 gap-1.5"><XCircle size={14} /> Needs Changes</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SonicTrackRow({ track, trackIndex, accentColor }: { track: any; trackIndex: number; accentColor: string }) {
+  const [comment, setComment] = useState("");
+  const [showComments, setShowComments] = useState(false);
+  const { data: comments = [], refetch } = trpc.comments.byTrack.useQuery({ trackId: track.id });
+  const addComment = trpc.comments.add.useMutation({
+    onSuccess: () => { setComment(""); refetch(); toast.success("Comment submitted"); },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>Track {trackIndex + 1}</span>
+        <span className="text-white font-semibold text-sm">{track.title}</span>
+      </div>
+      {track.description && <p className="text-white/40 text-xs mb-3">{track.description}</p>}
+      {track.audioUrl && <audio controls src={track.audioUrl} className="w-full mb-3" style={{ filter: "invert(1) hue-rotate(180deg)" }} />}
+      <button onClick={() => setShowComments(!showComments)} className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1 mb-2"><MessageSquare size={12} /> {comments.length > 0 ? `${comments.length} comment${comments.length !== 1 ? "s" : ""}` : "Add comment"}</button>
+      {showComments && (
+        <div className="space-y-2">
+          {comments.map((c: any) => <div key={c.id} className="bg-white/5 rounded p-2 text-xs text-white/60">{c.content}</div>)}
+          <div className="flex gap-2">
+            <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Leave feedback..." className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/30 text-xs resize-none min-h-[50px]" />
+            <Button size="sm" onClick={() => { if (comment.trim()) addComment.mutate({ trackId: track.id, content: comment.trim() }); }} disabled={!comment.trim() || addComment.isPending} className="bg-[#FFD600] hover:bg-[#FFD600]/90 text-black self-end"><Send size={12} /></Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading, isAuthenticated } = useAuth();
+
+  // Sonic Branding project is handled by the Home page's SonicBrandingView
+  // We render a redirect-like inline view for the sonic-branding slug
+  if (slug === "sonic-branding" && isAuthenticated) {
+    return <SonicBrandingProjectView loading={loading} />;
+  }
 
   const { data: project, isLoading: loadingProject } = trpc.projects.bySlug.useQuery(
     { slug: slug ?? "" },

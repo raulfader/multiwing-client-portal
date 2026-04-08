@@ -12,14 +12,13 @@ import {
   Send,
   LogOut,
   ChevronRight,
-  Music2,
   Loader2,
-  ShieldCheck,
   Film,
   Archive,
   FileText,
-  Download,
   Folder,
+  Music2,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -33,6 +32,7 @@ const CATEGORY_ICONS: Record<string, any> = {
   archive: Archive,
   brand: Film,
   document: FileText,
+  audio: Music2,
 };
 
 // ── Approval Badge ─────────────────────────────────────────────────────────────
@@ -412,7 +412,7 @@ function LoginScreen() {
 // ── Main Portal ────────────────────────────────────────────────────────────────
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<"hub" | "sonic">("hub");
+  // Sonic Branding is now a project card in the grid
 
   const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -485,127 +485,55 @@ export default function Home() {
           }}
         />
         <div className="container relative z-10">
-          <div className="flex items-center gap-4 mb-6">
-            <img src={MW_LOGO} alt="Multi-Wing" className="h-10 object-contain" />
-            <div className="w-px h-8" style={{ background: "#2A2A2A" }} />
-            <div className="fl-label">Client Hub</div>
+          <div className="flex items-start justify-between gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="fl-label">Client Hub</div>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black mb-3 leading-tight" style={{ color: "#FAFAFA" }}>
+                Welcome to Your<br />
+                <span style={{ color: "#FFD600" }}>Content Hub</span>
+              </h1>
+              <p className="text-base md:text-lg max-w-xl leading-relaxed" style={{ color: "#888888" }}>
+                Your personalised space to manage your projects — review, comment, download files, and approve deliverables seamlessly.
+              </p>
+            </div>
+            <div className="hidden md:flex items-center justify-center flex-shrink-0 pt-2">
+              <img src={MW_LOGO} alt="Multi-Wing" className="h-20 object-contain opacity-90" />
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black mb-3 leading-tight" style={{ color: "#FAFAFA" }}>
-            Welcome to Your<br />
-            <span style={{ color: "#FFD600" }}>Content Hub</span>
-          </h1>
-          <p className="text-base md:text-lg max-w-xl leading-relaxed" style={{ color: "#888888" }}>
-            Your personalised space to manage your projects — review, comment, download files, and approve deliverables seamlessly.
-          </p>
         </div>
       </section>
 
-      {/* ── Tab Navigation ── */}
-      <div className="container pt-8">
-        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "#141414", border: "1px solid #2A2A2A" }}>
-          <button
-            onClick={() => setActiveTab("hub")}
-            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-            style={
-              activeTab === "hub"
-                ? { background: "#FFD600", color: "#0A0A0A" }
-                : { color: "#888888" }
-            }
-          >
-            <span className="flex items-center gap-2">
-              <Folder size={14} />
-              Projects
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab("sonic")}
-            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-            style={
-              activeTab === "sonic"
-                ? { background: "#FFD600", color: "#0A0A0A" }
-                : { color: "#888888" }
-            }
-          >
-            <span className="flex items-center gap-2">
-              <Music2 size={14} />
-              Sonic Branding
-            </span>
-          </button>
-        </div>
-      </div>
+
 
       {/* ── Content ── */}
       <main className="container py-8 pb-16">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>
+          <p className="text-sm" style={{ color: "#555555" }}>
+            Click a project to view deliverables, leave feedback, and download files.
+          </p>
+        </div>
 
-        {/* Projects Tab */}
-        {activeTab === "hub" && (
-          <div>
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>
-              <p className="text-sm" style={{ color: "#555555" }}>
-                Click a project to view and download your deliverables.
-              </p>
-            </div>
-
-            {projectsLoading ? (
-              <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
-                <Loader2 size={20} className="animate-spin" />
-                <span>Loading projects…</span>
-              </div>
-            ) : !projects || projects.length === 0 ? (
-              <div className="text-center py-24">
-                <Folder size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
-                <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No projects yet</h3>
-                <p className="text-sm" style={{ color: "#555555" }}>
-                  Faderlabs is preparing your deliverables. Check back soon.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {projects.map((project: any) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            )}
+        {projectsLoading ? (
+          <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
+            <Loader2 size={20} className="animate-spin" />
+            <span>Loading projects…</span>
           </div>
-        )}
-
-        {/* Sonic Branding Tab */}
-        {activeTab === "sonic" && (
-          <div>
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Sonic Branding Proposal</h2>
-              <p className="text-sm" style={{ color: "#555555" }}>
-                Listen to each track, leave feedback, and approve your preferred direction for each pillar.
-              </p>
-            </div>
-
-            {pillarsLoading ? (
-              <div className="flex items-center justify-center py-24 gap-3" style={{ color: "#555555" }}>
-                <Loader2 size={20} className="animate-spin" />
-                <span>Loading pillars…</span>
-              </div>
-            ) : !pillars || pillars.length === 0 ? (
-              <div className="text-center py-24">
-                <Music2 size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
-                <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No pillars yet</h3>
-                <p className="text-sm" style={{ color: "#555555" }}>
-                  Faderlabs is preparing your sonic branding proposal. Check back soon.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-10">
-                {pillars.map((pillar, i) => (
-                  <div key={pillar.id} id={`pillar-${pillar.id}`}>
-                    <PillarCard
-                      pillar={pillar}
-                      accentColor={PILLAR_ACCENT_COLORS[i % PILLAR_ACCENT_COLORS.length]}
-                      index={i}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+        ) : !projects || projects.length === 0 ? (
+          <div className="text-center py-24">
+            <Folder size={40} className="mx-auto mb-4 opacity-20" style={{ color: "#FFD600" }} />
+            <h3 className="text-lg font-bold mb-2" style={{ color: "#FAFAFA" }}>No projects yet</h3>
+            <p className="text-sm" style={{ color: "#555555" }}>
+              Faderlabs is preparing your deliverables. Check back soon.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {projects.map((project: any) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
           </div>
         )}
       </main>

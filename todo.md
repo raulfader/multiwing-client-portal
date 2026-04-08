@@ -122,3 +122,6 @@
 - [x] Admin: Edit pillar title and description inline
 - [x] Admin: Upload tracks per pillar (unlimited) with title and description
 - [x] Admin: Delete pillar and tracks
+
+## Pillar Color Customization
+- [x] Pillar 1 border/accent: green (#64DD17); Pillar 2: yellow (#FFD600); Pillar 3: red (#d60000)

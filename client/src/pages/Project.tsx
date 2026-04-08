@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_0d44da07.webp";
 const FL_LOGO_P = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
-const PILLAR_ACCENT_COLORS = ["#FFD600", "#64DD17", "#38BDF8", "#A78BFA", "#FB923C"];
+const PILLAR_ACCENT_COLORS = ["#64DD17", "#FFD600", "#d60000", "#A78BFA", "#FB923C"];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -466,9 +466,9 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
   const { data: tracks = [], isLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(214,0,0,0.13)", background: "#111111" }}>
-      <div className="p-6 border-b" style={{ borderColor: "rgba(214,0,0,0.13)" }}>
-        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#d60000' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}22`, background: "#111111" }}>
+      <div className="p-6 border-b" style={{ borderColor: `${accentColor}22` }}>
+        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2" style={{ color: accentColor }}>
           Pillar {index + 1}
         </div>
         <h3 className="text-xl font-bold text-white mb-1">{pillar.title}</h3>

@@ -101,3 +101,7 @@
 
 ## Bug Fixes (Round 2)
 - [x] Fix React hooks ordering violation in ProjectPage (/projects/sonic-branding crashes with "fewer hooks than expected")
+
+## Visual Edits (Round 4)
+- [x] Remove Archive badge element from project header (line ~333)
+- [x] Fix deliverable card image: object-contain + padding so logos show fully (line ~55)

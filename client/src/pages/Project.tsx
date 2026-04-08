@@ -43,7 +43,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           <img
             src={deliverable.thumbnailUrl}
             alt={deliverable.title}
-            className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"
+            className="w-full h-full object-contain p-4 opacity-90 hover:opacity-100 transition-opacity bg-black"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
@@ -329,12 +329,7 @@ export default function ProjectPage() {
                 {project.category ?? "Project"}
               </span>
             </div>
-            {slug === "archive-footage" && (
-              <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1">
-                <Archive className="w-3.5 h-3.5 text-white/50" />
-                <span className="text-white/50 text-xs font-medium uppercase tracking-widest">Archive</span>
-              </div>
-            )}
+
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{project.title}</h1>
           {project.description && (

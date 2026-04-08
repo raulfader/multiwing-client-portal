@@ -82,3 +82,8 @@
 - [x] Make Multi-Wing logo in hero 25% smaller (h-20 → h-16)
 - [x] Generate new Archive Footage icon in same dark neon style (neon cyan film reel)
 - [x] Fix project card image sizing so logos/images are fully visible (object-contain with padding)
+
+## Visual Polish (Round 3)
+- [x] Remove white background from ACREX, CONEXPO, AHR logos on project cards (mix-blend-mode: lighten on #0A0A0A bg)
+- [x] Change Sonic Branding icon color to yellow (#FFD600) - regenerated icon, updated DB
+- [x] Fill project card image boxes edge-to-edge (object-cover, no padding)

@@ -319,11 +319,12 @@ function ProjectCard({ project }: { project: any }) {
       >
         {/* Thumbnail */}
         {project.coverImageUrl ? (
-          <div className="relative aspect-video overflow-hidden">
+          <div className="relative aspect-video overflow-hidden" style={{ background: "#0A0A0A" }}>
             <img
               src={project.coverImageUrl}
               alt={project.title}
-              className="w-full h-full object-contain p-4 opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ mixBlendMode: "lighten" }}
               onError={(e) => {
                 const target = e.currentTarget;
                 const parent = target.parentElement;
@@ -335,7 +336,7 @@ function ProjectCard({ project }: { project: any }) {
                 }
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
           </div>
         ) : (
           <div className="aspect-video flex flex-col items-center justify-center gap-3" style={{ background: "#1A1A1A" }}>

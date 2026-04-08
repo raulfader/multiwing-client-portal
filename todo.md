@@ -105,3 +105,6 @@
 ## Visual Edits (Round 4)
 - [x] Remove Archive badge element from project header (line ~333)
 - [x] Fix deliverable card image: object-contain + padding so logos show fully (line ~55)
+
+## Asset Updates
+- [x] Replace Archive Footage project icon with user-provided neon film reel image

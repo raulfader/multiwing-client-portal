@@ -77,3 +77,8 @@
 - [x] Move Multi-Wing logo to the right empty space in the hero section
 - [x] Sonic Branding project page shows full pillar/track/approval UI at /projects/sonic-branding
 - [x] Add audio category icon (Music2) for Sonic Branding project card
+
+## Visual Polish (Round 2)
+- [x] Make Multi-Wing logo in hero 25% smaller (h-20 → h-16)
+- [x] Generate new Archive Footage icon in same dark neon style (neon cyan film reel)
+- [x] Fix project card image sizing so logos/images are fully visible (object-contain with padding)

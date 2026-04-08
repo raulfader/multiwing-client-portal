@@ -323,7 +323,7 @@ function ProjectCard({ project }: { project: any }) {
             <img
               src={project.coverImageUrl}
               alt={project.title}
-              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+              className="w-full h-full object-contain p-4 opacity-80 group-hover:opacity-100 transition-opacity duration-300"
               onError={(e) => {
                 const target = e.currentTarget;
                 const parent = target.parentElement;
@@ -499,7 +499,7 @@ export default function Home() {
               </p>
             </div>
             <div className="hidden md:flex items-center justify-center flex-shrink-0 pt-2">
-              <img src={MW_LOGO} alt="Multi-Wing" className="h-20 object-contain opacity-90" />
+              <img src={MW_LOGO} alt="Multi-Wing" className="h-16 object-contain opacity-90" />
             </div>
           </div>
         </div>

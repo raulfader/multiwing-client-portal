@@ -505,7 +505,28 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const { isAuthenticated } = useAuth();
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
 
-  if (loading || pillarsLoading) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-white/60">Please sign in to access this content.</p>
+          <a href="/">
+            <Button className="bg-[#FFD600] text-black font-semibold hover:bg-[#FFD600]/90">Sign In</Button>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (pillarsLoading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" />

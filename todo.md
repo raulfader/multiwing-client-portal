@@ -208,3 +208,6 @@
 - [x] Fix View Project button URL in notification email — now uses https://multiwing.faderlabs.ai/project/{slug}
 - [x] Update portal URL to https://multiwing.faderlabs.ai/project/sonic-branding (hardcoded faderlabs.ai domain)
 - [x] Make Hi [First Name] salutation font the same size as body copy (15px, matching .message)
+
+## Email Link 404 Fix
+- [x] Fix 404 when clicking View Project email link — added /project/:slug → /projects/:slug redirect in App.tsx; added auth guard to SonicBrandingProjectView

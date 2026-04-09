@@ -197,7 +197,7 @@ function EmailNotificationsTab({ projects }: { projects: any[] }) {
           </div>
           <div className="p-3 rounded-lg text-xs" style={{ background: "#111", border: "1px solid #2A2A2A", color: "#888" }}>
             <p className="font-semibold mb-1" style={{ color: "#FFD600" }}>Email preview</p>
-            <p>Dear [First Name],</p>
+            <p>Hi [First Name],</p>
             <p className="mt-1">{customMessage || `Your ${selectedProject?.title ?? "project"} deliverables are now ready for your review.`}</p>
             <p className="mt-1">🔗 Project link + 🔑 Login password included automatically.</p>
           </div>
@@ -918,21 +918,20 @@ function RecentComments() {
 }
 
 // ── Stats Bar ──────────────────────────────────────────────────────────────────
-function StatsBar({ pillars, allApprovals, allComments }: { pillars: any[]; allApprovals: any[]; allComments: any[] }) {
+function StatsBar({ allApprovals, allComments }: { allApprovals: any[]; allComments: any[] }) {
   const approved = allApprovals.filter((a) => a.status === "approved").length;
   const rejected = allApprovals.filter((a) => a.status === "rejected").length;
-  const pending = allApprovals.filter((a) => a.status === "pending").length;
+  const needsChanges = allApprovals.filter((a) => a.status === "needs_changes").length;
 
   const stats = [
-    { label: "Pillars", value: pillars.length, icon: LayoutDashboard, color: "#FFD600" },
     { label: "Comments", value: allComments.length, icon: MessageSquare, color: "#A78BFA" },
     { label: "Approved", value: approved, icon: CheckCircle2, color: "#64DD17" },
-    { label: "Changes Req.", value: rejected, icon: XCircle, color: "#EF4444" },
-    { label: "Pending", value: pending, icon: Clock, color: "#888888" },
+    { label: "Rejected", value: rejected, icon: XCircle, color: "#EF4444" },
+    { label: "Needs Changes", value: needsChanges, icon: Clock, color: "#FFD600" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
       {stats.map((s) => (
         <div key={s.label} className="fl-card p-4 flex items-center gap-3">
           <s.icon size={18} style={{ color: s.color, flexShrink: 0 }} />
@@ -1398,8 +1397,8 @@ export default function Admin() {
 
       <main className="container py-8 pb-16">
         {/* Stats */}
-        {pillars && allApprovals && allComments && (
-          <StatsBar pillars={pillars} allApprovals={allApprovals} allComments={allComments} />
+        {allApprovals && allComments && (
+          <StatsBar allApprovals={allApprovals} allComments={allComments} />
         )}
 
         {/* Tab Navigation */}

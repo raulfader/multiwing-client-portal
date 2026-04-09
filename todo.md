@@ -196,3 +196,7 @@
 ## Email Template Updates
 - [x] Change salutation from "Dear [Name]" to "Hi [First Name]" in regular (non-bold) font
 - [x] Replace email font with Plus Jakarta Sans (closest Google Font to HK Nova) for all copy
+
+## Admin Dashboard Stats
+- [x] Remove Pillars box from dashboard stats bar
+- [x] Replace approval boxes with Approved, Rejected, Needs Changes counts

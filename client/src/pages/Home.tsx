@@ -445,6 +445,15 @@ function LoginScreen() {
         <p className="text-xs mt-8" style={{ color: "#333333" }}>
           Powered by Faderlabs
         </p>
+        <a
+          href="/admin"
+          className="text-xs mt-3 block transition-colors"
+          style={{ color: "#2A2A2A" }}
+          onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#555555")}
+          onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#2A2A2A")}
+        >
+          Admin
+        </a>
       </div>
     </div>
   );

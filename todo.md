@@ -165,3 +165,6 @@
 - [x] Client: update useAuth to use custom session cookie/token
 - [x] Remove all Manus OAuth references (getLoginUrl, VITE_OAUTH_PORTAL_URL usage in login flow)
 - [x] Update Admin page to use custom admin auth
+
+## Admin Access
+- [x] Add discreet admin link to login screen footer and portal nav bar

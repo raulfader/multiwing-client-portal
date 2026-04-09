@@ -374,6 +374,16 @@ export async function deleteProject(id: number) {
   await db.delete(projects).where(eq(projects.id, id));
 }
 
+export async function reorderProjects(items: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await Promise.all(
+    items.map(({ id, sortOrder }) =>
+      db.update(projects).set({ sortOrder }).where(eq(projects.id, id))
+    )
+  );
+}
+
 // ── Deliverables ──────────────────────────────────────────────────────────────
 
 export async function getDeliverablesByProject(projectId: number) {

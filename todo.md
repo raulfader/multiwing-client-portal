@@ -186,3 +186,9 @@
 
 ## Deliverable Comments (Future)
 - [ ] Client: implement deliverable comments UI on DeliverableCard (list + name + submit form wired to trpc.deliverableComments.byDeliverable and trpc.deliverableComments.add)
+
+## Project Drag-and-Drop Reordering
+- [x] DB: add sort_order column to projects table (already existed)
+- [x] Backend: add projects.reorder procedure (admin-only) to update sort order
+- [x] Admin UI: install dnd-kit, implement drag-and-drop on project rows in admin panel
+- [x] Client: projects are already displayed in sort_order order (getAllProjects orders by sortOrder asc)

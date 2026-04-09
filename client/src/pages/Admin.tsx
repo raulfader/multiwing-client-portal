@@ -30,7 +30,23 @@ import {
   Send,
   UserPlus,
   History,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ── Email Notifications Tab ────────────────────────────────────────────────────
 function EmailNotificationsTab({ projects }: { projects: any[] }) {
@@ -1099,8 +1115,25 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
   );
 }
 
-// ── Project Admin Row ──────────────────────────────────────────────────────────
-function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () => void }) {
+//// ── Sortable wrapper for ProjectAdminRow ────────────────────────
+function SortableProjectRow({ project, onRefresh }: { project: any; onRefresh: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    position: isDragging ? "relative" : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ProjectAdminRow project={project} onRefresh={onRefresh} dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>} />
+    </div>
+  );
+}
+
+// ── Project Admin Row ────────────────────────────────────
+function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any; onRefresh: () => void; dragHandleProps?: React.HTMLAttributes<HTMLButtonElement> }) {
   const [expanded, setExpanded] = useState(false);
   const [editingProject, setEditingProject] = useState(false);
   const [editTitle, setEditTitle] = useState(project.title);
@@ -1130,7 +1163,17 @@ function ProjectAdminRow({ project, onRefresh }: { project: any; onRefresh: () =
   return (
     <div className="fl-card overflow-hidden">
       {/* Header row */}
-      <div className="p-4 flex items-center gap-3">
+        <div className="p-4 flex items-center gap-3">
+        {/* Drag handle */}
+        <button
+          {...dragHandleProps}
+          className="p-1 rounded cursor-grab active:cursor-grabbing flex-shrink-0"
+          style={{ color: "#444", touchAction: "none" }}
+          title="Drag to reorder"
+          tabIndex={-1}
+        >
+          <GripVertical size={16} />
+        </button>
         {editingProject ? (
           <ImageUploadButton value={editCoverImageUrl} onChange={setEditCoverImageUrl} label="" folder="project-covers" size="xs" />
         ) : project.coverImageUrl ? (
@@ -1295,8 +1338,24 @@ export default function Admin() {
   const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAdmin });
   const { data: allApprovals } = trpc.approvals.all.useQuery(undefined, { enabled: isAdmin });
   const { data: allComments } = trpc.comments.all.useQuery(undefined, { enabled: isAdmin });
-  const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
-
+   const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
+  const [orderedProjects, setOrderedProjects] = React.useState<any[]>([]);
+  React.useEffect(() => { if (projects) setOrderedProjects(projects); }, [projects]);
+  const utils = trpc.useUtils();
+  const reorderProjects = trpc.projects.reorder.useMutation({
+    onSuccess: () => { utils.projects.listAdmin.invalidate(); toast.success("Order saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  function handleProjectDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedProjects.findIndex((p) => p.id === active.id);
+    const newIndex = orderedProjects.findIndex((p) => p.id === over.id);
+    const reordered = arrayMove(orderedProjects, oldIndex, newIndex);
+    setOrderedProjects(reordered);
+    reorderProjects.mutate({ items: reordered.map((p, i) => ({ id: p.id, sortOrder: i })) });
+  }
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
@@ -1390,11 +1449,15 @@ export default function Admin() {
                   <p className="text-sm" style={{ color: "#555555" }}>Create your first project above.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {projects.map((project: any) => (
-                    <ProjectAdminRow key={project.id} project={project} onRefresh={refetchProjects} />
-                  ))}
-                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
+                  <SortableContext items={orderedProjects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                      {orderedProjects.map((project: any) => (
+                        <SortableProjectRow key={project.id} project={project} onRefresh={refetchProjects} />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
             <div className="space-y-4">

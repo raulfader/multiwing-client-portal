@@ -31,6 +31,7 @@ import {
   createProject,
   updateProject,
   deleteProject,
+  reorderProjects,
   getDeliverablesByProject,
   getDeliverableById,
   createDeliverable,
@@ -439,6 +440,15 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteProject(input.id);
+        return { success: true };
+      }),
+
+    reorder: adminProcedure
+      .input(z.object({
+        items: z.array(z.object({ id: z.number(), sortOrder: z.number() })),
+      }))
+      .mutation(async ({ input }) => {
+        await reorderProjects(input.items);
         return { success: true };
       }),
   }),

@@ -192,3 +192,7 @@
 - [x] Backend: add projects.reorder procedure (admin-only) to update sort order
 - [x] Admin UI: install dnd-kit, implement drag-and-drop on project rows in admin panel
 - [x] Client: projects are already displayed in sort_order order (getAllProjects orders by sortOrder asc)
+
+## Email Template Updates
+- [x] Change salutation from "Dear [Name]" to "Hi [First Name]" in regular (non-bold) font
+- [x] Replace email font with Plus Jakarta Sans (closest Google Font to HK Nova) for all copy

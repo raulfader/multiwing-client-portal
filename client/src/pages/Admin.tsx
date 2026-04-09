@@ -1291,10 +1291,11 @@ function AdminLoginScreen() {
 export default function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<"sonic" | "projects" | "email">("projects");
-  const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery();
-  const { data: allApprovals } = trpc.approvals.all.useQuery();
-  const { data: allComments } = trpc.comments.all.useQuery();
-  const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery();
+  const isAdmin = !loading && isAuthenticated && user?.role === "admin";
+  const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAdmin });
+  const { data: allApprovals } = trpc.approvals.all.useQuery(undefined, { enabled: isAdmin });
+  const { data: allComments } = trpc.comments.all.useQuery(undefined, { enabled: isAdmin });
+  const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
 
   if (loading) {
     return (

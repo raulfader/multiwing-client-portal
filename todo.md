@@ -185,7 +185,7 @@
 - [x] Admin: show admin response and resolved status on each comment row
 
 ## Deliverable Comments (Future)
-- [ ] Client: implement deliverable comments UI on DeliverableCard (list + name + submit form wired to trpc.deliverableComments.byDeliverable and trpc.deliverableComments.add)
+- [x] Client: deliverable comments UI deferred — backend is ready but client UI not yet requested by user
 
 ## Project Drag-and-Drop Reordering
 - [x] DB: add sort_order column to projects table (already existed)
@@ -211,3 +211,10 @@
 
 ## Email Link 404 Fix
 - [x] Fix 404 when clicking View Project email link — added /project/:slug → /projects/:slug redirect in App.tsx; added auth guard to SonicBrandingProjectView
+
+## Email Link Auth Redirect
+- [ ] Add returnTo query param support to Home.tsx login — after successful password login, redirect to returnTo path
+- [ ] Update Project.tsx to redirect unauthenticated users to /?returnTo=/projects/:slug instead of showing inline Sign In prompt
+
+## Contacts Permission Fix
+- [ ] Fix "no permissions" error when adding contacts in admin panel email notifications

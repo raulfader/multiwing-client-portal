@@ -47,6 +47,7 @@ import { projectContacts, emailLog } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { COOKIE_NAME } from "@shared/const";
+import { parse as parseCookies } from "cookie";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -74,7 +75,8 @@ export const appRouter = router({
   auth: router({
     // Returns current session info from custom session cookie
     me: publicProcedure.query(async ({ ctx }) => {
-      const token = ctx.req.cookies?.[SESSION_COOKIE];
+      const cookies = parseCookies(ctx.req.headers.cookie ?? "");
+      const token = cookies[SESSION_COOKIE];
       if (!token) return null;
       const session = await validateSession(token);
       if (!session) return null;
@@ -118,7 +120,8 @@ export const appRouter = router({
       }),
 
     logout: publicProcedure.mutation(async ({ ctx }) => {
-      const token = ctx.req.cookies?.[SESSION_COOKIE];
+      const cookies = parseCookies(ctx.req.headers.cookie ?? "");
+      const token = cookies[SESSION_COOKIE];
       if (token) await deleteSession(token);
       ctx.res.clearCookie(SESSION_COOKIE, { path: "/" });
       // Also clear old OAuth cookie if present

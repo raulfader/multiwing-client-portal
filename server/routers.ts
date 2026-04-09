@@ -50,7 +50,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookies } from "cookie";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { nanoid } from "nanoid";
 import {
   checkClientPassword,
@@ -61,13 +61,7 @@ import {
   SESSION_COOKIE,
 } from "./customAuth";
 
-// ── Admin guard middleware ─────────────────────────────────────────────────────
-const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
-  return next({ ctx });
-});
+// adminProcedure is imported from ./_core/trpc — checks ctx.user?.role === 'admin' directly
 
 export const appRouter = router({
   system: systemRouter,

@@ -168,3 +168,6 @@
 
 ## Admin Access
 - [x] Add discreet admin link to login screen footer and portal nav bar
+
+## Bug Fix: Admin Login Error
+- [ ] Fix "Please login (10001)" error on /admin — replace all protectedProcedure usages with custom adminProcedure

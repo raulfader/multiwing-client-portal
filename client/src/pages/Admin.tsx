@@ -1090,7 +1090,8 @@ function AdminLoginScreen() {
       if (data.token) {
         localStorage.setItem("portal_session_token", data.token);
       }
-      utils.auth.me.invalidate();
+      // Reload the page so the tRPC client picks up the new token on all queries
+      window.location.reload();
     },
     onError: (err) => {
       setError(err.message || "Invalid credentials. Please try again.");

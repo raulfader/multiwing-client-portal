@@ -200,3 +200,6 @@
 ## Admin Dashboard Stats
 - [x] Remove Pillars box from dashboard stats bar
 - [x] Replace approval boxes with Approved, Rejected, Needs Changes counts
+
+## Pre-publish Cleanup
+- [x] Remove Admin button from portal header (removed from login screen and main header)

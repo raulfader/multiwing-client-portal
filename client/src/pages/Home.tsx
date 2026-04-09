@@ -458,15 +458,7 @@ function LoginScreen() {
         <p className="text-xs mt-8" style={{ color: "#333333" }}>
           Powered by Faderlabs
         </p>
-        <a
-          href="/admin"
-          className="text-xs mt-3 block transition-colors"
-          style={{ color: "#2A2A2A" }}
-          onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#555555")}
-          onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#2A2A2A")}
-        >
-          Admin
-        </a>
+
       </div>
     </div>
   );
@@ -510,18 +502,7 @@ export default function Home() {
             <img src={FL_LOGO} alt="Faderlabs" className="h-6 object-contain" />
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm hidden sm:block" style={{ color: "#888888" }}>
-              {user?.role === "admin" ? "Admin" : ""}
-            </span>
-            {user?.role === "admin" && (
-              <Link
-                href="/admin"
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                style={{ background: "#1A1A1A", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
-              >
-                Admin
-              </Link>
-            )}
+
             <button
               onClick={logout}
               className="flex items-center gap-1.5 text-sm transition-colors"

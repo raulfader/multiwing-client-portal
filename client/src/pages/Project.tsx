@@ -89,6 +89,7 @@ function SonicTrackRow({
   // Pending timestamp for new comment (set by clicking progress bar)
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
+  const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
 
   const utils = trpc.useUtils();
@@ -367,12 +368,19 @@ function SonicTrackRow({
                 </button>
               </div>
             )}
+            <input
+              type="text"
+              value={commenterName}
+              onChange={(e) => setCommenterName(e.target.value)}
+              placeholder="Your name (required)"
+              className="w-full text-xs px-2.5 py-1.5 rounded-md outline-none"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#FAFAFA" }}
+            />
             <Textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder={pendingTimestamp != null ? `Comment at ${formatTime(pendingTimestamp)}…` : "Leave feedback…"}
               className="bg-white/5 border-white/20 text-white placeholder:text-white/30 text-xs resize-none min-h-[60px]"
-              autoFocus
             />
             <div className="flex gap-2 justify-end">
               <Button
@@ -386,14 +394,15 @@ function SonicTrackRow({
               <Button
                 size="sm"
                 onClick={() => {
-                  if (!commentText.trim()) return;
+                  if (!commentText.trim() || !commenterName.trim()) return;
                   addComment.mutate({
                     trackId: track.id,
+                    commenterName: commenterName.trim(),
                     content: commentText.trim(),
                     timestampSeconds: pendingTimestamp ?? undefined,
                   });
                 }}
-                disabled={!commentText.trim() || addComment.isPending}
+                disabled={!commentText.trim() || !commenterName.trim() || addComment.isPending}
                 className="h-7 text-xs gap-1.5 bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold"
               >
                 <Send size={11} /> Submit
@@ -435,7 +444,7 @@ function SonicTrackRow({
                 <div className="flex-1 min-w-0">
                   <span className="text-white/80 text-xs">{c.content}</span>
                   <div className="text-white/30 text-[10px] mt-0.5">
-                    {c.userName ?? "Client"} · {new Date(c.createdAt).toLocaleDateString()}
+                    {c.commenterName ?? c.userName ?? "Client"} · {new Date(c.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               </div>

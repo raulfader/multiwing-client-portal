@@ -60,6 +60,7 @@ function ApprovalBadge({ status }: { status?: string }) {
 // ── Track Comment Section ──────────────────────────────────────────────────────
 function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: string }) {
   const [comment, setComment] = useState("");
+  const [commenterName, setCommenterName] = useState("");
   const { data: comments, refetch } = trpc.comments.byTrack.useQuery({ trackId });
   const addComment = trpc.comments.add.useMutation({
     onSuccess: () => {
@@ -72,8 +73,8 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
-    addComment.mutate({ trackId, content: comment.trim() });
+    if (!comment.trim() || !commenterName.trim()) return;
+    addComment.mutate({ trackId, commenterName: commenterName.trim(), content: comment.trim() });
   };
 
   const formatTime = (s?: number | null) => {
@@ -96,7 +97,7 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
             <div key={c.id} className="rounded-lg p-3" style={{ background: "#111111", border: "1px solid #2A2A2A" }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold" style={{ color: "#FFD600" }}>
-                  {c.userName ?? "Client"}
+                  {c.commenterName ?? c.userName ?? "Client"}
                 </span>
                 <div className="flex items-center gap-2">
                   {c.timestampSeconds != null && (
@@ -115,25 +116,37 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <input
           type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder={`Add a comment on "${trackTitle}"...`}
-          className="flex-1 text-sm px-3 py-2 rounded-lg outline-none transition-colors"
+          value={commenterName}
+          onChange={(e) => setCommenterName(e.target.value)}
+          placeholder="Your name (required)"
+          className="text-sm px-3 py-2 rounded-lg outline-none transition-colors"
           style={{ background: "#111111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
           onFocus={(e) => (e.target.style.borderColor = "rgba(255,214,0,0.4)")}
           onBlur={(e) => (e.target.style.borderColor = "#2A2A2A")}
         />
-        <button
-          type="submit"
-          disabled={!comment.trim() || addComment.isPending}
-          className="px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-semibold transition-all"
-          style={{ background: "#FFD600", color: "#0A0A0A" }}
-        >
-          {addComment.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-        </button>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={`Add a comment on "${trackTitle}"...`}
+            className="flex-1 text-sm px-3 py-2 rounded-lg outline-none transition-colors"
+            style={{ background: "#111111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+            onFocus={(e) => (e.target.style.borderColor = "rgba(255,214,0,0.4)")}
+            onBlur={(e) => (e.target.style.borderColor = "#2A2A2A")}
+          />
+          <button
+            type="submit"
+            disabled={!comment.trim() || !commenterName.trim() || addComment.isPending}
+            className="px-3 py-2 rounded-lg flex items-center gap-1.5 text-sm font-semibold transition-all"
+            style={{ background: "#FFD600", color: "#0A0A0A" }}
+          >
+            {addComment.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -39,6 +39,12 @@ import {
   getCommentsByDeliverable,
   createDeliverableComment,
   getAllDeliverableComments,
+  resolveComment,
+  respondToComment,
+  unresolveComment,
+  resolveDeliverableComment,
+  respondToDeliverableComment,
+  unresolveDeliverableComment,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
@@ -227,6 +233,7 @@ export const appRouter = router({
     add: protectedProcedure
       .input(z.object({
         trackId: z.number(),
+        commenterName: z.string().min(1).max(100),
         content: z.string().min(1).max(2000),
         timestampSeconds: z.number().optional(),
       }))
@@ -237,6 +244,7 @@ export const appRouter = router({
         await createComment({
           trackId: input.trackId,
           userId: ctx.user.id,
+          commenterName: input.commenterName,
           content: input.content,
           timestampSeconds: input.timestampSeconds,
         });
@@ -247,9 +255,36 @@ export const appRouter = router({
           : "";
         await notifyOwner({
           title: `New comment on "${track.title}"`,
-          content: `${ctx.user.name ?? "A client"} commented${timeLabel}: "${input.content}"`,
+          content: `${input.commenterName} commented${timeLabel}: "${input.content}"`,
         });
 
+        return { success: true };
+      }),
+
+    resolve: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        adminResponse: z.string().max(2000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await resolveComment(input.id, input.adminResponse);
+        return { success: true };
+      }),
+
+    unresolve: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await unresolveComment(input.id);
+        return { success: true };
+      }),
+
+    respond: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        adminResponse: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ input }) => {
+        await respondToComment(input.id, input.adminResponse);
         return { success: true };
       }),
 
@@ -466,6 +501,7 @@ export const appRouter = router({
     add: protectedProcedure
       .input(z.object({
         deliverableId: z.number(),
+        commenterName: z.string().min(1).max(100),
         content: z.string().min(1).max(2000),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -475,18 +511,46 @@ export const appRouter = router({
         await createDeliverableComment({
           deliverableId: input.deliverableId,
           userId: ctx.user.id,
+          commenterName: input.commenterName,
           content: input.content,
         });
 
         await notifyOwner({
           title: `New comment on "${deliverable.title}"`,
-          content: `${ctx.user.name ?? "A client"} commented on "${deliverable.title}": "${input.content}"`,
+          content: `${input.commenterName} commented on "${deliverable.title}": "${input.content}"`,
         });
 
         return { success: true };
       }),
 
-     all: adminProcedure.query(async () => {
+    resolve: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        adminResponse: z.string().max(2000).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await resolveDeliverableComment(input.id, input.adminResponse);
+        return { success: true };
+      }),
+
+    unresolve: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await unresolveDeliverableComment(input.id);
+        return { success: true };
+      }),
+
+    respond: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        adminResponse: z.string().min(1).max(2000),
+      }))
+      .mutation(async ({ input }) => {
+        await respondToDeliverableComment(input.id, input.adminResponse);
+        return { success: true };
+      }),
+
+    all: adminProcedure.query(async () => {
       return getAllDeliverableComments();
     }),
   }),

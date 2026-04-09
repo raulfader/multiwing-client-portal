@@ -723,42 +723,177 @@ function PillarAdminRow({ pillar, accentColor, onRefresh }: { pillar: any; accen
 }
 
 
-// ── Recent Comments Panel ──────────────────────────────────────────────────────
+/// ── Recent Comments Panel ──────────────────────────────────────────────────────
+function CommentCard({ c, onResolve, onUnresolve, onRespond }: {
+  c: any;
+  onResolve: (id: number, response?: string) => void;
+  onUnresolve: (id: number) => void;
+  onRespond: (id: number, response: string) => void;
+}) {
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState(c.adminResponse ?? "");
+  const isResolved = !!c.resolvedAt;
+
+  return (
+    <div
+      className="px-3 py-2.5 rounded-lg"
+      style={{
+        background: isResolved ? "#0D1A0D" : "#111111",
+        border: `1px solid ${isResolved ? "#1A3A1A" : "#1A1A1A"}`,
+        opacity: isResolved ? 0.75 : 1,
+      }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: "#FFD600" }}>
+            {c.commenterName ?? c.userName ?? "Client"}
+          </span>
+          {isResolved && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#1A3A1A", color: "#64DD17" }}>
+              Resolved
+            </span>
+          )}
+        </div>
+        <span className="text-xs" style={{ color: "#444444" }}>
+          {new Date(c.createdAt).toLocaleDateString()}
+        </span>
+      </div>
+
+      {/* Comment content */}
+      <p className="text-sm mb-2" style={{ color: "#CCCCCC" }}>{c.content}</p>
+      {c.timestampSeconds != null && (
+        <span className="text-xs mb-2 inline-block font-mono px-1.5 py-0.5 rounded" style={{ background: "#2A2A2A", color: "#888888" }}>
+          @ {Math.floor(c.timestampSeconds / 60)}:{String(c.timestampSeconds % 60).padStart(2, "0")}
+        </span>
+      )}
+
+      {/* Admin response (if any) */}
+      {c.adminResponse && (
+        <div className="mt-2 px-2.5 py-2 rounded" style={{ background: "rgba(255,214,0,0.06)", border: "1px solid rgba(255,214,0,0.15)" }}>
+          <p className="text-xs font-semibold mb-0.5" style={{ color: "#FFD600" }}>Your response</p>
+          <p className="text-xs" style={{ color: "#AAAAAA" }}>{c.adminResponse}</p>
+        </div>
+      )}
+
+      {/* Reply input */}
+      {showReply && (
+        <div className="mt-2 space-y-1.5">
+          <textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write a response to the client…"
+            rows={2}
+            className="w-full text-xs px-2.5 py-1.5 rounded-md outline-none resize-none"
+            style={{ background: "#1A1A1A", border: "1px solid #333333", color: "#FAFAFA" }}
+          />
+          <div className="flex gap-1.5 justify-end">
+            <button
+              className="text-xs px-2.5 py-1 rounded"
+              style={{ background: "#1A1A1A", color: "#888888", border: "1px solid #2A2A2A" }}
+              onClick={() => setShowReply(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="text-xs px-2.5 py-1 rounded font-semibold"
+              style={{ background: "#FFD600", color: "#0A0A0A" }}
+              onClick={() => {
+                if (!replyText.trim()) return;
+                onRespond(c.id, replyText.trim());
+                setShowReply(false);
+              }}
+            >
+              Send Response
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {!showReply && (
+        <div className="flex gap-1.5 mt-2">
+          <button
+            className="text-[11px] px-2 py-1 rounded"
+            style={{ background: "#1A1A1A", color: "#888888", border: "1px solid #2A2A2A" }}
+            onClick={() => setShowReply(true)}
+          >
+            {c.adminResponse ? "Edit Response" : "Respond"}
+          </button>
+          {isResolved ? (
+            <button
+              className="text-[11px] px-2 py-1 rounded"
+              style={{ background: "#1A1A1A", color: "#888888", border: "1px solid #2A2A2A" }}
+              onClick={() => onUnresolve(c.id)}
+            >
+              Unresolve
+            </button>
+          ) : (
+            <button
+              className="text-[11px] px-2 py-1 rounded font-semibold"
+              style={{ background: "rgba(100,221,23,0.12)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.25)" }}
+              onClick={() => onResolve(c.id)}
+            >
+              Mark Resolved
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecentComments() {
+  const utils = trpc.useUtils();
   const { data: comments } = trpc.comments.all.useQuery();
+  const resolveComment = trpc.comments.resolve.useMutation({
+    onSuccess: () => { utils.comments.all.invalidate(); toast.success("Marked as resolved"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const unresolveComment = trpc.comments.unresolve.useMutation({
+    onSuccess: () => { utils.comments.all.invalidate(); toast.success("Unresolved"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const respondComment = trpc.comments.respond.useMutation({
+    onSuccess: () => { utils.comments.all.invalidate(); toast.success("Response saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [showResolved, setShowResolved] = useState(false);
+  const unresolved = comments?.filter((c) => !c.resolvedAt) ?? [];
+  const resolved = comments?.filter((c) => c.resolvedAt) ?? [];
+  const displayed = showResolved ? comments ?? [] : unresolved;
 
   return (
     <div className="fl-card p-5">
       <div className="flex items-center gap-2 mb-4">
         <MessageSquare size={16} style={{ color: "#FFD600" }} />
-        <h3 className="font-bold text-sm" style={{ color: "#FAFAFA" }}>Recent Comments</h3>
-        <span className="text-xs ml-auto" style={{ color: "#555555" }}>{comments?.length ?? 0} total</span>
+        <h3 className="font-bold text-sm" style={{ color: "#FAFAFA" }}>Comments</h3>
+        <span className="text-xs" style={{ color: "#555555" }}>{unresolved.length} open</span>
+        {resolved.length > 0 && (
+          <button
+            className="ml-auto text-xs"
+            style={{ color: showResolved ? "#FFD600" : "#555555" }}
+            onClick={() => setShowResolved((v) => !v)}
+          >
+            {showResolved ? "Hide resolved" : `Show ${resolved.length} resolved`}
+          </button>
+        )}
       </div>
       {!comments || comments.length === 0 ? (
         <p className="text-sm text-center py-6" style={{ color: "#444444" }}>No comments yet</p>
+      ) : displayed.length === 0 ? (
+        <p className="text-sm text-center py-6" style={{ color: "#444444" }}>All comments resolved</p>
       ) : (
-        <div className="space-y-2 max-h-80 overflow-y-auto">
-          {comments.slice(0, 20).map((c) => (
-            <div
+        <div className="space-y-2 max-h-[480px] overflow-y-auto">
+          {displayed.slice(0, 30).map((c) => (
+            <CommentCard
               key={c.id}
-              className="px-3 py-2.5 rounded-lg"
-              style={{ background: "#111111", border: "1px solid #1A1A1A" }}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold" style={{ color: "#FFD600" }}>
-                  {c.userName ?? "Client"}
-                </span>
-                <span className="text-xs" style={{ color: "#444444" }}>
-                  {new Date(c.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="text-sm" style={{ color: "#CCCCCC" }}>{c.content}</p>
-              {c.timestampSeconds != null && (
-                <span className="text-xs mt-1 inline-block font-mono px-1.5 py-0.5 rounded" style={{ background: "#2A2A2A", color: "#888888" }}>
-                  @ {Math.floor(c.timestampSeconds / 60)}:{String(c.timestampSeconds % 60).padStart(2, "0")}
-                </span>
-              )}
-            </div>
+              c={c}
+              onResolve={(id) => resolveComment.mutate({ id })}
+              onUnresolve={(id) => unresolveComment.mutate({ id })}
+              onRespond={(id, response) => respondComment.mutate({ id, adminResponse: response })}
+            />
           ))}
         </div>
       )}

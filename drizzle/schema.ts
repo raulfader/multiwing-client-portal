@@ -45,13 +45,16 @@ export const tracks = mysqlTable("tracks", {
 export type Track = typeof tracks.$inferSelect;
 export type InsertTrack = typeof tracks.$inferInsert;
 
-// ── Client Comments on Tracks ─────────────────────────────────────────────────
+// ── Client Comments on Tracks ─────────────────────────────────────────────────────
 export const comments = mysqlTable("comments", {
   id: int("id").autoincrement().primaryKey(),
   trackId: int("trackId").notNull(),
   userId: int("userId").notNull(),
+  commenterName: varchar("commenterName", { length: 100 }),
   content: text("content").notNull(),
   timestampSeconds: int("timestampSeconds"),
+  adminResponse: text("adminResponse"),
+  resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -119,15 +122,17 @@ export const deliverables = mysqlTable("deliverables", {
 export type Deliverable = typeof deliverables.$inferSelect;
 export type InsertDeliverable = typeof deliverables.$inferInsert;
 
-// ── Client Comments on Deliverables ──────────────────────────────────────────
+// ── Client Comments on Deliverabless ────────────────────────────────────────────
 export const deliverableComments = mysqlTable("deliverable_comments", {
   id: int("id").autoincrement().primaryKey(),
   deliverableId: int("deliverableId").notNull(),
   userId: int("userId").notNull(),
+  commenterName: varchar("commenterName", { length: 100 }),
   content: text("content").notNull(),
+  adminResponse: text("adminResponse"),
+  resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
-
 export type DeliverableComment = typeof deliverableComments.$inferSelect;
 export type InsertDeliverableComment = typeof deliverableComments.$inferInsert;
 

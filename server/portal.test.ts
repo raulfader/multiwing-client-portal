@@ -29,6 +29,12 @@ vi.mock("./db", () => ({
   ]),
   getAllComments: vi.fn().mockResolvedValue([]),
   createComment: vi.fn().mockResolvedValue({ insertId: 2 }),
+  resolveComment: vi.fn().mockResolvedValue(undefined),
+  unresolveComment: vi.fn().mockResolvedValue(undefined),
+  respondToComment: vi.fn().mockResolvedValue(undefined),
+  resolveDeliverableComment: vi.fn().mockResolvedValue(undefined),
+  unresolveDeliverableComment: vi.fn().mockResolvedValue(undefined),
+  respondToDeliverableComment: vi.fn().mockResolvedValue(undefined),
   getApprovalByPillarAndUser: vi.fn().mockResolvedValue(undefined),
   getAllApprovals: vi.fn().mockResolvedValue([]),
   upsertApproval: vi.fn().mockResolvedValue(undefined),
@@ -146,13 +152,13 @@ describe("tracks.getUploadUrl", () => {
 describe("comments.add", () => {
   it("allows authenticated user to add a comment", async () => {
     const caller = appRouter.createCaller(makeUserCtx());
-    const result = await caller.comments.add({ trackId: 1, content: "Sounds great!", timestampSeconds: 30 });
+    const result = await caller.comments.add({ trackId: 1, commenterName: "Test User", content: "Sounds great!", timestampSeconds: 30 });
     expect(result.success).toBe(true);
   });
 
   it("rejects unauthenticated comment submission", async () => {
     const caller = appRouter.createCaller(makePublicCtx());
-    await expect(caller.comments.add({ trackId: 1, content: "Hack" })).rejects.toThrow();
+    await expect(caller.comments.add({ trackId: 1, commenterName: "Hacker", content: "Hack" })).rejects.toThrow();
   });
 });
 

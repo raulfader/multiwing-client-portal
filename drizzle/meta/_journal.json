@@ -43,6 +43,13 @@
       "when": 1775692256778,
       "tag": "0005_serious_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1775694522887,
+      "tag": "0006_marvelous_peter_parker",
+      "breakpoints": true
     }
   ]
 }

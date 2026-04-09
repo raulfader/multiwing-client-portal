@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, comments, InsertUser, pillars, trackApprovals, tracks, users } from "../drizzle/schema";
+import { approvals, comments, deliverableComments, deliverables, InsertUser, pillars, projects, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -152,14 +152,16 @@ export async function getAllTracksWithPillars() {
 export async function getCommentsByTrack(trackId: number) {
   const db = await getDb();
   if (!db) return [];
-  // Join with users to get commenter name
   const result = await db
     .select({
       id: comments.id,
       trackId: comments.trackId,
       userId: comments.userId,
+      commenterName: comments.commenterName,
       content: comments.content,
       timestampSeconds: comments.timestampSeconds,
+      adminResponse: comments.adminResponse,
+      resolvedAt: comments.resolvedAt,
       createdAt: comments.createdAt,
       userName: users.name,
     })
@@ -178,8 +180,11 @@ export async function getAllComments() {
       id: comments.id,
       trackId: comments.trackId,
       userId: comments.userId,
+      commenterName: comments.commenterName,
       content: comments.content,
       timestampSeconds: comments.timestampSeconds,
+      adminResponse: comments.adminResponse,
+      resolvedAt: comments.resolvedAt,
       createdAt: comments.createdAt,
       userName: users.name,
     })
@@ -191,6 +196,7 @@ export async function getAllComments() {
 export async function createComment(data: {
   trackId: number;
   userId: number;
+  commenterName?: string;
   content: string;
   timestampSeconds?: number;
 }) {
@@ -199,10 +205,32 @@ export async function createComment(data: {
   const result = await db.insert(comments).values({
     trackId: data.trackId,
     userId: data.userId,
+    commenterName: data.commenterName ?? null,
     content: data.content,
     timestampSeconds: data.timestampSeconds ?? null,
   });
   return result;
+}
+
+export async function resolveComment(id: number, adminResponse?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(comments).set({
+    resolvedAt: new Date(),
+    adminResponse: adminResponse ?? null,
+  }).where(eq(comments.id, id));
+}
+
+export async function respondToComment(id: number, adminResponse: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(comments).set({ adminResponse }).where(eq(comments.id, id));
+}
+
+export async function unresolveComment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(comments).set({ resolvedAt: null }).where(eq(comments.id, id));
 }
 
 // ── Approvals ─────────────────────────────────────────────────────────────────
@@ -279,10 +307,7 @@ export async function getApprovalsByPillar(pillarId: number) {
     .where(eq(approvals.pillarId, pillarId));
 }
 
-// ── Projects ──────────────────────────────────────────────────────────────────
-
-import { deliverableComments, deliverables, projects } from "../drizzle/schema";
-
+// ── Projects ──────────────────────────────────────────────────────────────────────────────────
 export async function getAllProjects() {
   const db = await getDb();
   if (!db) return [];
@@ -415,7 +440,10 @@ export async function getCommentsByDeliverable(deliverableId: number) {
       id: deliverableComments.id,
       deliverableId: deliverableComments.deliverableId,
       userId: deliverableComments.userId,
+      commenterName: deliverableComments.commenterName,
       content: deliverableComments.content,
+      adminResponse: deliverableComments.adminResponse,
+      resolvedAt: deliverableComments.resolvedAt,
       createdAt: deliverableComments.createdAt,
       userName: users.name,
     })
@@ -428,6 +456,7 @@ export async function getCommentsByDeliverable(deliverableId: number) {
 export async function createDeliverableComment(data: {
   deliverableId: number;
   userId: number;
+  commenterName?: string;
   content: string;
 }) {
   const db = await getDb();
@@ -435,8 +464,30 @@ export async function createDeliverableComment(data: {
   return db.insert(deliverableComments).values({
     deliverableId: data.deliverableId,
     userId: data.userId,
+    commenterName: data.commenterName ?? null,
     content: data.content,
   });
+}
+
+export async function resolveDeliverableComment(id: number, adminResponse?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(deliverableComments).set({
+    resolvedAt: new Date(),
+    adminResponse: adminResponse ?? null,
+  }).where(eq(deliverableComments.id, id));
+}
+
+export async function respondToDeliverableComment(id: number, adminResponse: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(deliverableComments).set({ adminResponse }).where(eq(deliverableComments.id, id));
+}
+
+export async function unresolveDeliverableComment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(deliverableComments).set({ resolvedAt: null }).where(eq(deliverableComments.id, id));
 }
 
 // ── Per-Track Approvals ──────────────────────────────────────────────────────
@@ -516,7 +567,10 @@ export async function getAllDeliverableComments() {
       id: deliverableComments.id,
       deliverableId: deliverableComments.deliverableId,
       userId: deliverableComments.userId,
+      commenterName: deliverableComments.commenterName,
       content: deliverableComments.content,
+      adminResponse: deliverableComments.adminResponse,
+      resolvedAt: deliverableComments.resolvedAt,
       createdAt: deliverableComments.createdAt,
       userName: users.name,
     })

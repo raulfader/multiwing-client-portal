@@ -170,4 +170,19 @@
 - [x] Add discreet admin link to login screen footer and portal nav bar
 
 ## Bug Fix: Admin Login Error
-- [ ] Fix "Please login (10001)" error on /admin — replace all protectedProcedure usages with custom adminProcedure
+- [x] Fix "Please login (10001)" error on /admin — replaced local adminProcedure (which extended protectedProcedure) with the one from _core/trpc.ts that checks ctx.user?.role === 'admin' directly; also fixed Admin.tsx to reload page after login so token is available for all queries
+
+## Comment Improvements
+- [x] DB: add commenter_name column to track_comments and deliverable_comments tables
+- [x] DB: add admin_response (text) and resolved_at (timestamp) columns to both comment tables
+- [x] Backend: update addComment / add procedures to accept commenterName field
+- [x] Backend: add resolveComment and respondToComment procedures (admin-only)
+- [x] Client: add name input field to track comment form (required before submitting)
+- [x] Client: display commenter name on each comment in the comment list
+- [x] Admin: show commenter name on each comment row
+- [x] Admin: add Resolve button per comment (marks resolved_at timestamp)
+- [x] Admin: add Respond inline form per comment (saves admin_response text)
+- [x] Admin: show admin response and resolved status on each comment row
+
+## Deliverable Comments (Future)
+- [ ] Client: implement deliverable comments UI on DeliverableCard (list + name + submit form wired to trpc.deliverableComments.byDeliverable and trpc.deliverableComments.add)

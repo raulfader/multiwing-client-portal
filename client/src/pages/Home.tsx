@@ -366,7 +366,10 @@ function LoginScreen() {
   const utils = trpc.useUtils();
 
   const clientLogin = trpc.auth.clientLogin.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.token) {
+        localStorage.setItem("portal_session_token", data.token);
+      }
       utils.auth.me.invalidate();
     },
     onError: (err) => {

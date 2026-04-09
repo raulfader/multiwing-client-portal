@@ -73,60 +73,44 @@ export const appRouter = router({
   system: systemRouter,
 
   auth: router({
-    // Returns current session info from custom session cookie
+    // Returns current session info — reads token from x-session-token header or cookie
     me: publicProcedure.query(async ({ ctx }) => {
-      const cookies = parseCookies(ctx.req.headers.cookie ?? "");
-      const token = cookies[SESSION_COOKIE];
+      const token =
+        (ctx.req.headers["x-session-token"] as string | undefined) ??
+        parseCookies(ctx.req.headers.cookie ?? "")[SESSION_COOKIE];
       if (!token) return null;
       const session = await validateSession(token);
       if (!session) return null;
       return { role: session.role };
     }),
 
-    // Client login: portal password only
+    // Client login: portal password only — returns token in body for localStorage storage
     clientLogin: publicProcedure
       .input(z.object({ password: z.string() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         if (!checkClientPassword(input.password)) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect password" });
         }
         const token = await createSession("client");
-        ctx.res.cookie(SESSION_COOKIE, token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-          path: "/",
-        });
-        return { success: true, role: "client" as const };
+        return { success: true, role: "client" as const, token };
       }),
 
-    // Admin login: email + password
+    // Admin login: email + password — returns token in body for localStorage storage
     adminLogin: publicProcedure
       .input(z.object({ email: z.string(), password: z.string() }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         if (!checkAdminCredentials(input.email, input.password)) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid admin credentials" });
         }
         const token = await createSession("admin");
-        ctx.res.cookie(SESSION_COOKIE, token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 30 * 24 * 60 * 60 * 1000,
-          path: "/",
-        });
-        return { success: true, role: "admin" as const };
+        return { success: true, role: "admin" as const, token };
       }),
 
     logout: publicProcedure.mutation(async ({ ctx }) => {
-      const cookies = parseCookies(ctx.req.headers.cookie ?? "");
-      const token = cookies[SESSION_COOKIE];
+      const token =
+        (ctx.req.headers["x-session-token"] as string | undefined) ??
+        parseCookies(ctx.req.headers.cookie ?? "")[SESSION_COOKIE];
       if (token) await deleteSession(token);
-      ctx.res.clearCookie(SESSION_COOKIE, { path: "/" });
-      // Also clear old OAuth cookie if present
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
   }),

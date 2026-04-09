@@ -1086,7 +1086,10 @@ function AdminLoginScreen() {
   const utils = trpc.useUtils();
 
   const adminLogin = trpc.auth.adminLogin.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.token) {
+        localStorage.setItem("portal_session_token", data.token);
+      }
       utils.auth.me.invalidate();
     },
     onError: (err) => {

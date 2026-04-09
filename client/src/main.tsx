@@ -31,11 +31,17 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+const SESSION_TOKEN_KEY = "portal_session_token";
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        const token = localStorage.getItem(SESSION_TOKEN_KEY);
+        return token ? { "x-session-token": token } : {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),

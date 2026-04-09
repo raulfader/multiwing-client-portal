@@ -44,7 +44,7 @@ export function buildProjectNotificationEmail(params: {
     .header { background: #0a0a0a; padding: 32px 40px 24px; border-bottom: 1px solid #222; text-align: center; }
     .header img { height: 36px; display: block; margin: 0 auto; }
     .body { padding: 40px 40px 32px; }
-    .greeting { font-size: 22px; font-weight: 400; color: #ffffff; margin: 0 0 16px; font-family: 'Plus Jakarta Sans', 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .greeting { font-size: 15px; font-weight: 400; color: #ffffff; margin: 0 0 16px; font-family: 'Plus Jakarta Sans', 'DM Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
     .message { font-size: 15px; line-height: 1.7; color: #cccccc; margin: 0 0 28px; }
     .cta-block { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px 28px; margin-bottom: 28px; }
     .cta-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #FFD600; margin: 0 0 8px; }

@@ -616,11 +616,7 @@ export const appRouter = router({
         const project = await getProjectById(input.projectId);
         if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
-        const appUrl = (process.env.VITE_OAUTH_PORTAL_URL ?? "")
-          .replace(/\/login.*$/, "")
-          .replace(/\/api.*$/, "")
-          || "https://multiwing-sonic-portal.manus.space";
-        const projectUrl = `${appUrl}/project/${project.slug}`;
+        const projectUrl = `https://multiwing.faderlabs.ai/project/${project.slug}`;
 
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });

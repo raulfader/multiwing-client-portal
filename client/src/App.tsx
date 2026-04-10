@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Project from "./pages/Project";
+import NewProjectRequest from "./pages/NewProjectRequest";
 
 function Router() {
   return (
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/admin" component={Admin} />
       <Route path="/projects/:slug" component={Project} />
+      <Route path="/new-project" component={NewProjectRequest} />
       <Route path="/project/:slug">{(params) => <Redirect to={`/projects/${params.slug}`} />}</Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

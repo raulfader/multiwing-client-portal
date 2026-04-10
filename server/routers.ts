@@ -46,6 +46,9 @@ import {
   resolveDeliverableComment,
   respondToDeliverableComment,
   unresolveDeliverableComment,
+  createClientProjectRequest,
+  getAllClientProjectRequests,
+  updateClientProjectRequestStatus,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
@@ -712,8 +715,116 @@ export const appRouter = router({
         .orderBy(emailLog.sentAt);
     }),
   }),
+  // ── Client Project Requests ──────────────────────────────────────────────────────────────────
+  clientRequests: router({
+    // Generate a presigned S3 URL for direct browser-to-S3 upload (no file size limit)
+    getUploadUrl: publicProcedure
+      .input(z.object({
+        fileName: z.string(),
+        contentType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { generatePresignedUploadUrl } = await import("./s3Upload");
+        return generatePresignedUploadUrl({
+          fileName: input.fileName,
+          contentType: input.contentType,
+          folder: "client-project-requests",
+        });
+      }),
 
-  // ── Image Upload ──────────────────────────────────────────────────────────
+    // Generate a presigned download URL for a file (admin only)
+    getDownloadUrl: adminProcedure
+      .input(z.object({ fileKey: z.string() }))
+      .mutation(async ({ input }) => {
+        const { generatePresignedDownloadUrl } = await import("./s3Upload");
+        const url = await generatePresignedDownloadUrl(input.fileKey);
+        return { url };
+      }),
+
+    // Submit a new project request after files have been uploaded
+    submit: publicProcedure
+      .input(z.object({
+        title: z.string().min(1).max(255),
+        description: z.string().optional(),
+        submitterName: z.string().min(1).max(200),
+        submitterEmail: z.string().email(),
+        submitterCompany: z.string().optional(),
+        files: z.array(z.object({
+          name: z.string(),
+          url: z.string(),
+          key: z.string(),
+          size: z.number(),
+          type: z.string(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        await createClientProjectRequest({
+          title: input.title,
+          description: input.description,
+          submitterName: input.submitterName,
+          submitterEmail: input.submitterEmail,
+          submitterCompany: input.submitterCompany,
+          files: JSON.stringify(input.files),
+        });
+
+        // Send notification emails to Faderlabs team
+        const nodemailer = await import("nodemailer");
+        const transporter = nodemailer.default.createTransport({
+          host: "smtp.gmail.com",
+          port: 587,
+          secure: false,
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        });
+        const fileList = input.files.length > 0
+          ? input.files.map((f) => `• ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`).join("\n")
+          : "No files attached";
+        const body = `New project request submitted on the Multi-Wing Content Hub.
+
+Title: ${input.title}
+From: ${input.submitterName} <${input.submitterEmail}>${input.submitterCompany ? `\nCompany: ${input.submitterCompany}` : ""}
+${input.description ? `\nDescription:\n${input.description}` : ""}
+
+Files uploaded (${input.files.length}):
+${fileList}
+
+View in admin dashboard: https://multiwing.faderlabs.ai/admin`;
+
+        const recipients = ["raul@faderlabs.com", "hello@faderlabs.com"];
+        for (const to of recipients) {
+          try {
+            await transporter.sendMail({
+              from: `"Multi-Wing Portal" <${process.env.SMTP_USER}>`,
+              to,
+              subject: `New Project Request: ${input.title}`,
+              text: body,
+            });
+          } catch (e) {
+            console.error(`[clientRequests] Failed to notify ${to}:`, e);
+          }
+        }
+
+        return { success: true };
+      }),
+
+    // List all requests (admin only)
+    list: adminProcedure.query(async () => {
+      return getAllClientProjectRequests();
+    }),
+
+    // Update status (admin only)
+    updateStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["new", "in_review", "completed"]),
+        adminNotes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await updateClientProjectRequestStatus(input.id, input.status, input.adminNotes);
+        return { success: true };
+      }),
+  }),
+
+  // ── Image Upload ──────────────────────────────────────────────────────────────────
   uploadImage: router({
     upload: adminProcedure
       .input(z.object({

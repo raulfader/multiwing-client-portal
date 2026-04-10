@@ -244,7 +244,14 @@
 - [x] Replace "Pillar Approvals" stat card with "Rejected" (track-level rejected count) in admin dashboard
 
 ## Needs Changes Count Fix
-- [ ] Fix "Needs Changes" stat showing 2 when client marked no tracks as needs_changes — investigate stale/incorrect data in track_approvals table
+- [x] Fix "Needs Changes" stat showing 2 when client marked no tracks as needs_changes — deleted 2 orphaned stale records from DB
 
 ## Track Decisions Panel
 - [x] Add Track Decisions panel to admin dashboard showing each track name with its approval status badge (approved/needs_changes/rejected/pending)
+
+## Client Project Request Feature
+- [x] Add client_project_requests table to schema (title, description, files JSON, status, submitterName, submitterEmail, createdAt)
+- [x] Add tRPC procedures: getUploadUrl (presigned S3), submit, list (admin), updateStatus (admin)
+- [x] Build client-facing Create New Project form at /new-project with direct S3 upload (no size limit)
+- [x] Show client project requests in admin dashboard with status (new/in_review/completed) and downloadable file links
+- [x] Send email notifications to raul@faderlabs.com and hello@faderlabs.com on new request

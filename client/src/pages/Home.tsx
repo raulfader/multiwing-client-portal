@@ -18,6 +18,7 @@ import {
   Folder,
   Music2,
   ShieldCheck,
+  PlusCircle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -561,11 +562,24 @@ export default function Home() {
 
       {/* ── Content ── */}
       <main className="container py-8 pb-16">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>
-          <p className="text-sm" style={{ color: "#555555" }}>
-            Click a project to view deliverables, leave feedback, and download files.
-          </p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>
+            <p className="text-sm" style={{ color: "#555555" }}>
+              Click a project to view deliverables, leave feedback, and download files.
+            </p>
+          </div>
+          <Link href="/new-project">
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shrink-0"
+              style={{ background: "#FFD600", color: "#0A0A0A" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFE033")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFD600")}
+            >
+              <PlusCircle size={16} />
+              New Project
+            </button>
+          </Link>
         </div>
 
         {projectsLoading ? (

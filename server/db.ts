@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, comments, deliverableComments, deliverables, InsertUser, pillars, projects, trackApprovals, tracks, users } from "../drizzle/schema";
+import { approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertUser, pillars, projects, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -589,4 +589,50 @@ export async function getAllDeliverableComments() {
     .from(deliverableComments)
     .leftJoin(users, eq(deliverableComments.userId, users.id))
     .orderBy(desc(deliverableComments.createdAt));
+}
+
+// ── Client Project Requests ────────────────────────────────────────────────────
+
+export async function createClientProjectRequest(data: {
+  title: string;
+  description?: string;
+  submitterName: string;
+  submitterEmail: string;
+  submitterCompany?: string;
+  files: string; // JSON string
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(clientProjectRequests).values({
+    title: data.title,
+    description: data.description ?? null,
+    submitterName: data.submitterName,
+    submitterEmail: data.submitterEmail,
+    submitterCompany: data.submitterCompany ?? null,
+    files: data.files,
+    status: "new",
+  });
+  return result;
+}
+
+export async function getAllClientProjectRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(clientProjectRequests)
+    .orderBy(desc(clientProjectRequests.createdAt));
+}
+
+export async function updateClientProjectRequestStatus(
+  id: number,
+  status: "new" | "in_review" | "completed",
+  adminNotes?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db
+    .update(clientProjectRequests)
+    .set({ status, adminNotes: adminNotes ?? null })
+    .where(eq(clientProjectRequests.id, id));
 }

@@ -183,6 +183,25 @@ export const emailEvents = mysqlTable("email_events", {
 export type EmailEvent = typeof emailEvents.$inferSelect;
 export type InsertEmailEvent = typeof emailEvents.$inferInsert;
 
+// ── Client Project Requests ─────────────────────────────────────────────────
+export const clientProjectRequests = mysqlTable("client_project_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  submitterName: varchar("submitterName", { length: 200 }).notNull(),
+  submitterEmail: varchar("submitterEmail", { length: 320 }).notNull(),
+  submitterCompany: varchar("submitterCompany", { length: 200 }),
+  // JSON array of { name, url, key, size, type }
+  files: text("files").default("[]").notNull(),
+  status: mysqlEnum("status", ["new", "in_review", "completed"]).default("new").notNull(),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClientProjectRequest = typeof clientProjectRequests.$inferSelect;
+export type InsertClientProjectRequest = typeof clientProjectRequests.$inferInsert;
+
 // ── Custom Auth Sessions ───────────────────────────────────────────────
 export const customSessions = mysqlTable("custom_sessions", {
   id: int("id").autoincrement().primaryKey(),

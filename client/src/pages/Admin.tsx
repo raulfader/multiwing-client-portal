@@ -31,6 +31,8 @@ import {
   UserPlus,
   History,
   GripVertical,
+  Inbox,
+  Download,
 } from "lucide-react";
 import {
   DndContext,
@@ -1425,12 +1427,17 @@ function AdminLoginScreen() {
 // ── Admin Page ─────────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<"sonic" | "projects" | "email">("projects");
+  const [activeTab, setActiveTab] = useState<"sonic" | "projects" | "email" | "requests">("projects");
   const isAdmin = !loading && isAuthenticated && user?.role === "admin";
   const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAdmin });
   const { data: allApprovals } = trpc.approvals.all.useQuery(undefined, { enabled: isAdmin });
   const { data: allTrackApprovals } = trpc.trackApprovals.all.useQuery(undefined, { enabled: isAdmin });
   const { data: allComments } = trpc.comments.all.useQuery(undefined, { enabled: isAdmin });
+  const { data: clientRequests, refetch: refetchClientRequests } = trpc.clientRequests.list.useQuery(undefined, { enabled: isAdmin });
+  const updateRequestStatus = trpc.clientRequests.updateStatus.useMutation({
+    onSuccess: () => { refetchClientRequests(); toast.success("Status updated"); },
+    onError: (e) => toast.error(e.message),
+  });
    const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
   const [orderedProjects, setOrderedProjects] = React.useState<any[]>([]);
   React.useEffect(() => { if (projects) setOrderedProjects(projects); }, [projects]);
@@ -1523,6 +1530,18 @@ export default function Admin() {
           >
             <Mail size={14} /> Email Notifications
           </button>
+          <button
+            onClick={() => setActiveTab("requests")}
+            className="px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 relative"
+            style={activeTab === "requests" ? { background: "#FFD600", color: "#0A0A0A" } : { color: "#888888" }}
+          >
+            <Inbox size={14} /> Project Requests
+            {clientRequests && clientRequests.filter((r: any) => r.status === "new").length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background: "#EF4444", color: "#fff" }}>
+                {clientRequests.filter((r: any) => r.status === "new").length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Email Notifications Tab */}
@@ -1574,6 +1593,90 @@ export default function Admin() {
           </div>
         )}
 
+        {/* Project Requests Tab */}
+        {activeTab === "requests" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-lg font-black" style={{ color: "#FAFAFA" }}>Client Project Requests</h2>
+                <p className="text-sm mt-0.5" style={{ color: "#555555" }}>Requests submitted by clients via the portal.</p>
+              </div>
+            </div>
+            {!clientRequests || clientRequests.length === 0 ? (
+              <div className="fl-card p-10 text-center">
+                <Inbox size={32} className="mx-auto mb-3 opacity-20" style={{ color: "#FFD600" }} />
+                <p className="font-bold mb-1" style={{ color: "#FAFAFA" }}>No requests yet</p>
+                <p className="text-sm" style={{ color: "#555555" }}>Client project requests will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {clientRequests.map((req: any) => (
+                  <div key={req.id} className="fl-card p-5">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-bold text-base" style={{ color: "#FAFAFA" }}>{req.title}</h3>
+                          <span
+                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              background: req.status === "new" ? "rgba(239,68,68,0.15)" : req.status === "in_review" ? "rgba(255,214,0,0.15)" : "rgba(100,221,23,0.15)",
+                              color: req.status === "new" ? "#EF4444" : req.status === "in_review" ? "#FFD600" : "#64DD17",
+                            }}
+                          >
+                            {req.status === "new" ? "New" : req.status === "in_review" ? "In Review" : "Completed"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: "#888888" }}>
+                          <span className="font-medium" style={{ color: "#FAFAFA" }}>{req.submitterName}</span>
+                          <span>{req.submitterEmail}</span>
+                          {req.submitterCompany && <span>{req.submitterCompany}</span>}
+                          <span>{new Date(req.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <select
+                        value={req.status}
+                        onChange={(e) => updateRequestStatus.mutate({ id: req.id, status: e.target.value as any })}
+                        className="text-xs px-2 py-1.5 rounded-lg border outline-none shrink-0"
+                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+                      >
+                        <option value="new">New</option>
+                        <option value="in_review">In Review</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    {req.description && (
+                      <p className="text-sm mb-3 leading-relaxed" style={{ color: "#888888" }}>{req.description}</p>
+                    )}
+                    {req.files && req.files.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#555555" }}>Files ({req.files.length})</p>
+                        <div className="flex flex-wrap gap-2">
+                          {req.files.map((file: any, fi: number) => (
+                            <a
+                              key={fi}
+                              href={file.url}
+                              download={file.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+                              style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+                            >
+                              <Download size={12} style={{ color: "#FFD600" }} />
+                              <span className="max-w-[160px] truncate">{file.name}</span>
+                              {file.size && (
+                                <span style={{ color: "#555555" }}>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {/* Sonic Branding Tab */}
         {activeTab === "sonic" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

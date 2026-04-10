@@ -632,6 +632,8 @@ export const appRouter = router({
 
         const results: { contactId: number; email: string; success: boolean; error?: string }[] = [];
         for (const contact of targets) {
+          // Generate a unique tracking token per email
+          const trackingToken = nanoid(32);
           const result = await sendProjectNotification({
             to: contact.email,
             firstName: contact.firstName,
@@ -639,6 +641,7 @@ export const appRouter = router({
             projectUrl,
             subject: input.subject,
             customMessage: input.customMessage,
+            trackingToken,
           });
           await db.insert(emailLog).values({
             projectId: input.projectId,
@@ -646,6 +649,7 @@ export const appRouter = router({
             subject: input.subject,
             status: result.success ? "sent" : "failed",
             errorMessage: result.error ?? null,
+            trackingToken: result.success ? trackingToken : null,
           });
           results.push({ contactId: contact.id, email: contact.email, ...result });
         }
@@ -657,8 +661,48 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const db = await getDb();
         if (!db) return [];
-        return db.select().from(emailLog).where(eq(emailLog.projectId, input.projectId));
+        return db
+          .select({
+            id: emailLog.id,
+            projectId: emailLog.projectId,
+            contactId: emailLog.contactId,
+            subject: emailLog.subject,
+            status: emailLog.status,
+            errorMessage: emailLog.errorMessage,
+            openCount: emailLog.openCount,
+            clickCount: emailLog.clickCount,
+            firstOpenedAt: emailLog.firstOpenedAt,
+            lastOpenedAt: emailLog.lastOpenedAt,
+            firstClickedAt: emailLog.firstClickedAt,
+            sentAt: emailLog.sentAt,
+          })
+          .from(emailLog)
+          .where(eq(emailLog.projectId, input.projectId))
+          .orderBy(emailLog.sentAt);
       }),
+
+    // All email logs across all projects for the admin dashboard
+    allLogs: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select({
+          id: emailLog.id,
+          projectId: emailLog.projectId,
+          contactId: emailLog.contactId,
+          subject: emailLog.subject,
+          status: emailLog.status,
+          errorMessage: emailLog.errorMessage,
+          openCount: emailLog.openCount,
+          clickCount: emailLog.clickCount,
+          firstOpenedAt: emailLog.firstOpenedAt,
+          lastOpenedAt: emailLog.lastOpenedAt,
+          firstClickedAt: emailLog.firstClickedAt,
+          sentAt: emailLog.sentAt,
+        })
+        .from(emailLog)
+        .orderBy(emailLog.sentAt);
+    }),
   }),
 
   // ── Image Upload ──────────────────────────────────────────────────────────

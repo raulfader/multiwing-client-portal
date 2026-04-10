@@ -218,3 +218,11 @@
 
 ## Contacts Permission Fix
 - [ ] Fix "no permissions" error when adding contacts in admin panel email notifications
+
+## Email Tracking Dashboard
+- [x] DB: add openedAt, clickedAt, openCount, clickCount to email_log table; add email_events table for per-event tracking
+- [x] Server: add GET /track/open/:token endpoint (serves 1x1 transparent pixel, records open event)
+- [x] Server: add GET /track/click/:token endpoint (redirects to destination URL, records click event)
+- [x] Email: inject tracking pixel and wrap View Project button link with click tracking URL
+- [x] Backend: add tRPC procedures to fetch email log with open/click stats (email.log and email.allLogs)
+- [x] Admin UI: add email analytics dashboard showing per-email open/click stats (Sent, Unique Opens, Total Opens, Link Clicks)

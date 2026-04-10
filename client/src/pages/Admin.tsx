@@ -224,8 +224,32 @@ function EmailNotificationsTab({ projects }: { projects: any[] }) {
         </div>
       </div>
 
-      {/* Email log sidebar */}
+      {/* Email Analytics Dashboard */}
       <div className="space-y-4">
+        {/* Summary stats */}
+        {(() => {
+          const sent = (emailLogs ?? []).filter((l: any) => l.status === "sent");
+          const totalOpens = sent.reduce((s: number, l: any) => s + (l.openCount ?? 0), 0);
+          const totalClicks = sent.reduce((s: number, l: any) => s + (l.clickCount ?? 0), 0);
+          const openedCount = sent.filter((l: any) => (l.openCount ?? 0) > 0).length;
+          return (
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Sent", value: sent.length, color: "#64DD17" },
+                { label: "Unique Opens", value: openedCount, color: "#38BDF8" },
+                { label: "Total Opens", value: totalOpens, color: "#A78BFA" },
+                { label: "Link Clicks", value: totalClicks, color: "#FFD600" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="fl-card p-3 text-center">
+                  <p className="text-xl font-bold" style={{ color }}>{value}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#555" }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* Per-email log */}
         <div className="fl-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <History size={16} style={{ color: "#FFD600" }} />
@@ -233,23 +257,37 @@ function EmailNotificationsTab({ projects }: { projects: any[] }) {
             <span className="text-xs ml-auto" style={{ color: "#555" }}>{emailLogs?.length ?? 0} sent</span>
           </div>
           {!emailLogs || emailLogs.length === 0 ? (
-            <p className="text-xs text-center py-6" style={{ color: "#444" }}>No emails sent yet</p>
+            <p className="text-xs text-center py-6" style={{ color: "#444" }}>No emails sent yet for this project</p>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {emailLogs.slice().reverse().map((log: any) => (
-                <div key={log.id} className="px-3 py-2.5 rounded-lg" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className={`w-1.5 h-1.5 rounded-full`} style={{ background: log.status === "sent" ? "#64DD17" : "#EF4444" }} />
+                <div key={log.id} className="px-3 py-3 rounded-lg" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: log.status === "sent" ? "#64DD17" : "#EF4444" }} />
                     <span className="text-xs font-semibold" style={{ color: log.status === "sent" ? "#64DD17" : "#EF4444" }}>{log.status}</span>
                     <span className="text-xs ml-auto" style={{ color: "#444" }}>{new Date(log.sentAt).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-xs truncate" style={{ color: "#CCCCCC" }}>{log.subject}</p>
-                  {log.errorMessage && <p className="text-xs mt-0.5" style={{ color: "#EF4444" }}>{log.errorMessage}</p>}
+                  <p className="text-xs truncate mb-2" style={{ color: "#CCCCCC" }}>{log.subject}</p>
+                  {log.status === "sent" && (
+                    <div className="flex gap-3">
+                      <span className="text-xs" style={{ color: (log.openCount ?? 0) > 0 ? "#38BDF8" : "#444" }}>
+                        👁 {log.openCount ?? 0} open{log.openCount !== 1 ? "s" : ""}
+                      </span>
+                      <span className="text-xs" style={{ color: (log.clickCount ?? 0) > 0 ? "#FFD600" : "#444" }}>
+                        🔗 {log.clickCount ?? 0} click{log.clickCount !== 1 ? "s" : ""}
+                      </span>
+                      {log.firstOpenedAt && (
+                        <span className="text-xs ml-auto" style={{ color: "#555" }}>First opened {new Date(log.firstOpenedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {log.errorMessage && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{log.errorMessage}</p>}
                 </div>
               ))}
             </div>
           )}
         </div>
+
         <div className="fl-card p-5">
           <h3 className="font-bold text-sm mb-3" style={{ color: "#FFD600" }}>Email Guide</h3>
           <div className="space-y-2 text-xs" style={{ color: "#888" }}>

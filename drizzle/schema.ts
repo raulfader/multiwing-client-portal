@@ -157,11 +157,31 @@ export const emailLog = mysqlTable("email_log", {
   subject: varchar("subject", { length: 500 }).notNull(),
   status: mysqlEnum("status", ["sent", "failed"]).default("sent").notNull(),
   errorMessage: text("errorMessage"),
+  trackingToken: varchar("trackingToken", { length: 128 }),
+  openCount: int("openCount").default(0).notNull(),
+  clickCount: int("clickCount").default(0).notNull(),
+  firstOpenedAt: timestamp("firstOpenedAt"),
+  lastOpenedAt: timestamp("lastOpenedAt"),
+  firstClickedAt: timestamp("firstClickedAt"),
   sentAt: timestamp("sentAt").defaultNow().notNull(),
 });
 
 export type EmailLog = typeof emailLog.$inferSelect;
 export type InsertEmailLog = typeof emailLog.$inferInsert;
+
+// ── Email Events (per-open / per-click events) ────────────────────────────────
+export const emailEvents = mysqlTable("email_events", {
+  id: int("id").autoincrement().primaryKey(),
+  emailLogId: int("emailLogId").notNull(),
+  eventType: mysqlEnum("eventType", ["open", "click"]).notNull(),
+  url: text("url"),           // populated for click events
+  userAgent: text("userAgent"),
+  ip: varchar("ip", { length: 64 }),
+  occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+});
+
+export type EmailEvent = typeof emailEvents.$inferSelect;
+export type InsertEmailEvent = typeof emailEvents.$inferInsert;
 
 // ── Custom Auth Sessions ───────────────────────────────────────────────
 export const customSessions = mysqlTable("custom_sessions", {

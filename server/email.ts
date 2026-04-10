@@ -22,14 +22,25 @@ export async function verifySMTP(): Promise<boolean> {
 const FL_LOGO =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
 
+const PORTAL_BASE_URL = "https://multiwing.faderlabs.ai";
+
 export function buildProjectNotificationEmail(params: {
   firstName: string;
   projectTitle: string;
   projectUrl: string;
   subject: string;
   customMessage?: string;
+  trackingToken?: string;
 }): { html: string; text: string } {
-  const { firstName, projectTitle, projectUrl, customMessage } = params;
+  const { firstName, projectTitle, projectUrl, customMessage, trackingToken } = params;
+
+  // Build tracking URLs if a token is provided
+  const trackedProjectUrl = trackingToken
+    ? `${PORTAL_BASE_URL}/track/click/${trackingToken}?url=${encodeURIComponent(projectUrl)}`
+    : projectUrl;
+  const openPixelUrl = trackingToken
+    ? `${PORTAL_BASE_URL}/track/open/${trackingToken}`
+    : null;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -82,14 +93,14 @@ export function buildProjectNotificationEmail(params: {
       <div class="cta-block">
         <p class="cta-label">Your Project</p>
         <p class="cta-title">${projectTitle}</p>
-        <a href="${projectUrl}" class="cta-btn">View Project &rarr;</a>
+        <a href="${trackedProjectUrl}" class="cta-btn">View Project &rarr;</a>
       </div>
 
       <!-- Login credentials -->
       <div class="credentials">
         <div class="cred-row">
           <span class="cred-label">Portal</span>
-          <span class="cred-value"><a href="${projectUrl}" style="color:#FFD600;text-decoration:none;">${projectUrl}</a></span>
+          <span class="cred-value"><a href="${trackedProjectUrl}" style="color:#FFD600;text-decoration:none;">${projectUrl}</a></span>
         </div>
         <div class="cred-row">
           <span class="cred-label">Password</span>
@@ -108,6 +119,7 @@ export function buildProjectNotificationEmail(params: {
       <p>This email was sent on behalf of the Faderlabs production team.</p>
     </div>
   </div>
+  ${openPixelUrl ? `<img src="${openPixelUrl}" width="1" height="1" alt="" style="display:block;border:0;" />` : ""}
 </body>
 </html>`;
 
@@ -134,6 +146,7 @@ export async function sendProjectNotification(params: {
   projectUrl: string;
   subject: string;
   customMessage?: string;
+  trackingToken?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const { html, text } = buildProjectNotificationEmail(params);

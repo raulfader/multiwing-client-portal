@@ -239,3 +239,6 @@
 
 ## Track Approvals in Admin Dashboard
 - [x] Show track approval statuses in admin dashboard (per track: approved/needs_changes/rejected/pending)
+
+## Stats Bar Fix
+- [x] Replace "Pillar Approvals" stat card with "Rejected" (track-level rejected count) in admin dashboard

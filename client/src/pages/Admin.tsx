@@ -978,7 +978,7 @@ function StatsBar({ allApprovals, allTrackApprovals, allComments }: { allApprova
     { label: "Comments", value: allComments.length, icon: MessageSquare, color: "#A78BFA" },
     { label: "Tracks Approved", value: allTrackApprovals.filter((a) => a.status === "approved").length, icon: CheckCircle2, color: "#64DD17" },
     { label: "Needs Changes", value: allTrackApprovals.filter((a) => a.status === "needs_changes").length, icon: Clock, color: "#FFD600" },
-    { label: "Pillar Approvals", value: approved, icon: CheckCircle2, color: "#38BDF8" },
+    { label: "Rejected", value: allTrackApprovals.filter((a) => a.status === "rejected").length, icon: XCircle, color: "#EF4444" },
   ];
 
   return (

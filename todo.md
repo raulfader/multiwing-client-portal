@@ -236,3 +236,6 @@
 ## Email Link Auth Redirect (Round 2)
 - [x] Project page: redirect unauthenticated users to /?returnTo=/projects/:slug
 - [x] Login screen (Home.tsx): after successful password login, redirect to returnTo path
+
+## Track Approvals in Admin Dashboard
+- [x] Show track approval statuses in admin dashboard (per track: approved/needs_changes/rejected/pending)

@@ -967,16 +967,18 @@ function RecentComments() {
 }
 
 // ── Stats Bar ──────────────────────────────────────────────────────────────────
-function StatsBar({ allApprovals, allComments }: { allApprovals: any[]; allComments: any[] }) {
-  const approved = allApprovals.filter((a) => a.status === "approved").length;
-  const rejected = allApprovals.filter((a) => a.status === "rejected").length;
-  const needsChanges = allApprovals.filter((a) => a.status === "needs_changes").length;
+function StatsBar({ allApprovals, allTrackApprovals, allComments }: { allApprovals: any[]; allTrackApprovals: any[]; allComments: any[] }) {
+  // Combine pillar-level and track-level approvals for the stats bar
+  const combined = [...allApprovals, ...allTrackApprovals];
+  const approved = combined.filter((a) => a.status === "approved").length;
+  const rejected = combined.filter((a) => a.status === "rejected").length;
+  const needsChanges = combined.filter((a) => a.status === "needs_changes").length;
 
   const stats = [
     { label: "Comments", value: allComments.length, icon: MessageSquare, color: "#A78BFA" },
-    { label: "Approved", value: approved, icon: CheckCircle2, color: "#64DD17" },
-    { label: "Rejected", value: rejected, icon: XCircle, color: "#EF4444" },
-    { label: "Needs Changes", value: needsChanges, icon: Clock, color: "#FFD600" },
+    { label: "Tracks Approved", value: allTrackApprovals.filter((a) => a.status === "approved").length, icon: CheckCircle2, color: "#64DD17" },
+    { label: "Needs Changes", value: allTrackApprovals.filter((a) => a.status === "needs_changes").length, icon: Clock, color: "#FFD600" },
+    { label: "Pillar Approvals", value: approved, icon: CheckCircle2, color: "#38BDF8" },
   ];
 
   return (
@@ -1385,6 +1387,7 @@ export default function Admin() {
   const isAdmin = !loading && isAuthenticated && user?.role === "admin";
   const { data: pillars, refetch: refetchPillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAdmin });
   const { data: allApprovals } = trpc.approvals.all.useQuery(undefined, { enabled: isAdmin });
+  const { data: allTrackApprovals } = trpc.trackApprovals.all.useQuery(undefined, { enabled: isAdmin });
   const { data: allComments } = trpc.comments.all.useQuery(undefined, { enabled: isAdmin });
    const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
   const [orderedProjects, setOrderedProjects] = React.useState<any[]>([]);
@@ -1447,7 +1450,7 @@ export default function Admin() {
       <main className="container py-8 pb-16">
         {/* Stats */}
         {allApprovals && allComments && (
-          <StatsBar allApprovals={allApprovals} allComments={allComments} />
+          <StatsBar allApprovals={allApprovals} allTrackApprovals={allTrackApprovals ?? []} allComments={allComments} />
         )}
 
         {/* Tab Navigation */}

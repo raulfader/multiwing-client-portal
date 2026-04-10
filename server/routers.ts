@@ -539,6 +539,17 @@ export const appRouter = router({
         return { url };
       }),
 
+    // Client-facing: set review status (approved / needs_changes / pending)
+    setReviewStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["pending", "approved", "needs_changes"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateDeliverable(input.id, { reviewStatus: input.status });
+        return { success: true };
+      }),
+
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {

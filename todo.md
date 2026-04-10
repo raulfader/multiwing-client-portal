@@ -304,3 +304,15 @@
 - [x] Fix useEffect dependency: added [streamUrl] so video event listeners attach after video element mounts (was [] causing duration=0 forever)
 - [x] Fix fullscreen: try/catch requestFullscreen, fall back to window.open(streamUrl) when blocked by iframe permissions policy
 - [x] Scrub bar: pure div with onMouseDown/onTouchStart, no range input intercepting clicks
+
+## Video Player Custom Fullscreen Overlay
+- [x] Add isFullscreen state + fixed-position overlay (z-9999) that covers the entire viewport
+- [x] Fullscreen overlay includes: video, custom scrub bar, comment markers, comment box, comment list, close button
+- [x] Escape key closes the fullscreen overlay
+- [x] Fullscreen button toggles the overlay (no browser fullscreen API — works inside iframes too)
+
+## Deliverable Review Buttons (Video Player)
+- [x] Add reviewStatus field to deliverables table (pending / approved / needs_changes) + migration applied
+- [x] Add tRPC deliverables.setReviewStatus mutation (client-facing, protectedProcedure)
+- [x] Add Approve / Needs Changes buttons to DeliverableVideoPlayer (inline + fullscreen), matching Sonic Branding style
+- [x] Buttons toggle: clicking active status resets to pending; clicking inactive sets that status

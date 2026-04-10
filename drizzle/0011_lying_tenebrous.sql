@@ -1,0 +1,1 @@
+ALTER TABLE `deliverables` ADD `reviewStatus` varchar(50) DEFAULT 'pending' NOT NULL;

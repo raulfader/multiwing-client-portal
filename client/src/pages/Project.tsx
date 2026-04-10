@@ -5,7 +5,7 @@ import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
-  Play, Pause, Volume2, Download, Loader2, Maximize2
+  Play, Pause, Volume2, Download, Loader2, Maximize2, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -559,8 +559,26 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<string>(deliverable.reviewStatus ?? "pending");
+  // Separate ref for the fullscreen scrub bar (different DOM element)
+  const fsProgressBarRef = useRef<HTMLDivElement>(null);
 
   const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
+  const setReviewStatusMutation = trpc.deliverables.setReviewStatus.useMutation({
+    onSuccess: (_data, variables) => {
+      setReviewStatus(variables.status);
+      toast.success(variables.status === "approved" ? "Marked as Approved" : "Marked as Needs Changes");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Escape key closes fullscreen overlay
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   // Fetch a presigned stream URL on mount (S3 requires signed GET for private buckets)
   useEffect(() => {
@@ -629,8 +647,9 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   };
 
   // Scrub bar: pure click/drag without a range input so clicks always reach the handler
-  const scrubTo = useCallback((clientX: number) => {
-    const bar = progressBarRef.current;
+  // barEl: pass the specific bar element (inline or fullscreen)
+  const scrubTo = useCallback((clientX: number, barEl?: HTMLDivElement | null) => {
+    const bar = barEl ?? progressBarRef.current;
     if (!bar || !duration) return;
     const rect = bar.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
@@ -639,55 +658,56 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     return t;
   }, [duration]);
 
-  const handleProgressMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    isDraggingRef.current = true;
-    scrubTo(e.clientX);
-    const onMove = (ev: MouseEvent) => { if (isDraggingRef.current) scrubTo(ev.clientX); };
-    const onUp = (ev: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      isDraggingRef.current = false;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-      // Only open comment box on a click (not a drag)
-      if (Math.abs(ev.clientX - e.clientX) < 5 && duration) {
-        const bar = progressBarRef.current;
-        if (!bar) return;
-        const rect = bar.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
-        const ts = Math.floor(ratio * duration);
-        setPendingTimestamp(ts);
-        setShowCommentBox(true);
-      }
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }, [duration, scrubTo]);
+  // Factory: creates mousedown + touchstart handlers for any scrub bar element
+  const makeProgressHandlers = useCallback((getBarEl: () => HTMLDivElement | null) => ({
+    onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      isDraggingRef.current = true;
+      const startX = e.clientX;
+      scrubTo(e.clientX, getBarEl());
+      const onMove = (ev: MouseEvent) => { if (isDraggingRef.current) scrubTo(ev.clientX, getBarEl()); };
+      const onUp = (ev: MouseEvent) => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        if (Math.abs(ev.clientX - startX) < 5 && duration) {
+          const bar = getBarEl();
+          if (!bar) return;
+          const rect = bar.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+          setPendingTimestamp(Math.floor(ratio * duration));
+          setShowCommentBox(true);
+        }
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const startX = e.touches[0].clientX;
+      scrubTo(startX, getBarEl());
+      const onMove = (ev: TouchEvent) => scrubTo(ev.touches[0].clientX, getBarEl());
+      const onEnd = (ev: TouchEvent) => {
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onEnd);
+        const endX = ev.changedTouches[0].clientX;
+        if (Math.abs(endX - startX) < 10 && duration) {
+          const bar = getBarEl();
+          if (!bar) return;
+          const rect = bar.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (endX - rect.left) / rect.width));
+          setPendingTimestamp(Math.floor(ratio * duration));
+          setShowCommentBox(true);
+        }
+      };
+      document.addEventListener("touchmove", onMove, { passive: false });
+      document.addEventListener("touchend", onEnd);
+    },
+  }), [duration, scrubTo]);
 
-  // Touch support for scrub bar
-  const handleProgressTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const startX = touch.clientX;
-    scrubTo(startX);
-    const onMove = (ev: TouchEvent) => scrubTo(ev.touches[0].clientX);
-    const onEnd = (ev: TouchEvent) => {
-      document.removeEventListener("touchmove", onMove);
-      document.removeEventListener("touchend", onEnd);
-      const endX = ev.changedTouches[0].clientX;
-      if (Math.abs(endX - startX) < 10 && duration) {
-        const bar = progressBarRef.current;
-        if (!bar) return;
-        const rect = bar.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (endX - rect.left) / rect.width));
-        const ts = Math.floor(ratio * duration);
-        setPendingTimestamp(ts);
-        setShowCommentBox(true);
-      }
-    };
-    document.addEventListener("touchmove", onMove, { passive: false });
-    document.addEventListener("touchend", onEnd);
-  }, [duration, scrubTo]);
+  const inlineHandlers = makeProgressHandlers(() => progressBarRef.current);
+  const fsHandlers = makeProgressHandlers(() => fsProgressBarRef.current);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const timestampedComments = [...comments].filter(c => c.timestampSeconds != null).sort((a, b) => (a.timestampSeconds ?? 0) - (b.timestampSeconds ?? 0));
@@ -727,25 +747,12 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             <p className="text-red-400 text-sm">{videoError}</p>
           </div>
         )}
-        {/* Fullscreen button — falls back to opening video in new tab if iframe blocks fullscreen API */}
+        {/* Fullscreen button — opens custom in-page overlay so comment UI still works */}
         <button
-          onClick={async () => {
-            const el = wrapperRef.current as HTMLElement & { webkitRequestFullscreen?: () => void; mozRequestFullScreen?: () => void; msRequestFullscreen?: () => void };
-            if (!el) return;
-            try {
-              if (el.requestFullscreen) await el.requestFullscreen();
-              else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-              else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-              else if (el.msRequestFullscreen) el.msRequestFullscreen();
-              else if (streamUrl) window.open(streamUrl, "_blank");
-            } catch {
-              // Blocked by iframe permissions policy — open in new tab instead
-              if (streamUrl) window.open(streamUrl, "_blank");
-            }
-          }}
+          onClick={() => setIsFullscreen(true)}
           className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
           style={{ background: "rgba(0,0,0,0.5)" }}
-          title="Fullscreen (or open in new tab)"
+          title="Fullscreen"
         >
           <Maximize2 size={13} style={{ color: "#fff" }} />
         </button>
@@ -773,8 +780,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
           <div
             ref={progressBarRef}
             className="flex-1 relative h-8 flex items-center cursor-crosshair select-none"
-            onMouseDown={handleProgressMouseDown}
-            onTouchStart={handleProgressTouchStart}
+            {...inlineHandlers}
             title="Click to add a comment at this timestamp"
           >
             {/* Track */}
@@ -884,6 +890,235 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
               )}
             </div>
           ))}
+        </div>
+      )}
+      {/* ── Review buttons ─────────────────────────────────────────── */}
+      <div className="px-4 pb-4 flex gap-2 flex-wrap">
+        <button
+          onClick={() => setReviewStatusMutation.mutate({ id: deliverable.id, status: reviewStatus === "approved" ? "pending" : "approved" })}
+          disabled={setReviewStatusMutation.isPending}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          style={reviewStatus === "approved"
+            ? { background: "#64DD17", color: "#0A0A0A" }
+            : { background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
+        >
+          <CheckCircle2 size={11} /> {reviewStatus === "approved" ? "Approved ✓" : "Approve"}
+        </button>
+        <button
+          onClick={() => setReviewStatusMutation.mutate({ id: deliverable.id, status: reviewStatus === "needs_changes" ? "pending" : "needs_changes" })}
+          disabled={setReviewStatusMutation.isPending}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          style={reviewStatus === "needs_changes"
+            ? { background: "#FB923C", color: "#0A0A0A" }
+            : { background: "rgba(251,146,60,0.08)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.2)" }}
+        >
+          <RefreshCw size={11} /> {reviewStatus === "needs_changes" ? "Needs Changes ✓" : "Needs Changes"}
+        </button>
+      </div>
+
+      {/* ── Custom fullscreen overlay ─────────────────────────────────── */}
+      {isFullscreen && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col"
+          style={{ background: "#000" }}
+        >
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-4 py-2 shrink-0" style={{ background: "rgba(0,0,0,0.8)", borderBottom: "1px solid #1A1A1A" }}>
+            <span className="text-sm font-semibold text-white/80 truncate">{deliverable.title}</span>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="ml-4 shrink-0 w-8 h-8 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+              title="Exit fullscreen (Esc)"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Video area */}
+          <div className="flex-1 relative bg-black overflow-hidden">
+            <video
+              ref={videoRef}
+              src={streamUrl ?? undefined}
+              className="w-full h-full object-contain"
+              preload="metadata"
+              onClick={togglePlay}
+              style={{ cursor: "pointer", display: "block" }}
+            />
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              </div>
+            )}
+            {!isPlaying && !isLoading && !videoError && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: `${accentColor}CC` }}>
+                  <Play size={26} fill="#0A0A0A" style={{ color: "#0A0A0A", marginLeft: 4 }} />
+                </div>
+              </div>
+            )}
+            {videoError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                <p className="text-red-400 text-sm">{videoError}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Fullscreen controls */}
+          <div className="shrink-0 px-5 py-3" style={{ background: "#111", borderTop: "1px solid #1A1A1A" }}>
+            <div className="flex items-center gap-3 mb-1">
+              <button
+                onClick={togglePlay}
+                disabled={!!videoError}
+                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                style={{ background: videoError ? "#2A2A2A" : accentColor, color: "#0A0A0A" }}
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : isPlaying ? (
+                  <Pause size={16} fill="currentColor" />
+                ) : (
+                  <Play size={16} fill="currentColor" style={{ marginLeft: 2 }} />
+                )}
+              </button>
+
+              {/* Fullscreen scrub bar */}
+              <div
+                ref={fsProgressBarRef}
+                className="flex-1 relative h-9 flex items-center cursor-crosshair select-none"
+                {...fsHandlers}
+                title="Click to add a timestamped comment"
+              >
+                <div className="absolute left-0 right-0 h-2 rounded-full" style={{ background: "#2A2A2A" }}>
+                  <div className="h-full rounded-full" style={{ width: `${progress}%`, background: accentColor }} />
+                </div>
+                <div
+                  className="absolute w-4 h-4 rounded-full shadow-md"
+                  style={{ left: `${progress}%`, background: accentColor, top: "50%", transform: "translateX(-50%) translateY(-50%)" }}
+                />
+                {timestampedComments.map((c) =>
+                  duration > 0 ? (
+                    <div
+                      key={c.id}
+                      className="absolute w-2.5 h-2.5 rounded-full border border-black pointer-events-none"
+                      style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%`, background: "#FF6B35", top: "50%", transform: "translateX(-50%) translateY(-50%)", zIndex: 10 }}
+                      title={`${c.commenterName ?? "Anon"} @ ${formatTime(c.timestampSeconds ?? 0)}: ${c.content}`}
+                    />
+                  ) : null
+                )}
+              </div>
+
+              <span className="text-sm font-mono text-white/40 shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
+            </div>
+            <p className="text-xs text-white/30">Click the timeline to leave a timestamped comment · Press Esc to exit</p>
+          </div>
+
+          {/* Fullscreen comment box */}
+          {showCommentBox && (
+            <div className="shrink-0 px-5 pb-3" style={{ background: "#111" }}>
+              <div className="rounded-lg p-3 space-y-2" style={{ background: "#0A0A0A", border: `1px solid ${accentColor}33` }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold" style={{ color: accentColor }}>@ {formatTime(pendingTimestamp ?? 0)}</span>
+                  <span className="text-xs text-white/40">— Add a comment at this timestamp</span>
+                  <button onClick={() => { setShowCommentBox(false); setPendingTimestamp(null); }} className="ml-auto text-white/30 hover:text-white/60"><X size={13} /></button>
+                </div>
+                <input
+                  value={commenterName}
+                  onChange={(e) => setCommenterName(e.target.value)}
+                  placeholder="Your name (required)"
+                  className="w-full text-xs px-3 py-2 rounded-lg outline-none"
+                  style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+                />
+                <Textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Your comment…"
+                  rows={2}
+                  className="text-xs resize-none"
+                  style={{ background: "#111", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!commentText.trim()) { toast.error("Comment cannot be empty"); return; }
+                      if (!commenterName.trim()) { toast.error("Please enter your name"); return; }
+                      addComment.mutate({ deliverableId: deliverable.id, content: commentText.trim(), commenterName: commenterName.trim(), timestampSeconds: pendingTimestamp ?? undefined });
+                    }}
+                    disabled={addComment.isPending}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ background: accentColor, color: "#0A0A0A" }}
+                  >
+                    {addComment.isPending ? <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Send size={11} />}
+                    Submit
+                  </button>
+                  <button
+                    onClick={() => { setShowCommentBox(false); setPendingTimestamp(null); setCommentText(""); }}
+                    className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fullscreen review buttons */}
+          <div className="shrink-0 px-5 py-3 flex gap-2 flex-wrap" style={{ background: "#0A0A0A", borderTop: "1px solid #1A1A1A" }}>
+            <button
+              onClick={() => setReviewStatusMutation.mutate({ id: deliverable.id, status: reviewStatus === "approved" ? "pending" : "approved" })}
+              disabled={setReviewStatusMutation.isPending}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+              style={reviewStatus === "approved"
+                ? { background: "#64DD17", color: "#0A0A0A" }
+                : { background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
+            >
+              <CheckCircle2 size={11} /> {reviewStatus === "approved" ? "Approved ✓" : "Approve"}
+            </button>
+            <button
+              onClick={() => setReviewStatusMutation.mutate({ id: deliverable.id, status: reviewStatus === "needs_changes" ? "pending" : "needs_changes" })}
+              disabled={setReviewStatusMutation.isPending}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+              style={reviewStatus === "needs_changes"
+                ? { background: "#FB923C", color: "#0A0A0A" }
+                : { background: "rgba(251,146,60,0.08)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.2)" }}
+            >
+              <RefreshCw size={11} /> {reviewStatus === "needs_changes" ? "Needs Changes ✓" : "Needs Changes"}
+            </button>
+          </div>
+
+          {/* Fullscreen comments list */}
+          {sortedComments.length > 0 && (
+            <div className="shrink-0 max-h-48 overflow-y-auto px-5 pb-4 space-y-2" style={{ background: "#0A0A0A", borderTop: "1px solid #1A1A1A" }}>
+              <p className="text-xs font-semibold text-white/30 uppercase tracking-widest pt-3 mb-2">
+                <MessageSquare size={10} className="inline mr-1" />
+                {sortedComments.length} Comment{sortedComments.length !== 1 ? "s" : ""}
+              </p>
+              {sortedComments.map((c) => (
+                <div key={c.id} className="rounded-lg px-3 py-2.5 space-y-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center gap-2">
+                    {c.timestampSeconds != null && (
+                      <button
+                        onClick={() => { if (videoRef.current) { videoRef.current.currentTime = c.timestampSeconds!; setCurrentTime(c.timestampSeconds!); } }}
+                        className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: `${accentColor}22`, color: accentColor }}
+                      >
+                        {formatTime(c.timestampSeconds)}
+                      </button>
+                    )}
+                    <span className="text-xs font-semibold text-white/70">{c.commenterName ?? "Anonymous"}</span>
+                    <span className="text-xs text-white/25 ml-auto">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
+                  {c.adminResponse && (
+                    <div className="mt-1.5 pl-2 border-l-2" style={{ borderColor: accentColor }}>
+                      <p className="text-xs font-semibold mb-0.5" style={{ color: accentColor }}>Faderlabs Response</p>
+                      <p className="text-xs text-white/50 leading-relaxed">{c.adminResponse}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

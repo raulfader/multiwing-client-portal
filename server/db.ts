@@ -431,6 +431,7 @@ export async function updateDeliverable(id: number, data: Partial<{
   fileName: string | null;
   fileSize: number | null;
   sortOrder: number;
+  reviewStatus: string;
 }>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

@@ -116,12 +116,12 @@ export const deliverables = mysqlTable("deliverables", {
   fileType: varchar("fileType", { length: 50 }).default("video"), // video, audio, document, archive
   fileKey: text("fileKey"), // S3 object key for uploaded files
   fileName: varchar("fileName", { length: 500 }), // original filename
-  fileSize: bigint("fileSize", { mode: "number" }), // bytes
+   fileSize: bigint("fileSize", { mode: "number" }), // bytes
   sortOrder: int("sortOrder").default(0).notNull(),
+  reviewStatus: varchar("reviewStatus", { length: 50 }).default("pending").notNull(), // pending, approved, needs_changes
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Deliverable = typeof deliverables.$inferSelect;
 export type InsertDeliverable = typeof deliverables.$inferInsert;
 

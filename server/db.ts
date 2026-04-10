@@ -427,6 +427,9 @@ export async function updateDeliverable(id: number, data: Partial<{
   thumbnailUrl: string;
   downloadUrl: string;
   fileType: string;
+  fileKey: string | null;
+  fileName: string | null;
+  fileSize: number | null;
   sortOrder: number;
 }>) {
   const db = await getDb();

@@ -64,6 +64,13 @@
       "when": 1775836240256,
       "tag": "0008_closed_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1775839283525,
+      "tag": "0009_curious_fat_cobra",
+      "breakpoints": true
     }
   ]
 }

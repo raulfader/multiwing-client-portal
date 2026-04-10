@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { bigint, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -112,8 +112,11 @@ export const deliverables = mysqlTable("deliverables", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   thumbnailUrl: text("thumbnailUrl"),
-  downloadUrl: text("downloadUrl"), // f.io or OneDrive link
-  fileType: varchar("fileType", { length: 50 }).default("video"), // video, document, archive
+  downloadUrl: text("downloadUrl"), // f.io or OneDrive link (legacy) or S3 public URL
+  fileType: varchar("fileType", { length: 50 }).default("video"), // video, audio, document, archive
+  fileKey: text("fileKey"), // S3 object key for uploaded files
+  fileName: varchar("fileName", { length: 500 }), // original filename
+  fileSize: bigint("fileSize", { mode: "number" }), // bytes
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

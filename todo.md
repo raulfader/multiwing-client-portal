@@ -271,3 +271,12 @@
 
 ## File Download Fix
 - [x] Fix file download in admin Project Requests tab — now uses presigned S3 URL with Content-Disposition: attachment via server-side getDownloadUrl procedure
+
+## Deliverable File Upload & Media Players
+- [x] Add fileKey, fileName, fileSize fields to deliverables table (migration)
+- [x] Add tRPC procedures: deliverables.getUploadUrl (admin), deliverables.update (with fileKey/fileName/fileSize), deliverables.getDownloadUrl (client)
+- [x] Add file upload UI to admin deliverable editor (S3 direct upload, any file type, no size limit, with progress bar)
+- [x] Add video player to client project page for deliverables with video files (HTML5 <video> with controls)
+- [x] Add audio player to client project page for deliverables with audio files (matching Sonic Branding style)
+- [x] Show download button for non-media deliverable files (PDFs, ZIPs, etc.) via presigned S3 URL
+- [x] Client: option to download any deliverable file via presigned S3 URL (forced download)

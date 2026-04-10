@@ -1142,6 +1142,76 @@ function AddDeliverableForm({ projectId, onCreated }: { projectId: number; onCre
   );
 }
 
+// ── Deliverable File Upload ────────────────────────────────────────────────────
+function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: number; onUploaded: (info: { fileKey: string; fileName: string; fileSize: number; publicUrl: string; detectedType: string }) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const getUploadUrl = trpc.deliverables.getUploadUrl.useMutation();
+
+  const handleFile = async (file: File) => {
+    setUploadError(null);
+    setUploadProgress(0);
+    try {
+      const contentType = file.type || "application/octet-stream";
+      const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
+        fileName: file.name,
+        contentType,
+      });
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed: ${xhr.status}`));
+        });
+        xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", contentType);
+        xhr.send(file);
+      });
+      // Detect type from MIME
+      let detectedType = "document";
+      if (contentType.startsWith("video/")) detectedType = "video";
+      else if (contentType.startsWith("audio/")) detectedType = "audio";
+      else if (contentType.startsWith("image/")) detectedType = "image";
+      else if (contentType === "application/zip" || contentType === "application/x-zip-compressed") detectedType = "archive";
+      onUploaded({ fileKey, fileName: file.name, fileSize: file.size, publicUrl, detectedType });
+      setUploadProgress(null);
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setUploadProgress(null);
+    }
+  };
+
+  return (
+    <div>
+      <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      {uploadProgress !== null ? (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs" style={{ color: "#888" }}>Uploading… {uploadProgress}%</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${uploadProgress}%`, background: "#FFD600" }} />
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
+          style={{ background: "rgba(255,214,0,0.08)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+        >
+          <Upload size={11} /> {"Upload File"}
+        </button>
+      )}
+      {uploadError && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{uploadError}</p>}
+    </div>
+  );
+}
+
 // ── Deliverable Edit Row ──────────────────────────────────────────────────────
 function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
@@ -1150,33 +1220,81 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
   const [downloadUrl, setDownloadUrl] = useState(d.downloadUrl ?? "");
   const [thumbnailUrl, setThumbnailUrl] = useState(d.thumbnailUrl ?? "");
   const [fileType, setFileType] = useState(d.fileType ?? "video");
+  const [fileKey, setFileKey] = useState<string | null>(d.fileKey ?? null);
+  const [fileName, setFileName] = useState<string | null>(d.fileName ?? null);
+  const [fileSize, setFileSize] = useState<number | null>(d.fileSize ?? null);
 
   const update = trpc.deliverables.update.useMutation({
     onSuccess: () => { setEditing(false); onSaved(); toast.success("Deliverable updated"); },
     onError: (e) => toast.error(e.message),
   });
 
+  const updateFileMeta = trpc.deliverables.update.useMutation({
+    onSuccess: () => { onSaved(); toast.success("File attached"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleFileUploaded = (info: { fileKey: string; fileName: string; fileSize: number; publicUrl: string; detectedType: string }) => {
+    setFileKey(info.fileKey);
+    setFileName(info.fileName);
+    setFileSize(info.fileSize);
+    // Auto-set fileType from detected type and save immediately
+    const newType = info.detectedType;
+    setFileType(newType);
+    updateFileMeta.mutate({
+      id: d.id,
+      fileKey: info.fileKey,
+      fileName: info.fileName,
+      fileSize: info.fileSize,
+      downloadUrl: info.publicUrl,
+      fileType: newType,
+    });
+  };
+
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  }
+
   if (!editing) {
     return (
-      <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
-        {d.thumbnailUrl
-          ? <img src={d.thumbnailUrl} alt={d.title} className="w-10 h-7 object-cover rounded flex-shrink-0" />
-          : <div className="w-10 h-7 rounded flex-shrink-0" style={{ background: "#1A1A1A" }} />}
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
-          <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
+      <div className="p-2 rounded-lg space-y-2" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
+        <div className="flex items-center gap-2">
+          {d.thumbnailUrl
+            ? <img src={d.thumbnailUrl} alt={d.title} className="w-10 h-7 object-cover rounded flex-shrink-0" />
+            : <div className="w-10 h-7 rounded flex-shrink-0" style={{ background: "#1A1A1A" }} />}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
+            <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
+          </div>
+          {d.downloadUrl && (
+            <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
+              <Link2 size={12} />
+            </a>
+          )}
+          <button onClick={() => setEditing(true)} className="p-1 rounded" style={{ color: "#888" }} title="Edit">
+            <Edit2 size={12} />
+          </button>
+          <button onClick={() => { if (confirm(`Delete "${d.title}"?`)) onDelete(); }} className="p-1 rounded" style={{ color: "#EF4444" }} title="Delete">
+            <Trash2 size={12} />
+          </button>
         </div>
-        {d.downloadUrl && (
-          <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
-            <Link2 size={12} />
-          </a>
-        )}
-        <button onClick={() => setEditing(true)} className="p-1 rounded" style={{ color: "#888" }} title="Edit">
-          <Edit2 size={12} />
-        </button>
-        <button onClick={() => { if (confirm(`Delete "${d.title}"?`)) onDelete(); }} className="p-1 rounded" style={{ color: "#EF4444" }} title="Delete">
-          <Trash2 size={12} />
-        </button>
+        {/* File attachment row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(fileKey ?? d.fileKey) ? (
+            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded" style={{ background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}>
+              <Download size={10} />
+              {(fileName ?? d.fileName) || "File attached"}
+              {(fileSize ?? d.fileSize) ? ` · ${formatBytes(fileSize ?? d.fileSize)}` : ""}
+            </span>
+          ) : (
+            <span className="text-xs" style={{ color: "#444" }}>No file attached</span>
+          )}
+          <DeliverableFileUpload deliverableId={d.id} onUploaded={handleFileUploaded} />
+        </div>
       </div>
     );
   }
@@ -1187,6 +1305,7 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
         <select value={fileType} onChange={(e) => setFileType(e.target.value)} className="text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}>
           <option value="video">Video</option>
+          <option value="audio">Audio</option>
           <option value="document">Document</option>
           <option value="archive">Archive</option>
           <option value="image">Image</option>
@@ -1197,13 +1316,13 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
       <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full text-xs px-3 py-2 rounded-lg outline-none" style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }} />
       <div className="flex gap-2">
         <button
-          onClick={() => update.mutate({ id: d.id, title: title || undefined, description: description || undefined, downloadUrl: downloadUrl || undefined, thumbnailUrl: thumbnailUrl || undefined, fileType })}
+          onClick={() => update.mutate({ id: d.id, title: title || undefined, description: description || undefined, downloadUrl: downloadUrl || undefined, thumbnailUrl: thumbnailUrl || undefined, fileType, fileKey: fileKey ?? undefined, fileName: fileName ?? undefined, fileSize: fileSize ?? undefined })}
           disabled={!title.trim() || update.isPending}
           className="fl-btn-primary flex-1 justify-center py-2 text-xs flex items-center gap-1.5"
         >
           {update.isPending ? <Loader2 size={12} className="animate-spin" /> : "Save"}
         </button>
-        <button onClick={() => { setTitle(d.title); setDescription(d.description ?? ""); setDownloadUrl(d.downloadUrl ?? ""); setThumbnailUrl(d.thumbnailUrl ?? ""); setFileType(d.fileType ?? "video"); setEditing(false); }} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}>Cancel</button>
+        <button onClick={() => { setTitle(d.title); setDescription(d.description ?? ""); setDownloadUrl(d.downloadUrl ?? ""); setThumbnailUrl(d.thumbnailUrl ?? ""); setFileType(d.fileType ?? "video"); setFileKey(d.fileKey ?? null); setFileName(d.fileName ?? null); setFileSize(d.fileSize ?? null); setEditing(false); }} className="px-3 py-2 rounded-lg text-xs font-semibold" style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}>Cancel</button>
       </div>
     </div>
   );

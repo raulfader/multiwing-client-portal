@@ -5,7 +5,7 @@ import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
-  Play, Pause, Volume2
+  Play, Pause, Volume2, Download, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -254,43 +254,21 @@ function SonicTrackRow({
               )}
             </button>
 
-            {/* Progress bar — click to place comment */}
-            <div className="flex-1 relative group" ref={progressBarRef}>
-              {/* Clickable overlay for placing comments */}
-              <div
-                className="absolute inset-0 z-20 cursor-crosshair"
-                title="Click to add a comment at this timestamp"
-                onClick={handleProgressClick}
-              />
-              {/* Background track */}
+            {/* Clickable progress bar */}
+            <div
+              ref={progressBarRef}
+              className="flex-1 relative cursor-crosshair"
+              onClick={handleProgressClick}
+              title="Click to add comment at this timestamp"
+            >
               <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
-                <div className="w-full h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
-                  <div className="h-full rounded-full transition-all duration-100"
-                    style={{ width: `${progress}%`, background: accentColor }} />
+                <div className="w-full h-1 rounded-full" style={{ background: "#2A2A2A" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-100"
+                    style={{ width: `${progress}%`, background: accentColor }}
+                  />
                 </div>
               </div>
-              {/* Comment markers on progress bar */}
-              {duration > 0 && timestampedComments.map((c) => (
-                <div
-                  key={c.id}
-                  className="absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none"
-                  style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%` }}
-                >
-                  <div className="w-2.5 h-2.5 rounded-full border-2 border-[#0A0A0A]"
-                    style={{ background: "#FB923C", marginLeft: "-5px" }} />
-                </div>
-              ))}
-              {/* Pending timestamp marker */}
-              {duration > 0 && pendingTimestamp != null && (
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none"
-                  style={{ left: `${(pendingTimestamp / duration) * 100}%` }}
-                >
-                  <div className="w-3 h-3 rounded-full border-2 border-white animate-pulse"
-                    style={{ background: "#FFD600", marginLeft: "-6px" }} />
-                </div>
-              )}
-              {/* Seekable range input (behind click overlay for keyboard) */}
               <input
                 type="range"
                 min={0}
@@ -298,115 +276,72 @@ function SonicTrackRow({
                 step={0.1}
                 value={currentTime}
                 onChange={handleSeek}
-                className="audio-progress relative z-10 pointer-events-none"
+                onClick={(e) => e.stopPropagation()}
+                className="audio-progress relative z-10"
                 style={{ background: "transparent" }}
                 aria-label="Seek"
               />
+              {/* Timestamp comment markers */}
+              {timestampedComments.map((c) => (
+                duration > 0 && (
+                  <div
+                    key={c.id}
+                    className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-black z-20 pointer-events-none"
+                    style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%`, background: accentColor, opacity: 0.8 }}
+                  />
+                )
+              ))}
             </div>
           </div>
-
-          {/* Hint */}
-          <p className="text-[10px] text-white/25 mt-2 text-right">Click the progress bar to place a comment at a timestamp</p>
         </div>
       </div>
 
-      {/* Per-track approval buttons */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-white/40 font-medium mr-1">Your decision:</span>
-          <Button
-            size="sm"
-            onClick={() => setApproval.mutate({ trackId: track.id, status: "approved" })}
-            disabled={setApproval.isPending}
-            className="h-7 px-3 text-xs gap-1.5 border"
-            style={myApproval?.status === "approved"
-              ? { background: "rgba(100,221,23,0.2)", color: "#64DD17", borderColor: "rgba(100,221,23,0.4)" }
-              : { background: "rgba(100,221,23,0.07)", color: "#64DD17", borderColor: "rgba(100,221,23,0.2)" }}
-          >
-            <CheckCircle2 size={12} /> Approve
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setApproval.mutate({ trackId: track.id, status: "needs_changes" })}
-            disabled={setApproval.isPending}
-            className="h-7 px-3 text-xs gap-1.5 border"
-            style={myApproval?.status === "needs_changes"
-              ? { background: "rgba(251,146,60,0.2)", color: "#FB923C", borderColor: "rgba(251,146,60,0.4)" }
-              : { background: "rgba(251,146,60,0.07)", color: "#FB923C", borderColor: "rgba(251,146,60,0.2)" }}
-          >
-            <RefreshCw size={12} /> Needs Changes
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setApproval.mutate({ trackId: track.id, status: "rejected" })}
-            disabled={setApproval.isPending}
-            className="h-7 px-3 text-xs gap-1.5 border"
-            style={myApproval?.status === "rejected"
-              ? { background: "rgba(239,68,68,0.2)", color: "#EF4444", borderColor: "rgba(239,68,68,0.4)" }
-              : { background: "rgba(239,68,68,0.07)", color: "#EF4444", borderColor: "rgba(239,68,68,0.2)" }}
-          >
-            <XCircle size={12} /> Reject
-          </Button>
-        </div>
-      </div>
-
-      {/* Comment input box (shown when a timestamp is pending or user opens it) */}
+      {/* Pending timestamp comment box */}
       {showCommentBox && (
-        <div className="px-4 pb-4">
-          <div className="rounded-lg p-3 space-y-2" style={{ background: "rgba(255,214,0,0.04)", border: "1px solid rgba(255,214,0,0.15)" }}>
-            {pendingTimestamp != null && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold" style={{ color: "#FFD600" }}>
-                  @ {formatTime(pendingTimestamp)}
-                </span>
-                <span className="text-xs text-white/40">— Comment at this timestamp</span>
-                <button
-                  className="ml-auto text-xs text-white/30 hover:text-white/60"
-                  onClick={() => setPendingTimestamp(null)}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+        <div className="px-4 pb-3">
+          <div className="rounded-lg p-3 space-y-2" style={{ background: "#111", border: `1px solid ${accentColor}33` }}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold" style={{ color: accentColor }}>
+                @ {formatTime(pendingTimestamp ?? 0)}
+              </span>
+              <span className="text-xs text-white/40">— Add a comment at this timestamp</span>
+            </div>
             <input
-              type="text"
               value={commenterName}
               onChange={(e) => setCommenterName(e.target.value)}
               placeholder="Your name (required)"
-              className="w-full text-xs px-2.5 py-1.5 rounded-md outline-none"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#FAFAFA" }}
+              className="w-full text-xs px-3 py-2 rounded-lg outline-none"
+              style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
             />
             <Textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder={pendingTimestamp != null ? `Comment at ${formatTime(pendingTimestamp)}…` : "Leave feedback…"}
-              className="bg-white/5 border-white/20 text-white placeholder:text-white/30 text-xs resize-none min-h-[60px]"
+              placeholder="Your comment…"
+              rows={2}
+              className="text-xs resize-none"
+              style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
             />
-            <div className="flex gap-2 justify-end">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-white/40 hover:text-white/70 h-7 text-xs"
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!commentText.trim()) { toast.error("Comment cannot be empty"); return; }
+                  if (!commenterName.trim()) { toast.error("Please enter your name"); return; }
+                  addComment.mutate({ trackId: track.id, content: commentText.trim(), commenterName: commenterName.trim(), timestampSeconds: pendingTimestamp ?? undefined });
+                }}
+                disabled={addComment.isPending}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: accentColor, color: "#0A0A0A" }}
+              >
+                {addComment.isPending ? <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Send size={11} />}
+                Submit
+              </button>
+              <button
                 onClick={() => { setShowCommentBox(false); setPendingTimestamp(null); setCommentText(""); }}
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}
               >
                 Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (!commentText.trim() || !commenterName.trim()) return;
-                  addComment.mutate({
-                    trackId: track.id,
-                    commenterName: commenterName.trim(),
-                    content: commentText.trim(),
-                    timestampSeconds: pendingTimestamp ?? undefined,
-                  });
-                }}
-                disabled={!commentText.trim() || !commenterName.trim() || addComment.isPending}
-                className="h-7 text-xs gap-1.5 bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold"
-              >
-                <Send size={11} /> Submit
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -415,64 +350,316 @@ function SonicTrackRow({
       {/* Comments list */}
       {sortedComments.length > 0 && (
         <div className="px-4 pb-4 space-y-2">
-          <button
-            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
-            onClick={() => setShowCommentBox(true)}
-          >
-            <MessageSquare size={12} />
-            {sortedComments.length} comment{sortedComments.length !== 1 ? "s" : ""}
-          </button>
-          <div className="space-y-1.5">
-            {sortedComments.map((c: any) => (
-              <div key={c.id} className="flex items-start gap-2 rounded-lg px-3 py-2"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">
+            <MessageSquare size={10} className="inline mr-1" />
+            {sortedComments.length} Comment{sortedComments.length !== 1 ? "s" : ""}
+          </p>
+          {sortedComments.map((c) => (
+            <div key={c.id} className="rounded-lg px-3 py-2.5 space-y-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-2">
                 {c.timestampSeconds != null && (
                   <button
-                    className="shrink-0 text-xs font-mono font-bold px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(251,146,60,0.15)", color: "#FB923C" }}
                     onClick={() => {
-                      if (audioRef.current) {
-                        audioRef.current.currentTime = c.timestampSeconds;
-                        setCurrentTime(c.timestampSeconds);
-                      }
+                      if (audioRef.current) { audioRef.current.currentTime = c.timestampSeconds!; setCurrentTime(c.timestampSeconds!); }
                     }}
-                    title="Jump to timestamp"
+                    className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: `${accentColor}22`, color: accentColor }}
                   >
                     {formatTime(c.timestampSeconds)}
                   </button>
                 )}
-                <div className="flex-1 min-w-0">
-                  <span className="text-white/80 text-xs">{c.content}</span>
-                  <div className="text-white/30 text-[10px] mt-0.5">
-                    {c.commenterName ?? c.userName ?? "Client"} · {new Date(c.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
+                <span className="text-xs font-semibold text-white/70">{c.commenterName ?? "Anonymous"}</span>
+                <span className="text-xs text-white/25 ml-auto">{new Date(c.createdAt).toLocaleDateString()}</span>
               </div>
-            ))}
-          </div>
+              <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
+              {c.adminResponse && (
+                <div className="mt-1.5 pl-2 border-l-2" style={{ borderColor: accentColor }}>
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: accentColor }}>Faderlabs Response</p>
+                  <p className="text-xs text-white/50 leading-relaxed">{c.adminResponse}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Add comment button when no comments yet */}
-      {sortedComments.length === 0 && !showCommentBox && (
-        <div className="px-4 pb-4">
-          <button
-            className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors"
-            onClick={() => setShowCommentBox(true)}
-          >
-            <MessageSquare size={12} /> Add a comment
-          </button>
-        </div>
-      )}
+      {/* Approval buttons */}
+      <div className="px-4 pb-4 flex gap-2 flex-wrap">
+        <button
+          onClick={() => setApproval.mutate({ trackId: track.id, status: "approved" })}
+          disabled={setApproval.isPending}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          style={myApproval?.status === "approved"
+            ? { background: "#64DD17", color: "#0A0A0A" }
+            : { background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
+        >
+          <CheckCircle2 size={11} /> Approve
+        </button>
+        <button
+          onClick={() => setApproval.mutate({ trackId: track.id, status: "needs_changes" })}
+          disabled={setApproval.isPending}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          style={myApproval?.status === "needs_changes"
+            ? { background: "#FB923C", color: "#0A0A0A" }
+            : { background: "rgba(251,146,60,0.08)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.2)" }}
+        >
+          <RefreshCw size={11} /> Needs Changes
+        </button>
+        <button
+          onClick={() => setApproval.mutate({ trackId: track.id, status: "rejected" })}
+          disabled={setApproval.isPending}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+          style={myApproval?.status === "rejected"
+            ? { background: "#EF4444", color: "#FAFAFA" }
+            : { background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
+        >
+          <XCircle size={11} /> Reject
+        </button>
+      </div>
     </div>
   );
 }
 
-// ── Pillar Card ───────────────────────────────────────────────────────────────
+// ── Deliverable Fallback Icons ────────────────────────────────────────────────
+const DELIVERABLE_FALLBACK_ICONS: { keywords: string[]; url: string }[] = [
+  {
+    keywords: ["shot list", "shotlist"],
+    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/shot-list-icon-neon-APQ2af52KRZG5yEjnXD6Bn.webp",
+  },
+  {
+    keywords: ["storyboard", "story board"],
+    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/storyboard-icon-neon-8Lg6wo7yrveaSSqrNW6WxN.webp",
+  },
+];
+const ARCHIVE_ICON_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/archive-footage-icon-v2_4e48baa2.png";
+
+function getFallbackIcon(title: string): string {
+  const lower = (title ?? "").toLowerCase();
+  for (const entry of DELIVERABLE_FALLBACK_ICONS) {
+    if (entry.keywords.some((kw) => lower.includes(kw))) return entry.url;
+  }
+  return ARCHIVE_ICON_URL;
+}
+
+// ── Deliverable Audio Player (inline, no comments) ───────────────────────────
+
+function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: string; title: string; accentColor?: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onMeta = () => { setDuration(audio.duration); setIsLoading(false); };
+    const onEnded = () => setIsPlaying(false);
+    const onWaiting = () => setIsLoading(true);
+    const onCanPlay = () => setIsLoading(false);
+    const onError = () => { setAudioError("Failed to load audio"); setIsLoading(false); setIsPlaying(false); };
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("error", onError);
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("error", onError);
+    };
+  }, []);
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) { audio.pause(); setIsPlaying(false); }
+    else {
+      setIsLoading(true);
+      try { await audio.play(); setIsPlaying(true); }
+      catch { setAudioError("Playback failed"); }
+      finally { setIsLoading(false); }
+    }
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+      <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-end gap-[3px] h-5 w-7 shrink-0">
+          {isPlaying ? (
+            [0, 0.15, 0.3, 0.45].map((delay, i) => (
+              <div key={i} className="wave-bar rounded-sm"
+                style={{ width: "3px", height: "100%", background: accentColor, animationDelay: `${delay}s`, transformOrigin: "bottom" }} />
+            ))
+          ) : (
+            <Volume2 size={16} style={{ color: "#666" }} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate text-white/70">{title}</p>
+          {audioError && <p className="text-xs text-red-400">{audioError}</p>}
+        </div>
+        <span className="text-xs font-mono text-white/40 shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={togglePlay}
+          disabled={!!audioError}
+          className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200"
+          style={{ background: audioError ? "#2A2A2A" : accentColor, color: "#0A0A0A" }}
+        >
+          {isLoading ? (
+            <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+          ) : isPlaying ? (
+            <Pause size={14} fill="currentColor" />
+          ) : (
+            <Play size={14} fill="currentColor" style={{ marginLeft: "2px" }} />
+          )}
+        </button>
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
+            <div className="w-full h-1 rounded-full" style={{ background: "#2A2A2A" }}>
+              <div className="h-full rounded-full transition-all duration-100" style={{ width: `${progress}%`, background: accentColor }} />
+            </div>
+          </div>
+          <input
+            type="range" min={0} max={duration || 100} step={0.1} value={currentTime}
+            onChange={(e) => { const t = parseFloat(e.target.value); if (audioRef.current) { audioRef.current.currentTime = t; setCurrentTime(t); } }}
+            className="audio-progress relative z-10" style={{ background: "transparent" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Deliverable Card ──────────────────────────────────────────────────────────
+
+function DeliverableCard({ deliverable }: { deliverable: any }) {
+  const isAudio = deliverable.fileType === "audio" || (!deliverable.fileType && deliverable.downloadUrl && /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(deliverable.downloadUrl));
+  const isVideo = deliverable.fileType === "video" || (!deliverable.fileType && deliverable.downloadUrl && /\.(mp4|mov|webm|avi|mkv)$/i.test(deliverable.downloadUrl));
+  const hasS3File = !!deliverable.fileKey;
+
+  const fileTypeIcon =
+    isAudio ? <Music2 className="w-4 h-4" /> :
+    isVideo ? <Film className="w-4 h-4" /> :
+    deliverable.fileType === "document" ? <FileText className="w-4 h-4" /> :
+    deliverable.fileType === "archive" ? <Archive className="w-4 h-4" /> :
+    <Film className="w-4 h-4" />;
+  const fallbackIcon = getFallbackIcon(deliverable.title ?? "");
+
+  const getDownloadUrl = trpc.deliverables.getDownloadUrl.useMutation();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!hasS3File) return;
+    setDownloading(true);
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ id: deliverable.id });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = deliverable.fileName || deliverable.title;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
+      {/* Audio: show inline player instead of thumbnail */}
+      {isAudio && deliverable.downloadUrl ? (
+        <div className="p-4 pb-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Music2 size={14} style={{ color: "#FFD600" }} />
+            <span className="text-xs uppercase tracking-widest font-medium text-white/50">Audio</span>
+          </div>
+          <DeliverableAudioPlayer src={deliverable.downloadUrl} title={deliverable.title} accentColor="#FFD600" />
+        </div>
+      ) : (
+        /* Thumbnail / video player */
+        <div className="relative aspect-video overflow-hidden bg-black">
+          {isVideo && deliverable.downloadUrl ? (
+            <video
+              src={deliverable.downloadUrl}
+              className="w-full h-full object-cover"
+              controls
+              preload="metadata"
+              style={{ background: "#000" }}
+            />
+          ) : deliverable.thumbnailUrl ? (
+            <img src={deliverable.thumbnailUrl} alt={deliverable.title} className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black" />
+          ) : (
+            <img src={fallbackIcon} alt={deliverable.title} className="w-full h-full object-cover opacity-70" />
+          )}
+          {!isVideo && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
+                {fileTypeIcon}
+                <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="p-4 space-y-3">
+        <div>
+          <h3 className="text-white font-semibold text-sm">{deliverable.title}</h3>
+          {deliverable.description && (
+            <p className="text-white/50 text-xs mt-1 leading-relaxed">{deliverable.description}</p>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-col gap-2">
+          {/* S3 file: forced download via presigned URL */}
+          {hasS3File && (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+              style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+            >
+              {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {downloading ? "Preparing…" : "Download File"}
+            </button>
+          )}
+          {/* Legacy external link (no S3 file, external URL, non-media) */}
+          {!hasS3File && deliverable.downloadUrl && !isAudio && !isVideo && (
+            <a href={deliverable.downloadUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5">
+                <FolderOpen className="w-3.5 h-3.5" />
+                My Files
+              </Button>
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Sonic Pillar Card ─────────────────────────────────────────────────────────
 
 function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: string; index: number }) {
   const { data: tracks = [], isLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
-
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}22`, background: "#111111" }}>
       <div className="p-6 border-b" style={{ borderColor: `${accentColor}22` }}>
@@ -505,13 +692,11 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
-
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate("/?returnTo=/projects/sonic-branding", { replace: true });
     }
   }, [loading, isAuthenticated, navigate]);
-
   if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
@@ -519,7 +704,6 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
       </div>
     );
   }
-
   if (pillarsLoading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
@@ -527,7 +711,6 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
       <header className="border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
@@ -541,7 +724,6 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
           <img src={FL_LOGO_P} alt="Faderlabs" className="h-6 object-contain" />
         </div>
       </header>
-
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,214,0,0.06) 0%, transparent 60%)" }} />
@@ -556,7 +738,6 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
           </p>
         </div>
       </div>
-
       <div className="max-w-6xl mx-auto px-6 pb-16 space-y-10">
         {!pillars || pillars.length === 0 ? (
           <div className="text-center py-20">
@@ -577,81 +758,6 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   );
 }
 
-// ── Deliverable fallback icons by title keyword ───────────────────────────────
-const DELIVERABLE_FALLBACK_ICONS: { keywords: string[]; url: string }[] = [
-  {
-    keywords: ["shot list", "shotlist"],
-    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/shot-list-icon-neon-APQ2af52KRZG5yEjnXD6Bn.webp",
-  },
-  {
-    keywords: ["storyboard", "story board"],
-    url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/storyboard-icon-neon-8Lg6wo7yrveaSSqrNW6WxN.webp",
-  },
-];
-const ARCHIVE_ICON_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/archive-footage-icon-v2_4e48baa2.png";
-
-function getFallbackIcon(title: string): string {
-  const lower = (title ?? "").toLowerCase();
-  for (const entry of DELIVERABLE_FALLBACK_ICONS) {
-    if (entry.keywords.some((kw) => lower.includes(kw))) return entry.url;
-  }
-  return ARCHIVE_ICON_URL;
-}
-
-// ── Deliverable Card ──────────────────────────────────────────────────────────
-
-function DeliverableCard({ deliverable }: { deliverable: any }) {
-  const fileTypeIcon =
-    deliverable.fileType === "document" ? <FileText className="w-4 h-4" /> :
-    deliverable.fileType === "archive" ? <Archive className="w-4 h-4" /> :
-    <Film className="w-4 h-4" />;
-  const fallbackIcon = getFallbackIcon(deliverable.title ?? "");
-
-  return (
-    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
-      {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden bg-black">
-        {deliverable.thumbnailUrl ? (
-          <img
-            src={deliverable.thumbnailUrl}
-            alt={deliverable.title}
-            className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black"
-          />
-        ) : (
-          <img
-            src={fallbackIcon}
-            alt={deliverable.title}
-            className="w-full h-full object-cover opacity-70"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
-          {fileTypeIcon}
-          <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        <div>
-          <h3 className="text-white font-semibold text-sm">{deliverable.title}</h3>
-          {deliverable.description && (
-            <p className="text-white/50 text-xs mt-1 leading-relaxed">{deliverable.description}</p>
-          )}
-        </div>
-        {deliverable.downloadUrl && (
-          <a href={deliverable.downloadUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5">
-              <FolderOpen className="w-3.5 h-3.5" />
-              My Files
-            </Button>
-          </a>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Main Project Page ─────────────────────────────────────────────────────────
 
 export default function ProjectPage() {
@@ -659,7 +765,6 @@ export default function ProjectPage() {
   const { user, loading, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const isSonicBranding = slug === "sonic-branding";
-
   // Always call all hooks unconditionally — no early returns before hooks
   const { data: project, isLoading: loadingProject } = trpc.projects.bySlug.useQuery(
     { slug: slug ?? "" },
@@ -669,19 +774,16 @@ export default function ProjectPage() {
     { projectId: project?.id ?? 0 },
     { enabled: !!project?.id && !isSonicBranding }
   );
-
   // Redirect unauthenticated users to login with returnTo param
   useEffect(() => {
     if (!loading && !isAuthenticated && !isSonicBranding) {
       navigate(`/?returnTo=/projects/${slug}`, { replace: true });
     }
   }, [loading, isAuthenticated, isSonicBranding, navigate, slug]);
-
   // Sonic Branding has its own dedicated view — render after all hooks are declared
   if (isSonicBranding) {
     return <SonicBrandingProjectView loading={loading} />;
   }
-
   if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
@@ -689,7 +791,6 @@ export default function ProjectPage() {
       </div>
     );
   }
-
   if (loadingProject) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
@@ -697,7 +798,6 @@ export default function ProjectPage() {
       </div>
     );
   }
-
   if (!project) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
@@ -710,7 +810,6 @@ export default function ProjectPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
       {/* Header */}
@@ -725,7 +824,6 @@ export default function ProjectPage() {
           <img src={MW_LOGO} alt="Multi-Wing" className="h-7 object-contain" />
         </div>
       </header>
-
       {/* Hero */}
       <div className="relative overflow-hidden">
         {project.coverImageUrl && (
@@ -752,7 +850,6 @@ export default function ProjectPage() {
           </div>
         </div>
       </div>
-
       {/* Deliverables Grid */}
       <div className="max-w-6xl mx-auto px-6 pb-16">
         {loadingDeliverables ? (

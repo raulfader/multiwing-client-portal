@@ -487,12 +487,42 @@ export const appRouter = router({
         thumbnailUrl: z.string().optional(),
         downloadUrl: z.string().optional(),
         fileType: z.string().optional(),
+        fileKey: z.string().nullable().optional(),
+        fileName: z.string().nullable().optional(),
+        fileSize: z.number().nullable().optional(),
         sortOrder: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         await updateDeliverable(id, data);
         return { success: true };
+      }),
+
+    getUploadUrl: adminProcedure
+      .input(z.object({
+        fileName: z.string(),
+        contentType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { generatePresignedUploadUrl } = await import("./s3Upload");
+        return generatePresignedUploadUrl({
+          fileName: input.fileName,
+          contentType: input.contentType,
+          folder: "deliverables",
+        });
+      }),
+
+    // Client-facing: generate a presigned download URL for a deliverable file
+    getDownloadUrl: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDeliverableById } = await import("./db");
+        const deliverable = await getDeliverableById(input.id);
+        if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+        if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
+        const { generatePresignedDownloadUrl } = await import("./s3Upload");
+        const url = await generatePresignedDownloadUrl(deliverable.fileKey);
+        return { url };
       }),
 
     delete: adminProcedure

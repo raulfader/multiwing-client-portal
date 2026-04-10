@@ -10,9 +10,10 @@ const TRACKING_PIXEL = Buffer.from(
 );
 
 export function registerEmailTrackingRoutes(app: express.Express | Router) {
-  // ── Open Tracking: GET /track/open/:token ─────────────────────────────────
+  // ── Open Tracking: GET /api/track/open/:token ─────────────────────────────
   // Serves a 1x1 transparent GIF and records the open event
-  (app as any).get("/track/open/:token", async (req: any, res: any) => {
+  // NOTE: Must be under /api/ prefix so production routing handles it server-side
+  (app as any).get("/api/track/open/:token", async (req: any, res: any) => {
     const { token } = req.params;
     try {
       const db = await getDb();
@@ -60,9 +61,10 @@ export function registerEmailTrackingRoutes(app: express.Express | Router) {
     res.send(TRACKING_PIXEL);
   });
 
-  // ── Click Tracking: GET /track/click/:token ───────────────────────────────
+  // ── Click Tracking: GET /api/track/click/:token ───────────────────────────
   // Records the click and redirects to the destination URL
-  (app as any).get("/track/click/:token", async (req: any, res: any) => {
+  // NOTE: Must be under /api/ prefix so production routing handles it server-side
+  (app as any).get("/api/track/click/:token", async (req: any, res: any) => {
     const { token } = req.params;
     const destination = req.query.url as string;
 

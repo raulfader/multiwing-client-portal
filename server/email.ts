@@ -36,10 +36,10 @@ export function buildProjectNotificationEmail(params: {
 
   // Build tracking URLs if a token is provided
   const trackedProjectUrl = trackingToken
-    ? `${PORTAL_BASE_URL}/track/click/${trackingToken}?url=${encodeURIComponent(projectUrl)}`
+    ? `${PORTAL_BASE_URL}/api/track/click/${trackingToken}?url=${encodeURIComponent(projectUrl)}`
     : projectUrl;
   const openPixelUrl = trackingToken
-    ? `${PORTAL_BASE_URL}/track/open/${trackingToken}`
+    ? `${PORTAL_BASE_URL}/api/track/open/${trackingToken}`
     : null;
 
   const html = `<!DOCTYPE html>

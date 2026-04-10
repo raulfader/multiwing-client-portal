@@ -229,3 +229,6 @@
 
 ## Email Sent History - Recipient Display
 - [x] Show recipient name and email on each row in the admin email sent history
+
+## Email Link 404 (Production)
+- [x] Fix 404 on View Project and portal link in email — URLs must point to correct production paths on multiwing.faderlabs.ai

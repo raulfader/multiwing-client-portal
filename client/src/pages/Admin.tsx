@@ -262,12 +262,23 @@ function EmailNotificationsTab({ projects }: { projects: any[] }) {
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {emailLogs.slice().reverse().map((log: any) => (
                 <div key={log.id} className="px-3 py-3 rounded-lg" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: log.status === "sent" ? "#64DD17" : "#EF4444" }} />
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: log.status === "sent" ? "#64DD17" : "#EF4444" }} />
                     <span className="text-xs font-semibold" style={{ color: log.status === "sent" ? "#64DD17" : "#EF4444" }}>{log.status}</span>
                     <span className="text-xs ml-auto" style={{ color: "#444" }}>{new Date(log.sentAt).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-xs truncate mb-2" style={{ color: "#CCCCCC" }}>{log.subject}</p>
+                  {/* Recipient */}
+                  <div className="flex items-baseline gap-1.5 mb-1.5">
+                    <span className="text-xs font-semibold" style={{ color: "#FFD600" }}>
+                      {log.recipientFirstName
+                        ? `${log.recipientFirstName}${log.recipientLastName ? " " + log.recipientLastName : ""}`
+                        : "Unknown"}
+                    </span>
+                    {log.recipientEmail && (
+                      <span className="text-xs" style={{ color: "#555" }}>{log.recipientEmail}</span>
+                    )}
+                  </div>
+                  <p className="text-xs truncate mb-2" style={{ color: "#888" }}>{log.subject}</p>
                   {log.status === "sent" && (
                     <div className="flex gap-3">
                       <span className="text-xs" style={{ color: (log.openCount ?? 0) > 0 ? "#38BDF8" : "#444" }}>

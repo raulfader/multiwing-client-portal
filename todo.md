@@ -226,3 +226,6 @@
 - [x] Email: inject tracking pixel and wrap View Project button link with click tracking URL
 - [x] Backend: add tRPC procedures to fetch email log with open/click stats (email.log and email.allLogs)
 - [x] Admin UI: add email analytics dashboard showing per-email open/click stats (Sent, Unique Opens, Total Opens, Link Clicks)
+
+## Email Sent History - Recipient Display
+- [x] Show recipient name and email on each row in the admin email sent history

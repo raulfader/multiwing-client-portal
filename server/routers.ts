@@ -675,8 +675,12 @@ export const appRouter = router({
             lastOpenedAt: emailLog.lastOpenedAt,
             firstClickedAt: emailLog.firstClickedAt,
             sentAt: emailLog.sentAt,
+            recipientFirstName: projectContacts.firstName,
+            recipientLastName: projectContacts.lastName,
+            recipientEmail: projectContacts.email,
           })
           .from(emailLog)
+          .leftJoin(projectContacts, eq(emailLog.contactId, projectContacts.id))
           .where(eq(emailLog.projectId, input.projectId))
           .orderBy(emailLog.sentAt);
       }),
@@ -699,8 +703,12 @@ export const appRouter = router({
           lastOpenedAt: emailLog.lastOpenedAt,
           firstClickedAt: emailLog.firstClickedAt,
           sentAt: emailLog.sentAt,
+          recipientFirstName: projectContacts.firstName,
+          recipientLastName: projectContacts.lastName,
+          recipientEmail: projectContacts.email,
         })
         .from(emailLog)
+        .leftJoin(projectContacts, eq(emailLog.contactId, projectContacts.id))
         .orderBy(emailLog.sentAt);
     }),
   }),

@@ -1368,6 +1368,18 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
     onError: (e) => toast.error(e.message),
   });
 
+  const setStatus = trpc.projects.setStatus.useMutation({
+    onSuccess: (_d, vars) => { onRefresh(); toast.success(`Status set to ${vars.status.replace("_", " ")}`); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const STATUS_OPTIONS = [
+    { value: "started", label: "Started", color: "#64DD17" },
+    { value: "in_progress", label: "In Progress", color: "#FFD600" },
+    { value: "completed", label: "Completed", color: "#A78BFA" },
+  ];
+  const currentStatus = STATUS_OPTIONS.find(s => s.value === (project.projectStatus ?? "started")) ?? STATUS_OPTIONS[0];
+
   const deleteDeliverable = trpc.deliverables.delete.useMutation({
     onSuccess: () => { refetchDeliverables(); toast.success("Deliverable removed"); },
     onError: (e) => toast.error(e.message),
@@ -1429,6 +1441,19 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
             </>
           ) : (
             <>
+              {/* Status selector */}
+              <select
+                value={project.projectStatus ?? "started"}
+                onChange={(e) => setStatus.mutate({ id: project.id, status: e.target.value as any })}
+                disabled={setStatus.isPending}
+                className="text-xs font-semibold px-2 py-1 rounded-lg outline-none cursor-pointer"
+                style={{ background: `${currentStatus.color}22`, color: currentStatus.color, border: `1px solid ${currentStatus.color}44` }}
+                title="Set project status"
+              >
+                <option value="started">Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
               <button onClick={() => setEditingProject(true)} className="p-1.5 rounded" style={{ color: "#888" }} title="Edit project">
                 <Edit2 size={14} />
               </button>
@@ -1438,7 +1463,7 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
               <button onClick={() => setExpanded(!expanded)} className="p-1.5 rounded" style={{ color: "#888" }}>
                 {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
-              <button onClick={() => { if (confirm(`Delete project "${project.title}"?`)) deleteProject.mutate({ id: project.id }); }} className="p-1.5 rounded" style={{ color: "#EF4444" }}>
+              <button onClick={() => { if (confirm(`Delete project "${project.title}"?`)) deleteProject.mutate({ id: project.id }); }} className="p-1.5 rounded" style={{ color: "#EF4444" }} title="Delete project">
                 <Trash2 size={14} />
               </button>
             </>

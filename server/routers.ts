@@ -432,10 +432,22 @@ export const appRouter = router({
         category: z.string().optional(),
         sortOrder: z.number().optional(),
         isPublished: z.number().optional(),
+        projectStatus: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         await updateProject(id, data);
+        return { success: true };
+      }),
+
+    // Admin: set project status (started / in_progress / completed)
+    setStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["started", "in_progress", "completed"]),
+      }))
+      .mutation(async ({ input }) => {
+        await updateProject(input.id, { projectStatus: input.status });
         return { success: true };
       }),
 

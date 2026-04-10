@@ -362,6 +362,7 @@ export async function updateProject(id: number, data: Partial<{
   category: string;
   sortOrder: number;
   isPublished: number;
+  projectStatus: string;
 }>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `projectStatus` varchar(50) DEFAULT 'started' NOT NULL;

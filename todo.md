@@ -320,3 +320,11 @@
 ## Fullscreen Video Sync Fix
 - [x] Fix fullscreen overlay: create video element imperatively once, move it between inline/fullscreen slots via useLayoutEffect (no re-mount, no sync loss)
 - [x] Use togglePlayRef to keep video.onclick pointing to latest togglePlay without stale closure
+
+## Project Management (Admin)
+- [x] Add projectStatus column to projects table (started / in_progress / completed), migration applied
+- [x] Add tRPC projects.setStatus mutation (admin only)
+- [x] Add projectStatus to updateProject db helper type
+- [x] Admin panel: delete button already existed — confirmed working (with confirm dialog)
+- [x] Admin panel: status selector dropdown (Started / In Progress / Completed) on each project row, color-coded
+- [x] Client project page: project status badge shown in hero section next to category pill

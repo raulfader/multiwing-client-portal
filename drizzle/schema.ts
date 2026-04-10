@@ -98,6 +98,7 @@ export const projects = mysqlTable("projects", {
   category: varchar("category", { length: 100 }), // e.g. "video", "archive", "brand"
   sortOrder: int("sortOrder").default(0).notNull(),
   isPublished: int("isPublished").default(1).notNull(), // 1=visible, 0=hidden
+  projectStatus: varchar("projectStatus", { length: 50 }).default("started").notNull(), // started, in_progress, completed
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

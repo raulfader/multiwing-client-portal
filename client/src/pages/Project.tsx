@@ -1523,13 +1523,29 @@ export default function ProjectPage() {
           </div>
         )}
         <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="inline-flex items-center gap-2 bg-[#FFD600]/10 border border-[#FFD600]/20 rounded-full px-3 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FFD600]" />
               <span className="text-[#FFD600] text-xs font-medium uppercase tracking-widest">
                 {project.category ?? "Project"}
               </span>
             </div>
+            {/* Project status badge */}
+            {(() => {
+              const s = project.projectStatus ?? "started";
+              const cfg: Record<string, { label: string; color: string; dot: string }> = {
+                started:     { label: "Started",     color: "rgba(100,221,23,0.12)",  dot: "#64DD17" },
+                in_progress: { label: "In Progress", color: "rgba(255,214,0,0.12)",   dot: "#FFD600" },
+                completed:   { label: "Completed",   color: "rgba(167,139,250,0.12)", dot: "#A78BFA" },
+              };
+              const { label, color, dot } = cfg[s] ?? cfg.started;
+              return (
+                <div className="inline-flex items-center gap-2 rounded-full px-3 py-1" style={{ background: color, border: `1px solid ${dot}33` }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />
+                  <span className="text-xs font-medium uppercase tracking-widest" style={{ color: dot }}>{label}</span>
+                </div>
+              );
+            })()}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{project.title}</h1>
           {project.description && (

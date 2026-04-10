@@ -996,6 +996,48 @@ function StatsBar({ allApprovals, allTrackApprovals, allComments }: { allApprova
   );
 }
 
+// ── Track Decisions Panel ─────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  approved: { label: "Approved", color: "#64DD17", bg: "rgba(100,221,23,0.1)", icon: <CheckCircle2 size={12} /> },
+  needs_changes: { label: "Needs Changes", color: "#FB923C", bg: "rgba(251,146,60,0.1)", icon: <Clock size={12} /> },
+  rejected: { label: "Rejected", color: "#EF4444", bg: "rgba(239,68,68,0.1)", icon: <XCircle size={12} /> },
+  pending: { label: "Pending", color: "#888888", bg: "rgba(136,136,136,0.1)", icon: <Clock size={12} /> },
+};
+function TrackDecisionsPanel({ trackApprovals }: { trackApprovals: any[] }) {
+  return (
+    <div className="fl-card p-5 mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Music2 size={16} style={{ color: "#FFD600" }} />
+        <h3 className="font-bold text-sm uppercase tracking-widest" style={{ color: "#FFD600" }}>Client Track Decisions</h3>
+        <span className="text-xs ml-auto" style={{ color: "#555" }}>{trackApprovals.length} decision{trackApprovals.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="space-y-2">
+        {trackApprovals.map((a: any) => {
+          const cfg = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.pending;
+          return (
+            <div key={a.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "#111111", border: "1px solid #2A2A2A" }}>
+              <Music2 size={13} style={{ color: "#555", flexShrink: 0 }} />
+              <span className="flex-1 text-sm font-semibold truncate" style={{ color: "#FAFAFA" }}>
+                {a.trackTitle ?? `Track #${a.trackId}`}
+              </span>
+              {a.userName && (
+                <span className="text-xs" style={{ color: "#555" }}>{a.userName}</span>
+              )}
+              <span
+                className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                style={{ background: cfg.bg, color: cfg.color }}
+              >
+                {cfg.icon}
+                {cfg.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Create Project Form ────────────────────────────────────────────────────────
 function CreateProjectForm({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
@@ -1451,6 +1493,11 @@ export default function Admin() {
         {/* Stats */}
         {allApprovals && allComments && (
           <StatsBar allApprovals={allApprovals} allTrackApprovals={allTrackApprovals ?? []} allComments={allComments} />
+        )}
+
+        {/* Track Decisions Panel */}
+        {allTrackApprovals && allTrackApprovals.length > 0 && (
+          <TrackDecisionsPanel trackApprovals={allTrackApprovals} />
         )}
 
         {/* Tab Navigation */}

@@ -242,3 +242,9 @@
 
 ## Stats Bar Fix
 - [x] Replace "Pillar Approvals" stat card with "Rejected" (track-level rejected count) in admin dashboard
+
+## Needs Changes Count Fix
+- [ ] Fix "Needs Changes" stat showing 2 when client marked no tracks as needs_changes — investigate stale/incorrect data in track_approvals table
+
+## Track Decisions Panel
+- [x] Add Track Decisions panel to admin dashboard showing each track name with its approval status badge (approved/needs_changes/rejected/pending)

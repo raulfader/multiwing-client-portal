@@ -563,9 +563,11 @@ export async function getAllTrackApprovals() {
       status: trackApprovals.status,
       updatedAt: trackApprovals.updatedAt,
       userName: users.name,
+      trackTitle: tracks.title,
     })
     .from(trackApprovals)
     .leftJoin(users, eq(trackApprovals.userId, users.id))
+    .leftJoin(tracks, eq(trackApprovals.trackId, tracks.id))
     .orderBy(desc(trackApprovals.updatedAt));
 }
 

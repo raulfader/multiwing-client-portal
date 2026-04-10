@@ -587,7 +587,9 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     onError: (e) => toast.error(e.message),
   });
 
+  // Re-run whenever streamUrl changes so videoRef.current is populated (video is conditionally rendered)
   useEffect(() => {
+    if (!streamUrl) return; // video element not yet in DOM
     const video = videoRef.current;
     if (!video) return;
     const onTime = () => setCurrentTime(video.currentTime);
@@ -602,6 +604,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     video.addEventListener("waiting", onWaiting);
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("error", onError);
+    // If metadata already loaded (e.g. browser cached), grab duration now
+    if (video.readyState >= 1 && video.duration) { setDuration(video.duration); setIsLoading(false); }
     return () => {
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("loadedmetadata", onMeta);
@@ -610,7 +614,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
       video.removeEventListener("canplay", onCanPlay);
       video.removeEventListener("error", onError);
     };
-  }, []);
+  }, [streamUrl]); // depend on streamUrl so effect re-runs after video element mounts
 
   const togglePlay = async () => {
     const video = videoRef.current;
@@ -723,19 +727,25 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             <p className="text-red-400 text-sm">{videoError}</p>
           </div>
         )}
-        {/* Fullscreen button */}
+        {/* Fullscreen button — falls back to opening video in new tab if iframe blocks fullscreen API */}
         <button
-          onClick={() => {
+          onClick={async () => {
             const el = wrapperRef.current as HTMLElement & { webkitRequestFullscreen?: () => void; mozRequestFullScreen?: () => void; msRequestFullscreen?: () => void };
             if (!el) return;
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-            else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+            try {
+              if (el.requestFullscreen) await el.requestFullscreen();
+              else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+              else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+              else if (el.msRequestFullscreen) el.msRequestFullscreen();
+              else if (streamUrl) window.open(streamUrl, "_blank");
+            } catch {
+              // Blocked by iframe permissions policy — open in new tab instead
+              if (streamUrl) window.open(streamUrl, "_blank");
+            }
           }}
           className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
           style={{ background: "rgba(0,0,0,0.5)" }}
-          title="Fullscreen"
+          title="Fullscreen (or open in new tab)"
         >
           <Maximize2 size={13} style={{ color: "#fff" }} />
         </button>

@@ -299,3 +299,8 @@
 ## Video Player Bug Fixes (Round 2)
 - [x] Fix timestamped comment: replaced range input with pure div + mousedown/touchstart handlers; click opens comment box at timestamp
 - [x] Fix fullscreen: requestFullscreen now called on wrapperRef (outer container div) with cross-browser vendor prefix fallbacks
+
+## Video Player Full Rewrite
+- [x] Fix useEffect dependency: added [streamUrl] so video event listeners attach after video element mounts (was [] causing duration=0 forever)
+- [x] Fix fullscreen: try/catch requestFullscreen, fall back to window.open(streamUrl) when blocked by iframe permissions policy
+- [x] Scrub bar: pure div with onMouseDown/onTouchStart, no range input intercepting clicks

@@ -232,3 +232,7 @@
 
 ## Email Link 404 (Production)
 - [x] Fix 404 on View Project and portal link in email — URLs must point to correct production paths on multiwing.faderlabs.ai
+
+## Email Link Auth Redirect (Round 2)
+- [x] Project page: redirect unauthenticated users to /?returnTo=/projects/:slug
+- [x] Login screen (Home.tsx): after successful password login, redirect to returnTo path

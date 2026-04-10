@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
@@ -503,25 +503,19 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
 
 function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate("/?returnTo=/projects/sonic-branding", { replace: true });
+    }
+  }, [loading, isAuthenticated, navigate]);
+
+  if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-white/60">Please sign in to access this content.</p>
-          <a href="/">
-            <Button className="bg-[#FFD600] text-black font-semibold hover:bg-[#FFD600]/90">Sign In</Button>
-          </a>
-        </div>
       </div>
     );
   }
@@ -663,6 +657,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
 export default function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const isSonicBranding = slug === "sonic-branding";
 
   // Always call all hooks unconditionally — no early returns before hooks
@@ -675,28 +670,22 @@ export default function ProjectPage() {
     { enabled: !!project?.id && !isSonicBranding }
   );
 
+  // Redirect unauthenticated users to login with returnTo param
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !isSonicBranding) {
+      navigate(`/?returnTo=/projects/${slug}`, { replace: true });
+    }
+  }, [loading, isAuthenticated, isSonicBranding, navigate, slug]);
+
   // Sonic Branding has its own dedicated view — render after all hooks are declared
   if (isSonicBranding) {
     return <SonicBrandingProjectView loading={loading} />;
   }
 
-  if (loading) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-white/60">Please sign in to access this content.</p>
-          <a href="/">
-            <Button className="bg-[#FFD600] text-black font-semibold hover:bg-[#FFD600]/90">Sign In</Button>
-          </a>
-        </div>
       </div>
     );
   }

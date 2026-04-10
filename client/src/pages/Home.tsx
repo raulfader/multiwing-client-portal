@@ -19,7 +19,7 @@ import {
   Music2,
   ShieldCheck,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_0d44da07.webp";
 const FL_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
@@ -377,13 +377,21 @@ function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const utils = trpc.useUtils();
-
+  const [, navigate] = useLocation();
+  // Read returnTo from query string (e.g. /?returnTo=/projects/sonic-branding)
+  const returnTo = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("returnTo")
+    : null;
   const clientLogin = trpc.auth.clientLogin.useMutation({
     onSuccess: (data) => {
       if (data.token) {
         localStorage.setItem("portal_session_token", data.token);
       }
-      utils.auth.me.invalidate();
+      utils.auth.me.invalidate().then(() => {
+        if (returnTo) {
+          navigate(returnTo, { replace: true });
+        }
+      });
     },
     onError: (err) => {
       setError(err.message || "Incorrect password. Please try again.");

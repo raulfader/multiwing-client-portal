@@ -39,7 +39,6 @@ export default function NewProjectRequest() {
   const [description, setDescription] = useState("");
   const [submitterName, setSubmitterName] = useState("");
   const [submitterEmail, setSubmitterEmail] = useState("");
-  const [submitterCompany, setSubmitterCompany] = useState("");
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -148,7 +147,6 @@ export default function NewProjectRequest() {
         description: description.trim() || undefined,
         submitterName: submitterName.trim(),
         submitterEmail: submitterEmail.trim(),
-        submitterCompany: submitterCompany.trim() || undefined,
         files: uploadedFiles,
       });
       setSubmitted(true);
@@ -234,15 +232,7 @@ export default function NewProjectRequest() {
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-white/70 text-sm">Company <span className="text-white/30 text-xs">(optional)</span></Label>
-                <Input
-                  value={submitterCompany}
-                  onChange={(e) => setSubmitterCompany(e.target.value)}
-                  placeholder="Acme Corp"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-white/30"
-                />
-              </div>
+
             </CardContent>
           </Card>
 

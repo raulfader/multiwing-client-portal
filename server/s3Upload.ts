@@ -10,6 +10,9 @@ function getS3Client() {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
     },
+    // Disable automatic checksum injection — required for browser-side presigned PUT uploads
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
@@ -33,7 +36,11 @@ export async function generatePresignedUploadUrl(params: {
     ContentType: params.contentType,
   });
 
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
+  // unhoistableHeaders ensures x-amz-checksum-* headers are NOT included in the signed URL
+  const uploadUrl = await getSignedUrl(client, command, {
+    expiresIn: 3600,
+    unhoistableHeaders: new Set(["x-amz-checksum-crc32", "x-amz-sdk-checksum-algorithm"]),
+  });
   const publicUrl = `https://${BUCKET}.s3.${region}.amazonaws.com/${fileKey}`;
 
   return { uploadUrl, fileKey, publicUrl };

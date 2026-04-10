@@ -213,11 +213,11 @@
 - [x] Fix 404 when clicking View Project email link — added /project/:slug → /projects/:slug redirect in App.tsx; added auth guard to SonicBrandingProjectView
 
 ## Email Link Auth Redirect
-- [ ] Add returnTo query param support to Home.tsx login — after successful password login, redirect to returnTo path
-- [ ] Update Project.tsx to redirect unauthenticated users to /?returnTo=/projects/:slug instead of showing inline Sign In prompt
+- [x] Add returnTo query param support to Home.tsx login — after successful password login, redirect to returnTo path
+- [x] Update Project.tsx to redirect unauthenticated users to /?returnTo=/projects/:slug instead of showing inline Sign In prompt
 
 ## Contacts Permission Fix
-- [ ] Fix "no permissions" error when adding contacts in admin panel email notifications
+- [x] Fix "no permissions" error when adding contacts in admin panel email notifications — adminProcedure correctly checks role; page reload on login ensures token is available
 
 ## Email Tracking Dashboard
 - [x] DB: add openedAt, clickedAt, openCount, clickCount to email_log table; add email_events table for per-event tracking
@@ -255,3 +255,7 @@
 - [x] Build client-facing Create New Project form at /new-project with direct S3 upload (no size limit)
 - [x] Show client project requests in admin dashboard with status (new/in_review/completed) and downloadable file links
 - [x] Send email notifications to raul@faderlabs.com and hello@faderlabs.com on new request
+
+## Upload Fix & Form Cleanup
+- [x] Fix S3 upload network error on New Project Request form — set CORS on bucket + disabled SDK checksum injection in presigned URL
+- [x] Remove company field from Your Details section in New Project Request form

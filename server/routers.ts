@@ -748,7 +748,6 @@ export const appRouter = router({
         description: z.string().optional(),
         submitterName: z.string().min(1).max(200),
         submitterEmail: z.string().email(),
-        submitterCompany: z.string().optional(),
         files: z.array(z.object({
           name: z.string(),
           url: z.string(),
@@ -763,7 +762,6 @@ export const appRouter = router({
           description: input.description,
           submitterName: input.submitterName,
           submitterEmail: input.submitterEmail,
-          submitterCompany: input.submitterCompany,
           files: JSON.stringify(input.files),
         });
 
@@ -781,7 +779,7 @@ export const appRouter = router({
         const body = `New project request submitted on the Multi-Wing Content Hub.
 
 Title: ${input.title}
-From: ${input.submitterName} <${input.submitterEmail}>${input.submitterCompany ? `\nCompany: ${input.submitterCompany}` : ""}
+From: ${input.submitterName} <${input.submitterEmail}>
 ${input.description ? `\nDescription:\n${input.description}` : ""}
 
 Files uploaded (${input.files.length}):

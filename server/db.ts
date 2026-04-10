@@ -651,3 +651,9 @@ export async function updateClientProjectRequestStatus(
     .set({ status, adminNotes: adminNotes ?? null })
     .where(eq(clientProjectRequests.id, id));
 }
+
+export async function deleteClientProjectRequest(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(clientProjectRequests).where(eq(clientProjectRequests.id, id));
+}

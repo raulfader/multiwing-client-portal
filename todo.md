@@ -328,3 +328,9 @@
 - [x] Admin panel: delete button already existed — confirmed working (with confirm dialog)
 - [x] Admin panel: status selector dropdown (Started / In Progress / Completed) on each project row, color-coded
 - [x] Client project page: project status badge shown in hero section next to category pill
+
+## Project Request Delete & Client Dashboard
+- [x] Add deleteClientProjectRequest to db.ts
+- [x] Add tRPC clientRequests.delete mutation (admin only)
+- [x] Admin panel: delete button (red trash icon with confirm dialog) added to each project request row
+- [x] Client hub: Project Overview dashboard with 4 stat cards (Total, Started, In Progress, Completed) + color-coded progress bar

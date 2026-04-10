@@ -49,6 +49,7 @@ import {
   createClientProjectRequest,
   getAllClientProjectRequests,
   updateClientProjectRequestStatus,
+  deleteClientProjectRequest,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
@@ -890,6 +891,14 @@ View in admin dashboard: https://multiwing.faderlabs.ai/admin`;
       }))
       .mutation(async ({ input }) => {
         await updateClientProjectRequestStatus(input.id, input.status, input.adminNotes);
+        return { success: true };
+      }),
+
+    // Delete a project request (admin only)
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteClientProjectRequest(input.id);
         return { success: true };
       }),
   }),

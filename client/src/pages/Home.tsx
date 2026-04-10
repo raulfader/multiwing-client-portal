@@ -19,6 +19,10 @@ import {
   Music2,
   ShieldCheck,
   PlusCircle,
+  BarChart3,
+  CircleDot,
+  Zap,
+  Trophy,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -562,6 +566,71 @@ export default function Home() {
 
       {/* ── Content ── */}
       <main className="container py-8 pb-16">
+
+        {/* ── Status Dashboard ── */}
+        {projects && projects.length > 0 && (() => {
+          const started    = projects.filter((p: any) => (p.projectStatus ?? "started") === "started").length;
+          const inProgress = projects.filter((p: any) => p.projectStatus === "in_progress").length;
+          const completed  = projects.filter((p: any) => p.projectStatus === "completed").length;
+          const total      = projects.length;
+          return (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 size={16} style={{ color: "#FFD600" }} />
+                <span className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#555555" }}>Project Overview</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Total */}
+                <div className="rounded-xl p-4" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Folder size={14} style={{ color: "#888" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#555" }}>Total</span>
+                  </div>
+                  <div className="text-3xl font-black" style={{ color: "#FAFAFA" }}>{total}</div>
+                  <div className="text-xs mt-1" style={{ color: "#444" }}>projects</div>
+                </div>
+                {/* Started */}
+                <div className="rounded-xl p-4" style={{ background: "rgba(100,221,23,0.06)", border: "1px solid rgba(100,221,23,0.15)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CircleDot size={14} style={{ color: "#64DD17" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#64DD17" }}>Started</span>
+                  </div>
+                  <div className="text-3xl font-black" style={{ color: "#64DD17" }}>{started}</div>
+                  <div className="text-xs mt-1" style={{ color: "rgba(100,221,23,0.5)" }}>project{started !== 1 ? "s" : ""}</div>
+                </div>
+                {/* In Progress */}
+                <div className="rounded-xl p-4" style={{ background: "rgba(255,214,0,0.06)", border: "1px solid rgba(255,214,0,0.15)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap size={14} style={{ color: "#FFD600" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#FFD600" }}>In Progress</span>
+                  </div>
+                  <div className="text-3xl font-black" style={{ color: "#FFD600" }}>{inProgress}</div>
+                  <div className="text-xs mt-1" style={{ color: "rgba(255,214,0,0.5)" }}>project{inProgress !== 1 ? "s" : ""}</div>
+                </div>
+                {/* Completed */}
+                <div className="rounded-xl p-4" style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy size={14} style={{ color: "#A78BFA" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#A78BFA" }}>Completed</span>
+                  </div>
+                  <div className="text-3xl font-black" style={{ color: "#A78BFA" }}>{completed}</div>
+                  <div className="text-xs mt-1" style={{ color: "rgba(167,139,250,0.5)" }}>project{completed !== 1 ? "s" : ""}</div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              {total > 0 && (
+                <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "#1A1A1A" }}>
+                  <div className="h-full flex">
+                    {started > 0    && <div style={{ width: `${(started    / total) * 100}%`, background: "#64DD17" }} />}
+                    {inProgress > 0 && <div style={{ width: `${(inProgress / total) * 100}%`, background: "#FFD600" }} />}
+                    {completed > 0  && <div style={{ width: `${(completed  / total) * 100}%`, background: "#A78BFA" }} />}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold mb-1" style={{ color: "#FAFAFA" }}>Your Projects</h2>

@@ -1604,6 +1604,10 @@ export default function Admin() {
     onSuccess: () => { refetchClientRequests(); toast.success("Status updated"); },
     onError: (e) => toast.error(e.message),
   });
+  const deleteRequest = trpc.clientRequests.delete.useMutation({
+    onSuccess: () => { refetchClientRequests(); toast.success("Request deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
    const { data: projects, refetch: refetchProjects, isLoading: projectsLoading } = trpc.projects.listAdmin.useQuery(undefined, { enabled: isAdmin });
   const [orderedProjects, setOrderedProjects] = React.useState<any[]>([]);
   React.useEffect(() => { if (projects) setOrderedProjects(projects); }, [projects]);
@@ -1799,16 +1803,27 @@ export default function Admin() {
                           <span>{new Date(req.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <select
-                        value={req.status}
-                        onChange={(e) => updateRequestStatus.mutate({ id: req.id, status: e.target.value as any })}
-                        className="text-xs px-2 py-1.5 rounded-lg border outline-none shrink-0"
-                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
-                      >
-                        <option value="new">New</option>
-                        <option value="in_review">In Review</option>
-                        <option value="completed">Completed</option>
-                      </select>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <select
+                          value={req.status}
+                          onChange={(e) => updateRequestStatus.mutate({ id: req.id, status: e.target.value as any })}
+                          className="text-xs px-2 py-1.5 rounded-lg border outline-none"
+                          style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+                        >
+                          <option value="new">New</option>
+                          <option value="in_review">In Review</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                        <button
+                          onClick={() => { if (confirm(`Delete request "${req.title}"? This cannot be undone.`)) deleteRequest.mutate({ id: req.id }); }}
+                          disabled={deleteRequest.isPending}
+                          className="p-1.5 rounded hover:bg-red-500/10 transition-colors"
+                          style={{ color: "#EF4444" }}
+                          title="Delete request"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     {req.description && (
                       <p className="text-sm mb-3 leading-relaxed" style={{ color: "#888888" }}>{req.description}</p>

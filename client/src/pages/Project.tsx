@@ -550,12 +550,27 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // start loading while fetching stream URL
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
   const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+
+  const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
+
+  // Fetch a presigned stream URL on mount (S3 requires signed GET for private buckets)
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setVideoError(null);
+    getStreamUrl.mutateAsync({ id: deliverable.id })
+      .then(({ url }) => { if (!cancelled) { setStreamUrl(url); setIsLoading(false); } })
+      .catch((e) => { if (!cancelled) { setVideoError("Could not load video: " + (e?.message ?? "Unknown error")); setIsLoading(false); } });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliverable.id]);
 
   const utils = trpc.useUtils();
   const { data: comments = [] } = trpc.deliverableComments.byDeliverable.useQuery({ deliverableId: deliverable.id });
@@ -625,14 +640,16 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
       {/* Video element */}
       <div className="relative bg-black" style={{ aspectRatio: "16/9" }}>
-        <video
-          ref={videoRef}
-          src={deliverable.downloadUrl}
-          className="w-full h-full object-contain"
-          preload="metadata"
-          onClick={togglePlay}
-          style={{ cursor: "pointer", display: "block" }}
-        />
+        {streamUrl && (
+          <video
+            ref={videoRef}
+            src={streamUrl}
+            className="w-full h-full object-contain"
+            preload="metadata"
+            onClick={togglePlay}
+            style={{ cursor: "pointer", display: "block" }}
+          />
+        )}
         {/* Loading spinner overlay */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
@@ -804,14 +821,61 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   );
 }
 
-// ── Deliverable Card ──────────────────────────────────────────────────────────
+// Separate component so hooks are always called at the top level
+function DeliverableAudioCard({ deliverable, downloading, handleDownload }: { deliverable: any; downloading: boolean; handleDownload: () => void }) {
+  const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
+
+  useEffect(() => {
+    let cancelled = false;
+    getStreamUrl.mutateAsync({ id: deliverable.id })
+      .then(({ url }) => { if (!cancelled) setAudioStreamUrl(url); })
+      .catch((e) => { if (!cancelled) setAudioError(e?.message ?? "Failed to load audio"); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliverable.id]);
+
+  return (
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
+        <div className="p-4 pb-0">
+          <div className="flex items-center gap-2 mb-3">
+            <Music2 size={14} style={{ color: "#FFD600" }} />
+            <span className="text-xs uppercase tracking-widest font-medium text-white/50">Audio</span>
+          </div>
+          {audioError ? (
+            <p className="text-xs text-red-400 py-2">{audioError}</p>
+          ) : audioStreamUrl ? (
+            <DeliverableAudioPlayer src={audioStreamUrl} title={deliverable.title} accentColor="#FFD600" />
+          ) : (
+            <div className="flex items-center gap-2 py-3 text-xs text-white/40">
+              <div className="w-3 h-3 border border-white/30 border-t-white/80 rounded-full animate-spin" />
+              Loading audio…
+            </div>
+          )}
+        </div>
+        <div className="p-4">
+          <h3 className="text-white font-semibold text-sm mb-1">{deliverable.title}</h3>
+          {deliverable.description && <p className="text-white/50 text-xs leading-relaxed">{deliverable.description}</p>}
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+          >
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {downloading ? "Preparing…" : "Download File"}
+          </button>
+        </div>
+      </div>
+    );
+}
 
 function DeliverableCard({ deliverable }: { deliverable: any }) {
   // Determine type: only treat as video/audio if it has an actual S3 file attached
   const hasS3File = !!deliverable.fileKey;
   const isVideo = hasS3File && (deliverable.fileType === "video" || /\.(mp4|mov|webm|avi|mkv)$/i.test(deliverable.downloadUrl ?? ""));
   const isAudio = hasS3File && (deliverable.fileType === "audio" || /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(deliverable.downloadUrl ?? ""));
-  // Legacy deliverables: no S3 file — always show thumbnail + link unchanged
   const isLegacy = !hasS3File;
 
   const fileTypeIcon =
@@ -843,7 +907,6 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
     }
   };
 
-  // ── VIDEO with S3 file: full player with timestamped comments ──────────────
   if (isVideo) {
     return (
       <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
@@ -871,38 +934,13 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
     );
   }
 
-  // ── AUDIO with S3 file: inline audio player ────────────────────────────────
   if (isAudio) {
-    return (
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
-        <div className="p-4 pb-0">
-          <div className="flex items-center gap-2 mb-3">
-            <Music2 size={14} style={{ color: "#FFD600" }} />
-            <span className="text-xs uppercase tracking-widest font-medium text-white/50">Audio</span>
-          </div>
-          <DeliverableAudioPlayer src={deliverable.downloadUrl} title={deliverable.title} accentColor="#FFD600" />
-        </div>
-        <div className="p-4">
-          <h3 className="text-white font-semibold text-sm mb-1">{deliverable.title}</h3>
-          {deliverable.description && <p className="text-white/50 text-xs leading-relaxed">{deliverable.description}</p>}
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
-            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
-          >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {downloading ? "Preparing…" : "Download File"}
-          </button>
-        </div>
-      </div>
-    );
+    return <DeliverableAudioCard deliverable={deliverable} downloading={downloading} handleDownload={handleDownload} />;
   }
 
-  // ── S3 non-media file (document/archive): thumbnail + download ─────────────
+  // ── S3 non-media file (document/archive): thumbnail + download ─────────────────
   if (hasS3File) {
-    return (
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
+    return (     <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
         <div className="relative aspect-video overflow-hidden bg-black">
           {deliverable.thumbnailUrl ? (
             <img src={deliverable.thumbnailUrl} alt={deliverable.title} className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black" />

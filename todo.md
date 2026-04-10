@@ -288,3 +288,10 @@
 - [x] Build DeliverableVideoPlayer component: custom controls, click-to-timestamp, comment markers on scrub bar, comment list with jump-to
 - [x] Wire DeliverableVideoPlayer into DeliverableCard for S3 video files only; keep thumbnail+link cards unchanged
 - [x] Ensure legacy downloadUrl-only deliverables (no fileKey) render thumbnail + link exactly as before
+
+## Video Player & Download Fixes
+- [x] Fix "Failed to load video" — added deliverables.getStreamUrl tRPC procedure (presigned GET, no Content-Disposition)
+- [x] Fix download filename — pass original fileName to Content-Disposition header in generatePresignedDownloadUrl
+- [x] DeliverableVideoPlayer: fetch presigned stream URL on mount before setting video src
+- [x] DeliverableAudioCard: fetch presigned stream URL on mount before setting audio src
+- [x] Fix duplicate DeliverableCard / DeliverableAudioCard function declarations (syntax errors)

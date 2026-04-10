@@ -512,7 +512,7 @@ export const appRouter = router({
         });
       }),
 
-    // Client-facing: generate a presigned download URL for a deliverable file
+    // Client-facing: generate a presigned download URL (Content-Disposition: attachment) for forced download
     getDownloadUrl: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -521,7 +521,21 @@ export const appRouter = router({
         if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
         if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
         const { generatePresignedDownloadUrl } = await import("./s3Upload");
-        const url = await generatePresignedDownloadUrl(deliverable.fileKey);
+        // Pass original filename so Content-Disposition shows the correct name
+        const url = await generatePresignedDownloadUrl(deliverable.fileKey, deliverable.fileName ?? undefined);
+        return { url };
+      }),
+
+    // Client-facing: generate a presigned stream URL (no Content-Disposition) for video/audio players
+    getStreamUrl: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDeliverableById } = await import("./db");
+        const deliverable = await getDeliverableById(input.id);
+        if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+        if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
+        const { generatePresignedStreamUrl } = await import("./s3Upload");
+        const url = await generatePresignedStreamUrl(deliverable.fileKey);
         return { url };
       }),
 

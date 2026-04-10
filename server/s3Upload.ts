@@ -46,12 +46,25 @@ export async function generatePresignedUploadUrl(params: {
   return { uploadUrl, fileKey, publicUrl };
 }
 
-export async function generatePresignedDownloadUrl(fileKey: string): Promise<string> {
+// Presigned GET URL with Content-Disposition: attachment — for forced file downloads
+export async function generatePresignedDownloadUrl(fileKey: string, originalFileName?: string): Promise<string> {
+  const client = getS3Client();
+  // Use the original filename if provided; fall back to last segment of the key
+  const displayName = originalFileName || fileKey.split("/").pop() || "file";
+  const command = new GetObjectCommand({
+    Bucket: BUCKET,
+    Key: fileKey,
+    ResponseContentDisposition: `attachment; filename="${displayName}"`,
+  });
+  return getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
+}
+
+// Presigned GET URL for streaming (no Content-Disposition) — used for video/audio players
+export async function generatePresignedStreamUrl(fileKey: string): Promise<string> {
   const client = getS3Client();
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: fileKey,
-    ResponseContentDisposition: `attachment; filename="${fileKey.split("/").pop()}"`,
   });
-  return getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
+  return getSignedUrl(client, command, { expiresIn: 7200 }); // 2 hours for streaming
 }

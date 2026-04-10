@@ -261,7 +261,10 @@
 - [x] Remove company field from Your Details section in New Project Request form
 
 ## Upload Error (Persistent)
-- [ ] Investigate and fix persistent S3 upload network error — CORS + checksum fix did not resolve it
+- [x] Investigate and fix persistent S3 upload network error — resolved by updating S3 CORS to wildcard origin (dev preview domain was not in allowed list)
 
 ## Success Message Fix
 - [x] Change success message from "Multi-Wing team" to "Faderlabs team" in NewProjectRequest.tsx
+
+## Admin Page Crash Fix
+- [x] Fix TypeError: req.files.map is not a function — files stored as JSON string, now parsed in getAllClientProjectRequests() in db.ts

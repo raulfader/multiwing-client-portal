@@ -618,10 +618,16 @@ export async function createClientProjectRequest(data: {
 export async function getAllClientProjectRequests() {
   const db = await getDb();
   if (!db) return [];
-  return db
+  const rows = await db
     .select()
     .from(clientProjectRequests)
     .orderBy(desc(clientProjectRequests.createdAt));
+  return rows.map((row) => ({
+    ...row,
+    files: typeof row.files === "string"
+      ? (() => { try { return JSON.parse(row.files as string); } catch { return []; } })()
+      : (Array.isArray(row.files) ? row.files : []),
+  }));
 }
 
 export async function updateClientProjectRequestStatus(

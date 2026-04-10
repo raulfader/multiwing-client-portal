@@ -268,3 +268,6 @@
 
 ## Admin Page Crash Fix
 - [x] Fix TypeError: req.files.map is not a function — files stored as JSON string, now parsed in getAllClientProjectRequests() in db.ts
+
+## File Download Fix
+- [x] Fix file download in admin Project Requests tab — now uses presigned S3 URL with Content-Disposition: attachment via server-side getDownloadUrl procedure

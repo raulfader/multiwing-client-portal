@@ -1434,6 +1434,28 @@ export default function Admin() {
   const { data: allTrackApprovals } = trpc.trackApprovals.all.useQuery(undefined, { enabled: isAdmin });
   const { data: allComments } = trpc.comments.all.useQuery(undefined, { enabled: isAdmin });
   const { data: clientRequests, refetch: refetchClientRequests } = trpc.clientRequests.list.useQuery(undefined, { enabled: isAdmin });
+  const getDownloadUrl = trpc.clientRequests.getDownloadUrl.useMutation();
+  const handleFileDownload = async (fileKeyOrUrl: string, fileName: string) => {
+    // Derive the S3 key from a full URL if needed (legacy rows)
+    let fileKey = fileKeyOrUrl;
+    if (fileKeyOrUrl.startsWith("http")) {
+      try {
+        const u = new URL(fileKeyOrUrl);
+        fileKey = u.pathname.replace(/^\//, "");
+      } catch { /* keep as-is */ }
+    }
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ fileKey });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      toast.error("Failed to generate download link");
+    }
+  };
   const updateRequestStatus = trpc.clientRequests.updateStatus.useMutation({
     onSuccess: () => { refetchClientRequests(); toast.success("Status updated"); },
     onError: (e) => toast.error(e.message),
@@ -1652,12 +1674,9 @@ export default function Admin() {
                         <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#555555" }}>Files ({req.files.length})</p>
                         <div className="flex flex-wrap gap-2">
                           {req.files.map((file: any, fi: number) => (
-                            <a
+                            <button
                               key={fi}
-                              href={file.url}
-                              download={file.name}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              onClick={() => handleFileDownload(file.key, file.name)}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
                               style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
                             >
@@ -1666,7 +1685,7 @@ export default function Admin() {
                               {file.size && (
                                 <span style={{ color: "#555555" }}>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
                               )}
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>

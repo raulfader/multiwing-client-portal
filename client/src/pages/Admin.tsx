@@ -1374,9 +1374,9 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
   });
 
   const STATUS_OPTIONS = [
-    { value: "started", label: "Started", color: "#64DD17" },
+    { value: "started", label: "In Queue", color: "#888888" },
     { value: "in_progress", label: "In Progress", color: "#FFD600" },
-    { value: "completed", label: "Completed", color: "#A78BFA" },
+    { value: "completed", label: "Completed", color: "#22C55E" },
   ];
   const currentStatus = STATUS_OPTIONS.find(s => s.value === (project.projectStatus ?? "started")) ?? STATUS_OPTIONS[0];
 
@@ -1450,7 +1450,7 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
                 style={{ background: `${currentStatus.color}22`, color: currentStatus.color, border: `1px solid ${currentStatus.color}44` }}
                 title="Set project status"
               >
-                <option value="started">Started</option>
+                <option value="started">In Queue</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
               </select>

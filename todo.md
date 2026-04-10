@@ -334,3 +334,7 @@
 - [x] Add tRPC clientRequests.delete mutation (admin only)
 - [x] Admin panel: delete button (red trash icon with confirm dialog) added to each project request row
 - [x] Client hub: Project Overview dashboard with 4 stat cards (Total, Started, In Progress, Completed) + color-coded progress bar
+
+## Status Label & Color Update
+- [x] Renamed 'Started' → 'In Queue' (grey #888888) in Admin.tsx, Home.tsx, Project.tsx
+- [x] Changed 'Completed' from purple (#A78BFA) to green (#22C55E) in all three files

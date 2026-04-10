@@ -569,7 +569,7 @@ export default function Home() {
 
         {/* ── Status Dashboard ── */}
         {projects && projects.length > 0 && (() => {
-          const started    = projects.filter((p: any) => (p.projectStatus ?? "started") === "started").length;
+          const inQueue    = projects.filter((p: any) => (p.projectStatus ?? "started") === "started").length;
           const inProgress = projects.filter((p: any) => p.projectStatus === "in_progress").length;
           const completed  = projects.filter((p: any) => p.projectStatus === "completed").length;
           const total      = projects.length;
@@ -589,14 +589,14 @@ export default function Home() {
                   <div className="text-3xl font-black" style={{ color: "#FAFAFA" }}>{total}</div>
                   <div className="text-xs mt-1" style={{ color: "#444" }}>projects</div>
                 </div>
-                {/* Started */}
-                <div className="rounded-xl p-4" style={{ background: "rgba(100,221,23,0.06)", border: "1px solid rgba(100,221,23,0.15)" }}>
+                {/* In Queue */}
+                <div className="rounded-xl p-4" style={{ background: "rgba(136,136,136,0.06)", border: "1px solid rgba(136,136,136,0.15)" }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <CircleDot size={14} style={{ color: "#64DD17" }} />
-                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#64DD17" }}>Started</span>
+                    <CircleDot size={14} style={{ color: "#888888" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#888888" }}>In Queue</span>
                   </div>
-                  <div className="text-3xl font-black" style={{ color: "#64DD17" }}>{started}</div>
-                  <div className="text-xs mt-1" style={{ color: "rgba(100,221,23,0.5)" }}>project{started !== 1 ? "s" : ""}</div>
+                  <div className="text-3xl font-black" style={{ color: "#888888" }}>{inQueue}</div>
+                  <div className="text-xs mt-1" style={{ color: "rgba(136,136,136,0.5)" }}>project{inQueue !== 1 ? "s" : ""}</div>
                 </div>
                 {/* In Progress */}
                 <div className="rounded-xl p-4" style={{ background: "rgba(255,214,0,0.06)", border: "1px solid rgba(255,214,0,0.15)" }}>
@@ -608,22 +608,22 @@ export default function Home() {
                   <div className="text-xs mt-1" style={{ color: "rgba(255,214,0,0.5)" }}>project{inProgress !== 1 ? "s" : ""}</div>
                 </div>
                 {/* Completed */}
-                <div className="rounded-xl p-4" style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
+                <div className="rounded-xl p-4" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Trophy size={14} style={{ color: "#A78BFA" }} />
-                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#A78BFA" }}>Completed</span>
+                    <Trophy size={14} style={{ color: "#22C55E" }} />
+                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#22C55E" }}>Completed</span>
                   </div>
-                  <div className="text-3xl font-black" style={{ color: "#A78BFA" }}>{completed}</div>
-                  <div className="text-xs mt-1" style={{ color: "rgba(167,139,250,0.5)" }}>project{completed !== 1 ? "s" : ""}</div>
+                  <div className="text-3xl font-black" style={{ color: "#22C55E" }}>{completed}</div>
+                  <div className="text-xs mt-1" style={{ color: "rgba(34,197,94,0.5)" }}>project{completed !== 1 ? "s" : ""}</div>
                 </div>
               </div>
               {/* Progress bar */}
               {total > 0 && (
                 <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "#1A1A1A" }}>
                   <div className="h-full flex">
-                    {started > 0    && <div style={{ width: `${(started    / total) * 100}%`, background: "#64DD17" }} />}
+                    {inQueue > 0    && <div style={{ width: `${(inQueue    / total) * 100}%`, background: "#888888" }} />}
                     {inProgress > 0 && <div style={{ width: `${(inProgress / total) * 100}%`, background: "#FFD600" }} />}
-                    {completed > 0  && <div style={{ width: `${(completed  / total) * 100}%`, background: "#A78BFA" }} />}
+                    {completed > 0  && <div style={{ width: `${(completed  / total) * 100}%`, background: "#22C55E" }} />}
                   </div>
                 </div>
               )}

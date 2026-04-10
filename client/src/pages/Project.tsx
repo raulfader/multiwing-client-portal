@@ -1534,9 +1534,9 @@ export default function ProjectPage() {
             {(() => {
               const s = project.projectStatus ?? "started";
               const cfg: Record<string, { label: string; color: string; dot: string }> = {
-                started:     { label: "Started",     color: "rgba(100,221,23,0.12)",  dot: "#64DD17" },
+                started:     { label: "In Queue",    color: "rgba(136,136,136,0.12)", dot: "#888888" },
                 in_progress: { label: "In Progress", color: "rgba(255,214,0,0.12)",   dot: "#FFD600" },
-                completed:   { label: "Completed",   color: "rgba(167,139,250,0.12)", dot: "#A78BFA" },
+                completed:   { label: "Completed",   color: "rgba(34,197,94,0.12)",   dot: "#22C55E" },
               };
               const { label, color, dot } = cfg[s] ?? cfg.started;
               return (

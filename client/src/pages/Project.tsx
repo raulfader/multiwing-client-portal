@@ -5,7 +5,7 @@ import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
-  Play, Pause, Volume2, Download, Loader2
+  Play, Pause, Volume2, Download, Loader2, Maximize2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -542,12 +542,277 @@ function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: 
   );
 }
 
+// ── Deliverable Video Player with Timestamped Comments ───────────────────────
+
+function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deliverable: any; accentColor?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [commenterName, setCommenterName] = useState("");
+  const [showCommentBox, setShowCommentBox] = useState(false);
+
+  const utils = trpc.useUtils();
+  const { data: comments = [] } = trpc.deliverableComments.byDeliverable.useQuery({ deliverableId: deliverable.id });
+  const addComment = trpc.deliverableComments.add.useMutation({
+    onSuccess: () => {
+      setCommentText("");
+      setPendingTimestamp(null);
+      setShowCommentBox(false);
+      utils.deliverableComments.byDeliverable.invalidate({ deliverableId: deliverable.id });
+      toast.success("Comment submitted");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onTime = () => setCurrentTime(video.currentTime);
+    const onMeta = () => { setDuration(video.duration); setIsLoading(false); };
+    const onEnded = () => setIsPlaying(false);
+    const onWaiting = () => setIsLoading(true);
+    const onCanPlay = () => setIsLoading(false);
+    const onError = () => { setVideoError("Failed to load video"); setIsLoading(false); setIsPlaying(false); };
+    video.addEventListener("timeupdate", onTime);
+    video.addEventListener("loadedmetadata", onMeta);
+    video.addEventListener("ended", onEnded);
+    video.addEventListener("waiting", onWaiting);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("error", onError);
+    return () => {
+      video.removeEventListener("timeupdate", onTime);
+      video.removeEventListener("loadedmetadata", onMeta);
+      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("waiting", onWaiting);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("error", onError);
+    };
+  }, []);
+
+  const togglePlay = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (isPlaying) { video.pause(); setIsPlaying(false); }
+    else {
+      setIsLoading(true);
+      try { await video.play(); setIsPlaying(true); }
+      catch { setVideoError("Playback failed"); }
+      finally { setIsLoading(false); }
+    }
+  };
+
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const ts = Math.floor(ratio * duration);
+    setPendingTimestamp(ts);
+    setShowCommentBox(true);
+    if (videoRef.current) { videoRef.current.currentTime = ts; setCurrentTime(ts); }
+  }, [duration]);
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const timestampedComments = [...comments].filter(c => c.timestampSeconds != null).sort((a, b) => (a.timestampSeconds ?? 0) - (b.timestampSeconds ?? 0));
+  const sortedComments = [...comments].sort((a, b) => (a.timestampSeconds ?? Infinity) - (b.timestampSeconds ?? Infinity));
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
+      {/* Video element */}
+      <div className="relative bg-black" style={{ aspectRatio: "16/9" }}>
+        <video
+          ref={videoRef}
+          src={deliverable.downloadUrl}
+          className="w-full h-full object-contain"
+          preload="metadata"
+          onClick={togglePlay}
+          style={{ cursor: "pointer", display: "block" }}
+        />
+        {/* Loading spinner overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+            <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          </div>
+        )}
+        {/* Play button overlay when paused */}
+        {!isPlaying && !isLoading && !videoError && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: `${accentColor}CC` }}>
+              <Play size={22} fill="#0A0A0A" style={{ color: "#0A0A0A", marginLeft: 3 }} />
+            </div>
+          </div>
+        )}
+        {/* Error overlay */}
+        {videoError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <p className="text-red-400 text-sm">{videoError}</p>
+          </div>
+        )}
+        {/* Fullscreen button */}
+        <button
+          onClick={() => videoRef.current?.requestFullscreen()}
+          className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          title="Fullscreen"
+        >
+          <Maximize2 size={13} style={{ color: "#fff" }} />
+        </button>
+      </div>
+
+      {/* Custom controls */}
+      <div className="px-4 py-3" style={{ background: "#1A1A1A", borderTop: "1px solid #2A2A2A" }}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={togglePlay}
+            disabled={!!videoError}
+            className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{ background: videoError ? "#2A2A2A" : accentColor, color: "#0A0A0A" }}
+          >
+            {isLoading ? (
+              <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : isPlaying ? (
+              <Pause size={14} fill="currentColor" />
+            ) : (
+              <Play size={14} fill="currentColor" style={{ marginLeft: 2 }} />
+            )}
+          </button>
+
+          {/* Clickable scrub bar */}
+          <div
+            ref={progressBarRef}
+            className="flex-1 relative cursor-crosshair"
+            onClick={handleProgressClick}
+            title="Click to add a comment at this timestamp"
+          >
+            <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
+              <div className="w-full h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
+                <div className="h-full rounded-full transition-all duration-100" style={{ width: `${progress}%`, background: accentColor }} />
+              </div>
+            </div>
+            <input
+              type="range" min={0} max={duration || 100} step={0.1} value={currentTime}
+              onChange={(e) => { const t = parseFloat(e.target.value); if (videoRef.current) { videoRef.current.currentTime = t; setCurrentTime(t); } }}
+              onClick={(e) => e.stopPropagation()}
+              className="audio-progress relative z-10" style={{ background: "transparent" }}
+            />
+            {/* Timestamp comment markers */}
+            {timestampedComments.map((c) =>
+              duration > 0 ? (
+                <div
+                  key={c.id}
+                  className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-black z-20 pointer-events-none"
+                  style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%`, background: accentColor, opacity: 0.9 }}
+                  title={`${c.commenterName ?? "Anon"} @ ${formatTime(c.timestampSeconds ?? 0)}: ${c.content}`}
+                />
+              ) : null
+            )}
+          </div>
+
+          <span className="text-xs font-mono text-white/40 shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
+        </div>
+        <p className="text-xs text-white/30 mt-2">Click the timeline to leave a timestamped comment</p>
+      </div>
+
+      {/* Pending comment box */}
+      {showCommentBox && (
+        <div className="px-4 pb-3">
+          <div className="rounded-lg p-3 space-y-2" style={{ background: "#111", border: `1px solid ${accentColor}33` }}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold" style={{ color: accentColor }}>@ {formatTime(pendingTimestamp ?? 0)}</span>
+              <span className="text-xs text-white/40">— Add a comment at this timestamp</span>
+            </div>
+            <input
+              value={commenterName}
+              onChange={(e) => setCommenterName(e.target.value)}
+              placeholder="Your name (required)"
+              className="w-full text-xs px-3 py-2 rounded-lg outline-none"
+              style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+            />
+            <Textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Your comment…"
+              rows={2}
+              className="text-xs resize-none"
+              style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", color: "#FAFAFA" }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!commentText.trim()) { toast.error("Comment cannot be empty"); return; }
+                  if (!commenterName.trim()) { toast.error("Please enter your name"); return; }
+                  addComment.mutate({ deliverableId: deliverable.id, content: commentText.trim(), commenterName: commenterName.trim(), timestampSeconds: pendingTimestamp ?? undefined });
+                }}
+                disabled={addComment.isPending}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: accentColor, color: "#0A0A0A" }}
+              >
+                {addComment.isPending ? <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Send size={11} />}
+                Submit
+              </button>
+              <button
+                onClick={() => { setShowCommentBox(false); setPendingTimestamp(null); setCommentText(""); }}
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: "#1A1A1A", color: "#888", border: "1px solid #2A2A2A" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comments list */}
+      {sortedComments.length > 0 && (
+        <div className="px-4 pb-4 space-y-2">
+          <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">
+            <MessageSquare size={10} className="inline mr-1" />
+            {sortedComments.length} Comment{sortedComments.length !== 1 ? "s" : ""}
+          </p>
+          {sortedComments.map((c) => (
+            <div key={c.id} className="rounded-lg px-3 py-2.5 space-y-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-2">
+                {c.timestampSeconds != null && (
+                  <button
+                    onClick={() => { if (videoRef.current) { videoRef.current.currentTime = c.timestampSeconds!; setCurrentTime(c.timestampSeconds!); } }}
+                    className="text-xs font-mono font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: `${accentColor}22`, color: accentColor }}
+                  >
+                    {formatTime(c.timestampSeconds)}
+                  </button>
+                )}
+                <span className="text-xs font-semibold text-white/70">{c.commenterName ?? "Anonymous"}</span>
+                <span className="text-xs text-white/25 ml-auto">{new Date(c.createdAt).toLocaleDateString()}</span>
+              </div>
+              <p className="text-xs text-white/60 leading-relaxed">{c.content}</p>
+              {c.adminResponse && (
+                <div className="mt-1.5 pl-2 border-l-2" style={{ borderColor: accentColor }}>
+                  <p className="text-xs font-semibold mb-0.5" style={{ color: accentColor }}>Faderlabs Response</p>
+                  <p className="text-xs text-white/50 leading-relaxed">{c.adminResponse}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Deliverable Card ──────────────────────────────────────────────────────────
 
 function DeliverableCard({ deliverable }: { deliverable: any }) {
-  const isAudio = deliverable.fileType === "audio" || (!deliverable.fileType && deliverable.downloadUrl && /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(deliverable.downloadUrl));
-  const isVideo = deliverable.fileType === "video" || (!deliverable.fileType && deliverable.downloadUrl && /\.(mp4|mov|webm|avi|mkv)$/i.test(deliverable.downloadUrl));
+  // Determine type: only treat as video/audio if it has an actual S3 file attached
   const hasS3File = !!deliverable.fileKey;
+  const isVideo = hasS3File && (deliverable.fileType === "video" || /\.(mp4|mov|webm|avi|mkv)$/i.test(deliverable.downloadUrl ?? ""));
+  const isAudio = hasS3File && (deliverable.fileType === "audio" || /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(deliverable.downloadUrl ?? ""));
+  // Legacy deliverables: no S3 file — always show thumbnail + link unchanged
+  const isLegacy = !hasS3File;
 
   const fileTypeIcon =
     isAudio ? <Music2 className="w-4 h-4" /> :
@@ -578,10 +843,38 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
     }
   };
 
-  return (
-    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
-      {/* Audio: show inline player instead of thumbnail */}
-      {isAudio && deliverable.downloadUrl ? (
+  // ── VIDEO with S3 file: full player with timestamped comments ──────────────
+  if (isVideo) {
+    return (
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
+        <div className="p-4 pb-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Film size={14} style={{ color: "#FFD600" }} />
+            <span className="text-xs uppercase tracking-widest font-medium text-white/50">Video</span>
+          </div>
+          <h3 className="text-white font-semibold text-sm mb-1">{deliverable.title}</h3>
+          {deliverable.description && <p className="text-white/50 text-xs mb-3 leading-relaxed">{deliverable.description}</p>}
+        </div>
+        <DeliverableVideoPlayer deliverable={deliverable} accentColor="#FFD600" />
+        <div className="p-4 pt-3">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+          >
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {downloading ? "Preparing…" : "Download File"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── AUDIO with S3 file: inline audio player ────────────────────────────────
+  if (isAudio) {
+    return (
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
         <div className="p-4 pb-0">
           <div className="flex items-center gap-2 mb-3">
             <Music2 size={14} style={{ color: "#FFD600" }} />
@@ -589,34 +882,82 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           </div>
           <DeliverableAudioPlayer src={deliverable.downloadUrl} title={deliverable.title} accentColor="#FFD600" />
         </div>
-      ) : (
-        /* Thumbnail / video player */
+        <div className="p-4">
+          <h3 className="text-white font-semibold text-sm mb-1">{deliverable.title}</h3>
+          {deliverable.description && <p className="text-white/50 text-xs leading-relaxed">{deliverable.description}</p>}
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+          >
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {downloading ? "Preparing…" : "Download File"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── S3 non-media file (document/archive): thumbnail + download ─────────────
+  if (hasS3File) {
+    return (
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
         <div className="relative aspect-video overflow-hidden bg-black">
-          {isVideo && deliverable.downloadUrl ? (
-            <video
-              src={deliverable.downloadUrl}
-              className="w-full h-full object-cover"
-              controls
-              preload="metadata"
-              style={{ background: "#000" }}
-            />
-          ) : deliverable.thumbnailUrl ? (
+          {deliverable.thumbnailUrl ? (
             <img src={deliverable.thumbnailUrl} alt={deliverable.title} className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black" />
           ) : (
             <img src={fallbackIcon} alt={deliverable.title} className="w-full h-full object-cover opacity-70" />
           )}
-          {!isVideo && (
-            <>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
-                {fileTypeIcon}
-                <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
-              </div>
-            </>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
+            {fileTypeIcon}
+            <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
+          </div>
         </div>
-      )}
+        <div className="p-4 space-y-3">
+          <div>
+            <h3 className="text-white font-semibold text-sm">{deliverable.title}</h3>
+            {deliverable.description && <p className="text-white/50 text-xs mt-1 leading-relaxed">{deliverable.description}</p>}
+          </div>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+          >
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {downloading ? "Preparing…" : "Download File"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
+  // ── LEGACY: no S3 file — thumbnail + external link, completely unchanged ───
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">
+      {/* Thumbnail */}
+      <div className="relative aspect-video overflow-hidden bg-black">
+        {deliverable.thumbnailUrl ? (
+          <img
+            src={deliverable.thumbnailUrl}
+            alt={deliverable.title}
+            className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity bg-black"
+          />
+        ) : (
+          <img
+            src={fallbackIcon}
+            alt={deliverable.title}
+            className="w-full h-full object-cover opacity-70"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white/80 text-xs">
+          {fileTypeIcon}
+          <span className="uppercase tracking-widest font-medium">{deliverable.fileType}</span>
+        </div>
+      </div>
       {/* Content */}
       <div className="p-4 space-y-3">
         <div>
@@ -625,31 +966,14 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
             <p className="text-white/50 text-xs mt-1 leading-relaxed">{deliverable.description}</p>
           )}
         </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-col gap-2">
-          {/* S3 file: forced download via presigned URL */}
-          {hasS3File && (
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
-              style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
-            >
-              {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-              {downloading ? "Preparing…" : "Download File"}
-            </button>
-          )}
-          {/* Legacy external link (no S3 file, external URL, non-media) */}
-          {!hasS3File && deliverable.downloadUrl && !isAudio && !isVideo && (
-            <a href={deliverable.downloadUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5">
-                <FolderOpen className="w-3.5 h-3.5" />
-                My Files
-              </Button>
-            </a>
-          )}
-        </div>
+        {deliverable.downloadUrl && (
+          <a href={deliverable.downloadUrl} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5">
+              <FolderOpen className="w-3.5 h-3.5" />
+              My Files
+            </Button>
+          </a>
+        )}
       </div>
     </div>
   );

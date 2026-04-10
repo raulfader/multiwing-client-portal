@@ -1,0 +1,1 @@
+ALTER TABLE `deliverable_comments` ADD `timestampSeconds` int;

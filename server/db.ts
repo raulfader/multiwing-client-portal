@@ -455,6 +455,7 @@ export async function getCommentsByDeliverable(deliverableId: number) {
       userId: deliverableComments.userId,
       commenterName: deliverableComments.commenterName,
       content: deliverableComments.content,
+      timestampSeconds: deliverableComments.timestampSeconds,
       adminResponse: deliverableComments.adminResponse,
       resolvedAt: deliverableComments.resolvedAt,
       createdAt: deliverableComments.createdAt,
@@ -471,6 +472,7 @@ export async function createDeliverableComment(data: {
   userId: number;
   commenterName?: string;
   content: string;
+  timestampSeconds?: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -479,6 +481,7 @@ export async function createDeliverableComment(data: {
     userId: data.userId,
     commenterName: data.commenterName ?? null,
     content: data.content,
+    timestampSeconds: data.timestampSeconds ?? null,
   });
 }
 
@@ -584,6 +587,7 @@ export async function getAllDeliverableComments() {
       userId: deliverableComments.userId,
       commenterName: deliverableComments.commenterName,
       content: deliverableComments.content,
+      timestampSeconds: deliverableComments.timestampSeconds,
       adminResponse: deliverableComments.adminResponse,
       resolvedAt: deliverableComments.resolvedAt,
       createdAt: deliverableComments.createdAt,

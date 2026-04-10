@@ -280,3 +280,11 @@
 - [x] Add audio player to client project page for deliverables with audio files (matching Sonic Branding style)
 - [x] Show download button for non-media deliverable files (PDFs, ZIPs, etc.) via presigned S3 URL
 - [x] Client: option to download any deliverable file via presigned S3 URL (forced download)
+
+## Video Player with Timestamped Comments
+- [x] Add timestampSeconds column to deliverable_comments table (migration applied)
+- [x] Update DB helpers: getCommentsByDeliverable and createDeliverableComment now include timestampSeconds
+- [x] Update tRPC deliverableComments.add to accept timestampSeconds
+- [x] Build DeliverableVideoPlayer component: custom controls, click-to-timestamp, comment markers on scrub bar, comment list with jump-to
+- [x] Wire DeliverableVideoPlayer into DeliverableCard for S3 video files only; keep thumbnail+link cards unchanged
+- [x] Ensure legacy downloadUrl-only deliverables (no fileKey) render thumbnail + link exactly as before

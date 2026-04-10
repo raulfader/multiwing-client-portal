@@ -132,6 +132,7 @@ export const deliverableComments = mysqlTable("deliverable_comments", {
   userId: int("userId").notNull(),
   commenterName: varchar("commenterName", { length: 100 }),
   content: text("content").notNull(),
+  timestampSeconds: int("timestampSeconds"),
   adminResponse: text("adminResponse"),
   resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

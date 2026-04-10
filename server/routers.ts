@@ -546,6 +546,7 @@ export const appRouter = router({
         deliverableId: z.number(),
         commenterName: z.string().min(1).max(100),
         content: z.string().min(1).max(2000),
+        timestampSeconds: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const deliverable = await getDeliverableById(input.deliverableId);
@@ -556,11 +557,15 @@ export const appRouter = router({
           userId: ctx.user.id,
           commenterName: input.commenterName,
           content: input.content,
+          timestampSeconds: input.timestampSeconds,
         });
 
+        const timeLabel = input.timestampSeconds != null
+          ? ` at ${Math.floor(input.timestampSeconds / 60)}:${String(input.timestampSeconds % 60).padStart(2, "0")}`
+          : "";
         await notifyOwner({
           title: `New comment on "${deliverable.title}"`,
-          content: `${input.commenterName} commented on "${deliverable.title}": "${input.content}"`,
+          content: `${input.commenterName} commented on "${deliverable.title}"${timeLabel}: "${input.content}"`,
         });
 
         return { success: true };

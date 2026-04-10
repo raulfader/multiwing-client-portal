@@ -547,6 +547,8 @@ function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: 
 function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deliverable: any; accentColor?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null); // for fullscreen
+  const isDraggingRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -622,22 +624,73 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     }
   };
 
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const ts = Math.floor(ratio * duration);
-    setPendingTimestamp(ts);
-    setShowCommentBox(true);
-    if (videoRef.current) { videoRef.current.currentTime = ts; setCurrentTime(ts); }
+  // Scrub bar: pure click/drag without a range input so clicks always reach the handler
+  const scrubTo = useCallback((clientX: number) => {
+    const bar = progressBarRef.current;
+    if (!bar || !duration) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const t = ratio * duration;
+    if (videoRef.current) { videoRef.current.currentTime = t; setCurrentTime(t); }
+    return t;
   }, [duration]);
+
+  const handleProgressMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    scrubTo(e.clientX);
+    const onMove = (ev: MouseEvent) => { if (isDraggingRef.current) scrubTo(ev.clientX); };
+    const onUp = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      // Only open comment box on a click (not a drag)
+      if (Math.abs(ev.clientX - e.clientX) < 5 && duration) {
+        const bar = progressBarRef.current;
+        if (!bar) return;
+        const rect = bar.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+        const ts = Math.floor(ratio * duration);
+        setPendingTimestamp(ts);
+        setShowCommentBox(true);
+      }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [duration, scrubTo]);
+
+  // Touch support for scrub bar
+  const handleProgressTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    scrubTo(startX);
+    const onMove = (ev: TouchEvent) => scrubTo(ev.touches[0].clientX);
+    const onEnd = (ev: TouchEvent) => {
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      const endX = ev.changedTouches[0].clientX;
+      if (Math.abs(endX - startX) < 10 && duration) {
+        const bar = progressBarRef.current;
+        if (!bar) return;
+        const rect = bar.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (endX - rect.left) / rect.width));
+        const ts = Math.floor(ratio * duration);
+        setPendingTimestamp(ts);
+        setShowCommentBox(true);
+      }
+    };
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+  }, [duration, scrubTo]);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const timestampedComments = [...comments].filter(c => c.timestampSeconds != null).sort((a, b) => (a.timestampSeconds ?? 0) - (b.timestampSeconds ?? 0));
   const sortedComments = [...comments].sort((a, b) => (a.timestampSeconds ?? Infinity) - (b.timestampSeconds ?? Infinity));
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
+    <div ref={wrapperRef} className="rounded-xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
       {/* Video element */}
       <div className="relative bg-black" style={{ aspectRatio: "16/9" }}>
         {streamUrl && (
@@ -672,7 +725,14 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
         )}
         {/* Fullscreen button */}
         <button
-          onClick={() => videoRef.current?.requestFullscreen()}
+          onClick={() => {
+            const el = wrapperRef.current as HTMLElement & { webkitRequestFullscreen?: () => void; mozRequestFullScreen?: () => void; msRequestFullscreen?: () => void };
+            if (!el) return;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+            else if (el.msRequestFullscreen) el.msRequestFullscreen();
+          }}
           className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
           style={{ background: "rgba(0,0,0,0.5)" }}
           title="Fullscreen"
@@ -699,31 +759,30 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             )}
           </button>
 
-          {/* Clickable scrub bar */}
+          {/* Clickable scrub bar — pure div, no range input so clicks always register */}
           <div
             ref={progressBarRef}
-            className="flex-1 relative cursor-crosshair"
-            onClick={handleProgressClick}
+            className="flex-1 relative h-8 flex items-center cursor-crosshair select-none"
+            onMouseDown={handleProgressMouseDown}
+            onTouchStart={handleProgressTouchStart}
             title="Click to add a comment at this timestamp"
           >
-            <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none">
-              <div className="w-full h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
-                <div className="h-full rounded-full transition-all duration-100" style={{ width: `${progress}%`, background: accentColor }} />
-              </div>
+            {/* Track */}
+            <div className="absolute left-0 right-0 h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
+              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: accentColor }} />
             </div>
-            <input
-              type="range" min={0} max={duration || 100} step={0.1} value={currentTime}
-              onChange={(e) => { const t = parseFloat(e.target.value); if (videoRef.current) { videoRef.current.currentTime = t; setCurrentTime(t); } }}
-              onClick={(e) => e.stopPropagation()}
-              className="audio-progress relative z-10" style={{ background: "transparent" }}
+            {/* Scrub thumb */}
+            <div
+              className="absolute w-3.5 h-3.5 rounded-full -translate-x-1/2 shadow-md"
+              style={{ left: `${progress}%`, background: accentColor, top: "50%", transform: `translateX(-50%) translateY(-50%)` }}
             />
             {/* Timestamp comment markers */}
             {timestampedComments.map((c) =>
               duration > 0 ? (
                 <div
                   key={c.id}
-                  className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-black z-20 pointer-events-none"
-                  style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%`, background: accentColor, opacity: 0.9 }}
+                  className="absolute w-2 h-2 rounded-full border border-black pointer-events-none"
+                  style={{ left: `${((c.timestampSeconds ?? 0) / duration) * 100}%`, background: "#FF6B35", top: "50%", transform: "translateX(-50%) translateY(-50%)", zIndex: 10 }}
                   title={`${c.commenterName ?? "Anon"} @ ${formatTime(c.timestampSeconds ?? 0)}: ${c.content}`}
                 />
               ) : null

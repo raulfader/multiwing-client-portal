@@ -295,3 +295,7 @@
 - [x] DeliverableVideoPlayer: fetch presigned stream URL on mount before setting video src
 - [x] DeliverableAudioCard: fetch presigned stream URL on mount before setting audio src
 - [x] Fix duplicate DeliverableCard / DeliverableAudioCard function declarations (syntax errors)
+
+## Video Player Bug Fixes (Round 2)
+- [x] Fix timestamped comment: replaced range input with pure div + mousedown/touchstart handlers; click opens comment box at timestamp
+- [x] Fix fullscreen: requestFullscreen now called on wrapperRef (outer container div) with cross-browser vendor prefix fallbacks

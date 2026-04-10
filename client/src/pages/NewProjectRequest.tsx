@@ -164,7 +164,7 @@ export default function NewProjectRequest() {
             <CheckCircle2 className="w-16 h-16 text-green-400" />
             <h2 className="text-2xl font-bold text-white">Request Submitted!</h2>
             <p className="text-white/60 text-sm leading-relaxed">
-              Your project request has been received. The Multi-Wing team will review it and get back to you shortly.
+              Your project request has been received. The Faderlabs team will review it and get back to you shortly.
             </p>
             <Link href="/">
               <Button variant="outline" className="mt-4 border-white/20 text-white hover:bg-white/10 bg-transparent">

@@ -259,3 +259,9 @@
 ## Upload Fix & Form Cleanup
 - [x] Fix S3 upload network error on New Project Request form — set CORS on bucket + disabled SDK checksum injection in presigned URL
 - [x] Remove company field from Your Details section in New Project Request form
+
+## Upload Error (Persistent)
+- [ ] Investigate and fix persistent S3 upload network error — CORS + checksum fix did not resolve it
+
+## Success Message Fix
+- [x] Change success message from "Multi-Wing team" to "Faderlabs team" in NewProjectRequest.tsx

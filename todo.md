@@ -316,3 +316,7 @@
 - [x] Add tRPC deliverables.setReviewStatus mutation (client-facing, protectedProcedure)
 - [x] Add Approve / Needs Changes buttons to DeliverableVideoPlayer (inline + fullscreen), matching Sonic Branding style
 - [x] Buttons toggle: clicking active status resets to pending; clicking inactive sets that status
+
+## Fullscreen Video Sync Fix
+- [x] Fix fullscreen overlay: create video element imperatively once, move it between inline/fullscreen slots via useLayoutEffect (no re-mount, no sync loss)
+- [x] Use togglePlayRef to keep video.onclick pointing to latest togglePlay without stale closure

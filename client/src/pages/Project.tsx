@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
@@ -547,8 +547,11 @@ function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: 
 function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deliverable: any; accentColor?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null); // for fullscreen
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const inlineVideoSlotRef = useRef<HTMLDivElement>(null); // inline placeholder
+  const fsVideoSlotRef = useRef<HTMLDivElement>(null); // fullscreen placeholder
   const isDraggingRef = useRef(false);
+  const togglePlayRef = useRef<() => void>(() => {});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -579,6 +582,16 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Move the single video DOM node between inline and fullscreen slots (no re-mount, no sync loss)
+  useLayoutEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const targetSlot = isFullscreen ? fsVideoSlotRef.current : inlineVideoSlotRef.current;
+    if (targetSlot && !targetSlot.contains(video)) {
+      targetSlot.appendChild(video);
+    }
+  }, [isFullscreen]);
 
   // Fetch a presigned stream URL on mount (S3 requires signed GET for private buckets)
   useEffect(() => {
@@ -645,6 +658,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
       finally { setIsLoading(false); }
     }
   };
+  // Keep ref in sync so the imperative video.onclick always calls the latest version
+  togglePlayRef.current = togglePlay;
 
   // Scrub bar: pure click/drag without a range input so clicks always reach the handler
   // barEl: pass the specific bar element (inline or fullscreen)
@@ -713,20 +728,36 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const timestampedComments = [...comments].filter(c => c.timestampSeconds != null).sort((a, b) => (a.timestampSeconds ?? 0) - (b.timestampSeconds ?? 0));
   const sortedComments = [...comments].sort((a, b) => (a.timestampSeconds ?? Infinity) - (b.timestampSeconds ?? Infinity));
 
+  // Create the video element once imperatively so it's never re-mounted by React
+  const videoCreatedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (videoCreatedRef.current) return;
+    videoCreatedRef.current = true;
+    const video = document.createElement("video");
+    video.className = "w-full h-full object-contain";
+    video.style.cursor = "pointer";
+    video.style.display = "block";
+    video.preload = "metadata";
+    video.onclick = () => togglePlayRef.current();
+    // @ts-ignore — assign to ref
+    videoRef.current = video;
+    if (inlineVideoSlotRef.current) inlineVideoSlotRef.current.appendChild(video);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update src when streamUrl becomes available
+  useEffect(() => {
+    if (videoRef.current && streamUrl) {
+      videoRef.current.src = streamUrl;
+    }
+  }, [streamUrl]);
+
   return (
     <div ref={wrapperRef} className="rounded-xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
-      {/* Video element */}
+      {/* Video element — lives in inlineVideoSlotRef or fsVideoSlotRef, moved by useLayoutEffect */}
       <div className="relative bg-black" style={{ aspectRatio: "16/9" }}>
-        {streamUrl && (
-          <video
-            ref={videoRef}
-            src={streamUrl}
-            className="w-full h-full object-contain"
-            preload="metadata"
-            onClick={togglePlay}
-            style={{ cursor: "pointer", display: "block" }}
-          />
-        )}
+        {/* Slot: the actual <video> DOM node is appended here imperatively */}
+        <div ref={inlineVideoSlotRef} className="w-full h-full" />
         {/* Loading spinner overlay */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
@@ -934,16 +965,9 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             </button>
           </div>
 
-          {/* Video area */}
+          {/* Video area — the single <video> DOM node is moved here by useLayoutEffect */}
           <div className="flex-1 relative bg-black overflow-hidden">
-            <video
-              ref={videoRef}
-              src={streamUrl ?? undefined}
-              className="w-full h-full object-contain"
-              preload="metadata"
-              onClick={togglePlay}
-              style={{ cursor: "pointer", display: "block" }}
-            />
+            <div ref={fsVideoSlotRef} className="w-full h-full" />
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin" />

@@ -225,6 +225,33 @@ export const appRouter = router({
     allWithPillars: adminProcedure.query(async () => {
       return getAllTracksWithPillars();
     }),
+
+    // Generate a presigned download URL (Content-Disposition: attachment) for a track audio file
+    getDownloadUrl: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const track = await getTrackById(input.id);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        if (!track.audioKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
+        const { generatePresignedDownloadUrl } = await import("./s3Upload");
+        // Use original filename with extension from key
+        const ext = track.audioKey.split(".").pop() ?? "mp3";
+        const fileName = `${track.title.replace(/[^a-zA-Z0-9\-_]/g, "_")}.${ext}`;
+        const url = await generatePresignedDownloadUrl(track.audioKey, fileName);
+        return { url };
+      }),
+
+    // Generate a presigned stream URL (no Content-Disposition) for audio players
+    getStreamUrl: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const track = await getTrackById(input.id);
+        if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
+        if (!track.audioKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
+        const { generatePresignedStreamUrl } = await import("./s3Upload");
+        const url = await generatePresignedStreamUrl(track.audioKey);
+        return { url };
+      }),
   }),
 
   // ── Comments ─────────────────────────────────────────────────────────────────

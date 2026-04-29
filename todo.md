@@ -338,3 +338,11 @@
 ## Status Label & Color Update
 - [x] Renamed 'Started' → 'In Queue' (grey #888888) in Admin.tsx, Home.tsx, Project.tsx
 - [x] Changed 'Completed' from purple (#A78BFA) to green (#22C55E) in all three files
+
+## Download Buttons for All S3 Files
+- [x] Audit: sonicTracks table has audioKey + audioUrl columns; deliverables have fileKey/fileName/fileSize
+- [x] Add tRPC tracks.getDownloadUrl + tracks.getStreamUrl procedures (protectedProcedure, uses audioKey)
+- [x] Client Project page: Download button added to SonicTrackRow (yellow, right-aligned, presigned URL)
+- [x] Admin panel: Download icon button added to TrackAdminRow (yellow, next to delete)
+- [x] Client Project page: DeliverableAudioCard already had Download File button (confirmed)
+- [x] Admin panel: AdminDeliverableDownloadButton component added to DeliverableEditRow file attachment row

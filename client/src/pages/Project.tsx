@@ -115,6 +115,26 @@ function SonicTrackRow({
     onError: (e) => toast.error(e.message),
   });
 
+  const getTrackDownloadUrl = trpc.tracks.getDownloadUrl.useMutation();
+  const [trackDownloading, setTrackDownloading] = useState(false);
+
+  const handleTrackDownload = async () => {
+    setTrackDownloading(true);
+    try {
+      const { url } = await getTrackDownloadUrl.mutateAsync({ id: track.id });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setTrackDownloading(false);
+    }
+  };
+
   // Audio event handlers
   useEffect(() => {
     const audio = audioRef.current;
@@ -383,7 +403,7 @@ function SonicTrackRow({
         </div>
       )}
 
-      {/* Approval buttons */}
+      {/* Approval buttons + Download */}
       <div className="px-4 pb-4 flex gap-2 flex-wrap">
         <button
           onClick={() => setApproval.mutate({ trackId: track.id, status: "approved" })}
@@ -414,6 +434,15 @@ function SonicTrackRow({
             : { background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)" }}
         >
           <XCircle size={11} /> Reject
+        </button>
+        <button
+          onClick={handleTrackDownload}
+          disabled={trackDownloading}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ml-auto"
+          style={{ background: "rgba(255,214,0,0.08)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+        >
+          {trackDownloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+          {trackDownloading ? "Preparing…" : "Download"}
         </button>
       </div>
     </div>

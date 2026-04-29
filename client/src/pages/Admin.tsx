@@ -592,6 +592,25 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
 // ── Track Admin Row (with per-track approvals) ────────────────────────────────
 function TrackAdminRow({ track, trackIndex, accentColor, onDelete }: { track: any; trackIndex: number; accentColor: string; onDelete: () => void }) {
   const { data: approvals } = trpc.trackApprovals.byTrack.useQuery({ trackId: track.id });
+  const getTrackDownloadUrl = trpc.tracks.getDownloadUrl.useMutation();
+  const [trackDownloading, setTrackDownloading] = useState(false);
+
+  const handleTrackDownload = async () => {
+    setTrackDownloading(true);
+    try {
+      const { url } = await getTrackDownloadUrl.mutateAsync({ id: track.id });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setTrackDownloading(false);
+    }
+  };
 
   const approvedCount = approvals?.filter((a) => a.status === "approved").length ?? 0;
   const needsChangesCount = approvals?.filter((a) => a.status === "needs_changes").length ?? 0;
@@ -611,6 +630,15 @@ function TrackAdminRow({ track, trackIndex, accentColor, onDelete }: { track: an
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1A1A1A", color: "#888888" }}>Track {trackIndex + 1}</span>
+          <button
+            onClick={handleTrackDownload}
+            disabled={trackDownloading}
+            title="Download audio file"
+            className="p-1.5 rounded transition-colors"
+            style={{ color: "#FFD600" }}
+          >
+            {trackDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          </button>
           <button
             onClick={onDelete}
             className="p-1.5 rounded transition-colors"
@@ -1213,6 +1241,42 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
 }
 
 // ── Deliverable Edit Row ──────────────────────────────────────────────────────
+// ── Admin Deliverable Download Button ────────────────────────────────────────
+function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, formatBytes }: { deliverableId: number; fileName?: string; fileSize?: number; formatBytes: (b: number) => string }) {
+  const getDownloadUrl = trpc.deliverables.getDownloadUrl.useMutation();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ id: deliverableId });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={downloading}
+      className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-opacity"
+      style={{ background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
+    >
+      {downloading ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+      {fileName || "Download File"}
+      {fileSize ? ` · ${formatBytes(fileSize)}` : ""}
+    </button>
+  );
+}
+
 function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(d.title);
@@ -1285,11 +1349,7 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
         {/* File attachment row */}
         <div className="flex items-center gap-2 flex-wrap">
           {(fileKey ?? d.fileKey) ? (
-            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded" style={{ background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}>
-              <Download size={10} />
-              {(fileName ?? d.fileName) || "File attached"}
-              {(fileSize ?? d.fileSize) ? ` · ${formatBytes(fileSize ?? d.fileSize)}` : ""}
-            </span>
+            <AdminDeliverableDownloadButton deliverableId={d.id} fileName={(fileName ?? d.fileName) || undefined} fileSize={(fileSize ?? d.fileSize) || undefined} formatBytes={formatBytes} />
           ) : (
             <span className="text-xs" style={{ color: "#444" }}>No file attached</span>
           )}

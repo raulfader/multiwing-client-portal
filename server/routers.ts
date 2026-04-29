@@ -226,31 +226,29 @@ export const appRouter = router({
       return getAllTracksWithPillars();
     }),
 
-    // Generate a presigned download URL (Content-Disposition: attachment) for a track audio file
+    // Generate a proxy download URL for a track audio file (CDN-hosted, not in S3 bucket)
     getDownloadUrl: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const track = await getTrackById(input.id);
         if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        if (!track.audioKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
-        const { generatePresignedDownloadUrl } = await import("./s3Upload");
-        // Use original filename with extension from key
-        const ext = track.audioKey.split(".").pop() ?? "mp3";
-        const fileName = `${track.title.replace(/[^a-zA-Z0-9\-_]/g, "_")}.${ext}`;
-        const url = await generatePresignedDownloadUrl(track.audioKey, fileName);
-        return { url };
+        if (!track.audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
+        // Return a server-side proxy URL so we can set Content-Disposition with the track title
+        const ext = (track.audioKey || track.audioUrl).split(".").pop()?.toLowerCase() ?? "wav";
+        const safeTitle = track.title.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
+        const fileName = encodeURIComponent(`${safeTitle}.${ext}`);
+        return { url: `/api/tracks/download/${track.id}?filename=${fileName}` };
       }),
 
-    // Generate a presigned stream URL (no Content-Disposition) for audio players
+    // Return the CDN audioUrl directly for streaming (no Content-Disposition)
     getStreamUrl: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const track = await getTrackById(input.id);
         if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
-        if (!track.audioKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
-        const { generatePresignedStreamUrl } = await import("./s3Upload");
-        const url = await generatePresignedStreamUrl(track.audioKey);
-        return { url };
+        if (!track.audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
+        // CDN URL is directly accessible for streaming
+        return { url: track.audioUrl };
       }),
   }),
 

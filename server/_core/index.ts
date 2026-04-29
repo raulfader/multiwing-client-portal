@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerEmailTrackingRoutes } from "../emailTracking";
+import { registerTrackDownloadRoute } from "../trackDownload";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -38,6 +39,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Email open/click tracking (must be before Vite catch-all)
   registerEmailTrackingRoutes(app);
+  // Track audio proxy download (CDN → browser with Content-Disposition: attachment)
+  registerTrackDownloadRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

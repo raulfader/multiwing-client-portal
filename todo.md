@@ -346,3 +346,10 @@
 - [x] Admin panel: Download icon button added to TrackAdminRow (yellow, next to delete)
 - [x] Client Project page: DeliverableAudioCard already had Download File button (confirmed)
 - [x] Admin panel: AdminDeliverableDownloadButton component added to DeliverableEditRow file attachment row
+
+## Download XML Fix
+- [x] Diagnosed: Sonic Branding audio tracks stored on Manus CDN (not in S3 bucket) — S3 presigned URLs returned XML error
+- [x] Fixed: tracks.getDownloadUrl now returns /api/tracks/download/:id proxy URL
+- [x] Added registerTrackDownloadRoute Express handler: fetches from CDN, pipes back with Content-Disposition: attachment; filename="Track Title.wav"
+- [x] Fixed: tracks.getStreamUrl now returns audioUrl (CDN) directly — no S3 presigning needed
+- [x] Deliverable file downloads confirmed working (fileKey values exist in S3 bucket)

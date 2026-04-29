@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { parse as parseCookies } from "cookie";
 import { getTrackById } from "./db";
 import { validateSession, SESSION_COOKIE } from "./customAuth";
 
@@ -9,13 +10,17 @@ import { validateSession, SESSION_COOKIE } from "./customAuth";
  * Content-Disposition: attachment header so the browser downloads it
  * with the track title as the filename instead of the CDN hash path.
  *
- * Auth: requires a valid session cookie (same as tRPC protectedProcedure).
+ * Auth: checks x-session-token header first (localStorage-based auth used by
+ * this portal), then falls back to the portal_session cookie.
  */
 export function registerTrackDownloadRoute(app: Express) {
   (app as any).get("/api/tracks/download/:id", async (req: any, res: any) => {
     try {
-      // Validate session from cookie
-      const token = req.cookies?.[SESSION_COOKIE] || req.headers.cookie?.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))?.[1];
+      // Validate session: x-session-token header (localStorage) takes priority,
+      // then cookie fallback for any future cookie-based auth path.
+      const token =
+        (req.headers["x-session-token"] as string | undefined) ??
+        parseCookies(req.headers.cookie ?? "")[SESSION_COOKIE];
       const session = token ? await validateSession(token) : null;
       if (!session) {
         return res.status(401).json({ error: "Unauthorized" });

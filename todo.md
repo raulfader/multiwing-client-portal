@@ -353,3 +353,8 @@
 - [x] Added registerTrackDownloadRoute Express handler: fetches from CDN, pipes back with Content-Disposition: attachment; filename="Track Title.wav"
 - [x] Fixed: tracks.getStreamUrl now returns audioUrl (CDN) directly — no S3 presigning needed
 - [x] Deliverable file downloads confirmed working (fileKey values exist in S3 bucket)
+
+## Download Auth Fix
+- [x] Fixed: trackDownload proxy route now reads x-session-token header (localStorage-based auth) in addition to cookie fallback
+- [x] Fixed: Admin TrackAdminRow download handler updated to use fetch+blob approach (was using old anchor-click which caused JSON download)
+- [x] Fixed: Both SonicTrackRow (client) and TrackAdminRow (admin) fetch calls now include x-session-token header from localStorage

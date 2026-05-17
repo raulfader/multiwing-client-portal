@@ -420,3 +420,9 @@
 - [x] Remove access level selector from Share modal (all shares are full access)
 - [x] Hide Share button for guests in ProjectPage and SonicBrandingProjectView (already done)
 - [x] Hide New Project button for guests in Home.tsx
+
+## Guest Access Restriction (Critical Fix)
+- [x] Fix: projects.list now returns only the one shared project when ctx.shareId is set
+- [x] Fix: Home.tsx redirects guests directly to their project when projects load (no full grid visible)
+- [x] Fix: Share button hidden for guests in both ProjectPage and SonicBrandingProjectView (!isGuest guard)
+- [x] Fix: New Project button hidden for guests on Home page

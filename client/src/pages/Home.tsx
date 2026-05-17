@@ -513,6 +513,7 @@ type StatusFilter = "all" | "started" | "in_progress" | "completed";
 export default function Home() {
   const { user, loading, isAuthenticated, logout, isGuest } = useAuth();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [, navigate] = useLocation();
   // Sonic Branding is now a project card in the grid
 
   const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery(undefined, {
@@ -522,6 +523,13 @@ export default function Home() {
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  // Guests can only access their specific shared project — redirect immediately
+  useEffect(() => {
+    if (isGuest && projects && projects.length > 0) {
+      navigate(`/projects/${projects[0].slug}`, { replace: true });
+    }
+  }, [isGuest, projects, navigate]);
 
   if (loading) {
     return (

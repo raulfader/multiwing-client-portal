@@ -54,7 +54,7 @@ import {
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
 import { getDb } from "./db";
-import { projectContacts, emailLog } from "../drizzle/schema";
+import { projectContacts, emailLog, projectShares, projects } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { COOKIE_NAME } from "@shared/const";
@@ -437,7 +437,25 @@ export const appRouter = router({
 
   // ── Projects (content hub) ───────────────────────────────────────────────────
   projects: router({
-    list: protectedProcedure.query(async () => {
+    list: protectedProcedure.query(async ({ ctx }) => {
+      // Guests (share sessions) can only see the one project they were invited to
+      if (ctx.shareId !== undefined) {
+        const db = await getDb();
+        if (!db) return [];
+        // Look up the projectId for this shareId
+        const shareRows = await db
+          .select({ projectId: projectShares.projectId })
+          .from(projectShares)
+          .where(eq(projectShares.id, ctx.shareId))
+          .limit(1);
+        if (!shareRows[0]) return [];
+        const projectRows = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, shareRows[0].projectId))
+          .limit(1);
+        return projectRows;
+      }
       return getAllProjects();
     }),
 

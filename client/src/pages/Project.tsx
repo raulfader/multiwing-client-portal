@@ -1615,9 +1615,12 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
 
 // ── Sonic Branding Project View ───────────────────────────────────────────────
 
+const SONIC_BRANDING_PROJECT_ID = 30001;
+
 function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const [showShareModal, setShowShareModal] = useState(false);
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -1648,9 +1651,20 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
               <span>Back to Hub</span>
             </button>
           </Link>
-          <img src={FL_LOGO_P} alt="Faderlabs" className="h-6 object-contain" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: "rgba(255,214,0,0.1)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
+            >
+              <Share2 size={13} />
+              Share
+            </button>
+            <img src={FL_LOGO_P} alt="Faderlabs" className="h-6 object-contain" />
+          </div>
         </div>
       </header>
+      {showShareModal && <ShareModal project={{ id: SONIC_BRANDING_PROJECT_ID, title: "Sonic Branding" }} onClose={() => setShowShareModal(false)} />}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,214,0,0.06) 0%, transparent 60%)" }} />

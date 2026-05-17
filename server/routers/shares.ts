@@ -2,10 +2,11 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { projectShares, shareOtps, shareSessions, projects, deliverables } from "../../drizzle/schema";
-import { eq, and, isNull, or, gt } from "drizzle-orm";
+import { projectShares, shareOtps, shareSessions, projects, deliverables, pillars, tracks } from "../../drizzle/schema";
+import { eq, and, isNull, or, gt, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { sendShareOtpEmail } from "../email";
+import { generatePresignedDownloadUrl } from "../s3Upload";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function generateOtp(): string {
@@ -267,9 +268,27 @@ export const sharesRouter = router({
         .where(eq(deliverables.projectId, share.projectId))
         .orderBy(deliverables.sortOrder);
 
+      // For sonic-branding project, also return pillars + tracks
+      let pillarsWithTracks: any[] = [];
+      if (projectRows[0].category === "audio" || projectRows[0].slug === "sonic-branding") {
+        const pillarRows = await db
+          .select()
+          .from(pillars)
+          .orderBy(asc(pillars.sortOrder), asc(pillars.createdAt));
+        const trackRows = await db
+          .select()
+          .from(tracks)
+          .orderBy(asc(tracks.sortOrder), asc(tracks.createdAt));
+        pillarsWithTracks = pillarRows.map((p) => ({
+          ...p,
+          tracks: trackRows.filter((t) => t.pillarId === p.id),
+        }));
+      }
+
       return {
         project: projectRows[0],
         deliverables: deliverableRows,
+        pillars: pillarsWithTracks,
         accessLevel: share.accessLevel,
         guestEmail: share.email,
       };
@@ -297,5 +316,41 @@ export const sharesRouter = router({
         accessLevel: share.accessLevel,
         guestEmail: share.email,
       };
+    }),
+
+  // Guest: generate a presigned download URL for a deliverable (requires download access)
+  getDownloadUrl: publicProcedure
+    .input(z.object({ shareToken: z.string(), sessionToken: z.string(), deliverableId: z.number() }))
+    .mutation(async ({ input }) => {
+      const share = await getActiveShare(input.shareToken);
+      if (!share) throw new TRPCError({ code: "NOT_FOUND", message: "Share link not found or expired" });
+      if (share.accessLevel !== "download") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Download access not granted" });
+      }
+      const session = await getShareSession(input.sessionToken);
+      if (!session || session.shareId !== share.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Session expired. Please verify your email again." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const deliverableRows = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.id, input.deliverableId))
+        .limit(1);
+      const deliverable = deliverableRows[0];
+      if (!deliverable || deliverable.projectId !== share.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+      }
+      // S3 file: generate presigned URL
+      if (deliverable.fileKey) {
+        const url = await generatePresignedDownloadUrl(deliverable.fileKey, deliverable.fileName ?? undefined);
+        return { url, type: "presigned" as const };
+      }
+      // Legacy downloadUrl (f.io / OneDrive link)
+      if (deliverable.downloadUrl) {
+        return { url: deliverable.downloadUrl, type: "external" as const };
+      }
+      throw new TRPCError({ code: "NOT_FOUND", message: "No file attached to this deliverable" });
     }),
 });

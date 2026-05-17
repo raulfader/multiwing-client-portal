@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, title, slug, category FROM projects WHERE slug = 'sonic-branding' OR category = 'audio' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute SELECT id, title, slug, category FROM projects WHERE slug = 'sonic-branding' OR category = 'audio' LIMIT 5;",
+  "rows": [
+    {
+      "id": "30001",
+      "title": "Sonic Branding",
+      "slug": "sonic-branding",
+      "category": "audio"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tslug\tcategory\n30001\tSonic Branding\tsonic-branding\taudio\n",
+  "stderr": "",
+  "execution_time_ms": 315
+}

@@ -386,3 +386,11 @@
 - [x] Client UI: Manage shares panel — list of active shares with revoke button
 - [x] Guest UI: /share/:token route — email entry gate → OTP verification → project view (read or read+download)
 - [x] Guest view: deliverables visible but download buttons hidden for read-only shares
+
+## Share Feature Bug Fixes
+- [x] Fix projects not loading on client hub (was stale Vite parse error; projects.list returns 200 correctly)
+- [x] Fix share invite email not being sent to guest (SMTP verified OK; added error logging in shares.create)
+- [x] Fix guest cannot access deliverables after OTP verification (wrong field name fileUrl → downloadUrl/fileKey; added shares.getDownloadUrl procedure; fixed session expiry handling)
+- [x] Add Share button to Sonic Branding project page (/projects/sonic-branding uses project ID 30001)
+- [x] Add GuestPillarCard + GuestTrackPlayer for Sonic Branding guest view (read-only audio player)
+- [x] shares.getProject now returns pillars+tracks for audio/sonic-branding projects

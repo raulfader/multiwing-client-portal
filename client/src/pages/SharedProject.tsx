@@ -4,7 +4,8 @@ import { useParams } from "wouter";
 import { toast } from "sonner";
 import {
   Film, Music2, FileText, Archive, FolderOpen,
-  Download, Loader2, Mail, ShieldCheck, RefreshCw, Eye
+  Download, Loader2, Mail, ShieldCheck, RefreshCw, Eye,
+  ExternalLink, Play, Pause
 } from "lucide-react";
 
 const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_0d44da07.webp";
@@ -166,24 +167,32 @@ function GuestDeliverableCard({
   sessionToken: string;
 }) {
   const [downloading, setDownloading] = useState(false);
+  const getDownloadUrl = trpc.shares.getDownloadUrl.useMutation();
+
+  // A deliverable is downloadable if it has an S3 fileKey or a legacy downloadUrl
+  const hasFile = !!(deliverable.fileKey || deliverable.downloadUrl);
+  const canDownload = accessLevel === "download" && hasFile;
 
   const handleDownload = async () => {
-    if (!deliverable.fileUrl) return;
     setDownloading(true);
     try {
-      const res = await fetch(`/api/tracks/download-share/${shareToken}/${deliverable.id}`, {
-        headers: { "x-share-session": sessionToken },
+      const result = await getDownloadUrl.mutateAsync({
+        shareToken,
+        sessionToken,
+        deliverableId: deliverable.id,
       });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const ct = res.headers.get("content-type") ?? "";
-      const ext = ct.includes("wav") ? "wav" : ct.includes("mp4") ? "mp4" : ct.includes("audio") ? "mp3" : "bin";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${deliverable.title ?? "file"}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (result.type === "external") {
+        // Legacy link — open in new tab
+        window.open(result.url, "_blank", "noopener,noreferrer");
+      } else {
+        // Presigned S3 URL — force download
+        const a = document.createElement("a");
+        a.href = result.url;
+        a.download = deliverable.fileName || deliverable.title || "file";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     } catch (err: any) {
       toast.error(err.message ?? "Download failed");
     } finally {
@@ -191,7 +200,7 @@ function GuestDeliverableCard({
     }
   };
 
-  const cat = deliverable.type ?? deliverable.category ?? "video";
+  const cat = deliverable.fileType ?? deliverable.type ?? deliverable.category ?? "video";
 
   return (
     <div className="rounded-2xl overflow-hidden transition-all hover:scale-[1.01]" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
@@ -220,23 +229,95 @@ function GuestDeliverableCard({
           <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "#666" }}>{deliverable.description}</p>
         )}
         <div className="mt-3 flex items-center gap-2">
-          {accessLevel === "download" && deliverable.fileUrl ? (
+          {canDownload ? (
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
               style={{ background: "rgba(255,214,0,0.12)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
             >
               {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              Download
+              {downloading ? "Preparing…" : "Download"}
             </button>
           ) : (
             <span className="flex items-center gap-1.5 text-xs" style={{ color: "#555" }}>
               <Eye size={12} />
-              View only
+              {accessLevel === "read" ? "View only" : "No file attached"}
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Guest Pillar Card (Sonic Branding read-only view) ────────────────────────
+const PILLAR_COLORS = ["#64DD17", "#FFD600", "#d60000", "#A78BFA", "#FB923C"];
+
+function GuestTrackPlayer({ track, accentColor }: { track: any; accentColor: string }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useState<HTMLAudioElement | null>(null);
+
+  const togglePlay = () => {
+    if (!audioRef[0]) {
+      const audio = new Audio(track.audioUrl);
+      audioRef[1](audio);
+      audio.addEventListener("timeupdate", () => {
+        if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100);
+      });
+      audio.addEventListener("ended", () => { setPlaying(false); setProgress(0); });
+      audio.play();
+      setPlaying(true);
+    } else if (playing) {
+      audioRef[0].pause();
+      setPlaying(false);
+    } else {
+      audioRef[0].play();
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl transition-all" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <button
+        onClick={togglePlay}
+        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
+        style={{ background: playing ? accentColor : "rgba(255,255,255,0.08)", color: playing ? "#000" : "#fff" }}
+      >
+        {playing ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate">{track.title}</p>
+        {track.description && <p className="text-xs truncate" style={{ color: "#666" }}>{track.description}</p>}
+        <div className="mt-2 h-1 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: accentColor }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuestPillarCard({ pillar, index }: { pillar: any; index: number }) {
+  const accentColor = PILLAR_COLORS[index % PILLAR_COLORS.length];
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: "#111", border: `1px solid ${accentColor}22` }}>
+      <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2 h-2 rounded-full" style={{ background: accentColor }} />
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: accentColor }}>Pillar {index + 1}</span>
+        </div>
+        <h2 className="text-lg font-bold text-white">{pillar.title}</h2>
+        {pillar.description && <p className="text-sm mt-1" style={{ color: "#666" }}>{pillar.description}</p>}
+      </div>
+      <div className="p-4 space-y-2">
+        {pillar.tracks?.length === 0 ? (
+          <p className="text-xs text-center py-4" style={{ color: "#444" }}>No tracks yet</p>
+        ) : (
+          pillar.tracks?.map((track: any) => (
+            <GuestTrackPlayer key={track.id} track={track} accentColor={accentColor} />
+          ))
+        )}
       </div>
     </div>
   );
@@ -256,17 +337,18 @@ export default function SharedProjectPage() {
   );
 
   // Fetch project data once session is established
-  const { data: projectData, isLoading: loadingProject } = trpc.shares.getProject.useQuery(
+  const { data: projectData, isLoading: loadingProject, error: projectError } = trpc.shares.getProject.useQuery(
     { shareToken: token ?? "", sessionToken: sessionToken ?? "" },
-    { enabled: !!token && !!sessionToken }
+    { enabled: !!token && !!sessionToken, retry: false }
   );
 
   // If session token is invalid/expired, clear it so user re-verifies
   useEffect(() => {
-    if (sessionToken && projectData === undefined && !loadingProject) {
-      // query errored — clear session
+    if (projectError && sessionToken) {
+      sessionStorage.removeItem(SESSION_KEY(token ?? ""));
+      setSessionToken(null);
     }
-  }, [sessionToken, projectData, loadingProject]);
+  }, [projectError, sessionToken, token]);
 
   if (!token || checkingToken) {
     return (
@@ -302,7 +384,7 @@ export default function SharedProjectPage() {
     );
   }
 
-  if (loadingProject || !projectData) {
+  if (loadingProject) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#FFD600] border-t-transparent rounded-full animate-spin" />
@@ -310,7 +392,31 @@ export default function SharedProjectPage() {
     );
   }
 
-  const { project, deliverables, accessLevel, guestEmail } = projectData;
+  if (!projectData) {
+    // Error state — session may have expired, show re-verify prompt
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-4 text-center">
+        <img src={MW_LOGO} alt="Multi-Wing" className="h-8 mb-8 object-contain" />
+        <h1 className="text-xl font-bold text-white mb-2">Session Expired</h1>
+        <p className="text-sm max-w-sm mb-6" style={{ color: "#666" }}>
+          Your access session has expired. Please verify your email again to continue.
+        </p>
+        <button
+          onClick={() => {
+            sessionStorage.removeItem(SESSION_KEY(token));
+            setSessionToken(null);
+          }}
+          className="px-6 py-3 rounded-lg font-semibold text-sm"
+          style={{ background: "#FFD600", color: "#0A0A0A" }}
+        >
+          Verify Again
+        </button>
+      </div>
+    );
+  }
+
+  const { project, deliverables, pillars = [], accessLevel, guestEmail } = projectData;
+  const isSonicBranding = project.category === "audio" || project.slug === "sonic-branding";
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
@@ -351,10 +457,25 @@ export default function SharedProjectPage() {
         </div>
       </div>
 
-      {/* Deliverables */}
+      {/* Deliverables / Sonic Branding */}
       <div className="max-w-6xl mx-auto px-6 pb-16">
-        {deliverables.length === 0 ? (
+        {isSonicBranding ? (
+          // Sonic Branding: render pillars + audio tracks
+          pillars.length === 0 ? (
+            <div className="text-center py-20">
+              <Music2 size={40} className="mx-auto mb-4 opacity-20 text-white" />
+              <p style={{ color: "#555" }}>No tracks available yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {pillars.map((pillar: any, i: number) => (
+                <GuestPillarCard key={pillar.id} pillar={pillar} index={i} />
+              ))}
+            </div>
+          )
+        ) : deliverables.length === 0 ? (
           <div className="text-center py-20">
+            <FolderOpen size={40} className="mx-auto mb-4 opacity-20 text-white" />
             <p style={{ color: "#555" }}>No deliverables available yet.</p>
           </div>
         ) : (

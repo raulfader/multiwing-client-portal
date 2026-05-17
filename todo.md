@@ -358,3 +358,7 @@
 - [x] Fixed: trackDownload proxy route now reads x-session-token header (localStorage-based auth) in addition to cookie fallback
 - [x] Fixed: Admin TrackAdminRow download handler updated to use fetch+blob approach (was using old anchor-click which caused JSON download)
 - [x] Fixed: Both SonicTrackRow (client) and TrackAdminRow (admin) fetch calls now include x-session-token header from localStorage
+
+## Hide Comments on Approve
+- [x] Client view: hide all deliverable comments when reviewStatus === 'approved' (video player inline + fullscreen, audio card)
+- [x] Comments reappear if client toggles back from Approved to Pending

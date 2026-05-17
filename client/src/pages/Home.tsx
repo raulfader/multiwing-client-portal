@@ -511,7 +511,7 @@ function LoginScreen() {
 type StatusFilter = "all" | "started" | "in_progress" | "completed";
 
 export default function Home() {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, logout, isGuest } = useAuth();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   // Sonic Branding is now a project card in the grid
 
@@ -691,17 +691,19 @@ export default function Home() {
               Click a project to view deliverables, leave feedback, and download files.
             </p>
           </div>
-          <Link href="/new-project">
-            <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shrink-0"
-              style={{ background: "#FFD600", color: "#0A0A0A" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFE033")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFD600")}
-            >
-              <PlusCircle size={16} />
-              New Project
-            </button>
-          </Link>
+          {!isGuest && (
+            <Link href="/new-project">
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shrink-0"
+                style={{ background: "#FFD600", color: "#0A0A0A" }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFE033")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "#FFD600")}
+              >
+                <PlusCircle size={16} />
+                New Project
+              </button>
+            </Link>
+          )}
         </div>
 
         {projectsLoading ? (

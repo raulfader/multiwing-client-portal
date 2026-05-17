@@ -21,7 +21,6 @@ const PILLAR_ACCENT_COLORS = ["#64DD17", "#FFD600", "#d60000", "#A78BFA", "#FB92
 function ShareModal({ project, onClose }: { project: any; onClose: () => void }) {
   const [tab, setTab] = useState<"create" | "manage">("create");
   const [email, setEmail] = useState("");
-  const [accessLevel, setAccessLevel] = useState<"read" | "download">("read");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -49,7 +48,7 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
     createShare.mutate({
       projectId: project.id,
       email: email.trim(),
-      accessLevel,
+      accessLevel: "download" as const,
       origin: window.location.origin,
     });
   };
@@ -104,30 +103,7 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
                       style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Access Level</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(["read", "download"] as const).map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => setAccessLevel(level)}
-                          className="flex flex-col items-start gap-1.5 p-4 rounded-xl transition-all"
-                          style={{
-                            background: accessLevel === level ? "rgba(255,214,0,0.08)" : "#1A1A1A",
-                            border: accessLevel === level ? "1px solid rgba(255,214,0,0.4)" : "1px solid #2A2A2A",
-                          }}
-                        >
-                          {level === "read" ? <Eye size={16} style={{ color: accessLevel === level ? "#FFD600" : "#666" }} /> : <Download size={16} style={{ color: accessLevel === level ? "#FFD600" : "#666" }} />}
-                          <span className="text-sm font-semibold" style={{ color: accessLevel === level ? "#FFD600" : "#FAFAFA" }}>
-                            {level === "read" ? "View Only" : "View + Download"}
-                          </span>
-                          <span className="text-xs" style={{ color: "#666" }}>
-                            {level === "read" ? "Can see deliverables, no downloads" : "Can view and download all files"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+
                   <button
                     onClick={handleCreate}
                     disabled={createShare.isPending}
@@ -187,9 +163,7 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
                   <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-xl" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{s.email}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "#666" }}>
-                        {s.accessLevel === "download" ? "View + Download" : "View Only"} &middot; Added {new Date(s.createdAt).toLocaleDateString()}
-                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "#666" }}>Added {new Date(s.createdAt).toLocaleDateString()}</p>
                     </div>
                     <button
                       onClick={() => revokeShare.mutate({ shareId: s.id })}

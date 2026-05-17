@@ -415,3 +415,8 @@
 - [x] Guest sees full 1:1 project view — same ProjectPage / SonicBrandingProjectView components, no restrictions
 - [x] Share button hidden for guests (isGuest flag from useAuth in both ProjectPage and SonicBrandingProjectView)
 - [x] All 19 tests pass, TypeScript clean
+
+## Guest Restrictions
+- [x] Remove access level selector from Share modal (all shares are full access)
+- [x] Hide Share button for guests in ProjectPage and SonicBrandingProjectView (already done)
+- [x] Hide New Project button for guests in Home.tsx

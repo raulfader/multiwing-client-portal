@@ -402,3 +402,7 @@
 ## Guest View/Download Fix
 - [x] Fix: guest cannot view deliverables — added View File button + thumbnail click-to-open; getViewUrl procedure returns f.io link directly
 - [x] Fix: guest cannot download files — getDownloadUrl now returns f.io downloadUrl when fileKey is null; Download button opens link in new tab
+
+## Invite Email Flow Fix
+- [x] First invite email: only project name + link, no OTP code (uses sendShareInviteEmail)
+- [x] OTP is sent automatically when guest lands on the share link page (requestOtp called on page load in SharedProject.tsx)

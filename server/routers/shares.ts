@@ -5,7 +5,7 @@ import { getDb } from "../db";
 import { projectShares, shareOtps, shareSessions, projects, deliverables, pillars, tracks } from "../../drizzle/schema";
 import { eq, and, isNull, or, gt, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { sendShareOtpEmail } from "../email";
+import { sendShareOtpEmail, sendShareInviteEmail } from "../email";
 import { generatePresignedDownloadUrl } from "../s3Upload";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -106,23 +106,17 @@ export const sharesRouter = router({
         share = { ...share, accessLevel: input.accessLevel };
       }
 
-      // Send OTP email
-      const code = generateOtp();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-      await db.insert(shareOtps).values({
-        shareId: share.id,
-        code,
-        expiresAt,
-      });
-
+      // Send invite email (no OTP — OTP is sent when guest lands on the share page)
       const shareUrl = `${input.origin}/share/${share.token}`;
-      await sendShareOtpEmail({
+      const emailResult = await sendShareInviteEmail({
         to: input.email,
         projectTitle: projectRows[0].title,
-        code,
         accessLevel: input.accessLevel,
         shareUrl,
       });
+      if (!emailResult.success) {
+        console.error("[shares.create] Failed to send invite email:", emailResult.error);
+      }
 
       return {
         success: true,

@@ -163,6 +163,92 @@ export async function sendProjectNotification(params: {
   }
 }
 
+// ── Share invite email (no OTP — just a link) ───────────────────────────────
+export async function sendShareInviteEmail(params: {
+  to: string;
+  projectTitle: string;
+  accessLevel: "read" | "download";
+  shareUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { to, projectTitle, accessLevel, shareUrl } = params;
+  const accessLabel = accessLevel === "download" ? "view and download files" : "view deliverables";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>You've been invited to a project</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0a; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 0 auto; background: #111111; }
+    .header { background: #0a0a0a; padding: 32px 40px 24px; border-bottom: 1px solid #222; text-align: center; }
+    .header img { height: 36px; display: block; margin: 0 auto; }
+    .body { padding: 40px 40px 32px; }
+    .greeting { font-size: 15px; color: #ffffff; margin: 0 0 16px; }
+    .message { font-size: 15px; line-height: 1.7; color: #cccccc; margin: 0 0 28px; }
+    .cta-block { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px 28px; margin-bottom: 28px; text-align: center; }
+    .cta-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #FFD600; margin: 0 0 8px; }
+    .cta-title { font-size: 18px; font-weight: 700; color: #ffffff; margin: 0 0 20px; }
+    .cta-btn { display: inline-block; background: #FFD600; color: #0a0a0a; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 8px; letter-spacing: 0.04em; }
+    .footer { background: #0a0a0a; padding: 24px 40px; border-top: 1px solid #222; text-align: center; }
+    .footer p { font-size: 12px; color: #555; margin: 0 0 4px; }
+    .footer a { color: #FFD600; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><img src="${FL_LOGO}" alt="Faderlabs" /></div>
+    <div class="body">
+      <p class="greeting">Hi there,</p>
+      <p class="message">
+        You've been invited to ${accessLabel} for the project <strong style="color:#fff;">${projectTitle}</strong>.
+        Click the button below to access the project. You'll be asked to verify your email address when you arrive.
+      </p>
+      <div class="cta-block">
+        <p class="cta-label">Your Project</p>
+        <p class="cta-title">${projectTitle}</p>
+        <a href="${shareUrl}" class="cta-btn">Open Project Portal &rarr;</a>
+      </div>
+      <p class="message" style="font-size:13px;color:#888;">
+        If you didn't expect this invitation, you can safely ignore this email.
+      </p>
+    </div>
+    <div class="footer">
+      <p>Faderlabs &mdash; <a href="https://faderlabs.com">faderlabs.com</a></p>
+      <p>This email was sent on behalf of the Faderlabs production team.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi there,
+
+You've been invited to ${accessLabel} for the project "${projectTitle}".
+
+Click the link below to access the project. You'll be asked to verify your email address when you arrive.
+
+${shareUrl}
+
+If you didn't expect this, you can safely ignore this email.
+
+— Faderlabs Team`;
+
+  try {
+    await transporter.sendMail({
+      from: `"Faderlabs" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `You've been invited to view "${projectTitle}"`,
+      html,
+      text,
+    });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? "Unknown error" };
+  }
+}
+
 // ── Share OTP email ───────────────────────────────────────────────────────────
 export async function sendShareOtpEmail(params: {
   to: string;

@@ -314,6 +314,35 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
   );
 }
 
+// ── Project Status Badge ─────────────────────────────────────────────────────
+function ProjectStatusBadge({ status }: { status?: string }) {
+  if (!status || status === "started") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#888" }}>
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 inline-block" />
+        In Queue
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(255,214,0,0.12)", color: "#FFD600" }}>
+        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block animate-pulse" />
+        In Progress
+      </span>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "rgba(100,221,23,0.12)", color: "#64DD17" }}>
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+        Completed
+      </span>
+    );
+  }
+  return null;
+}
+
 // ── Project Card ───────────────────────────────────────────────────────────────
 function ProjectCard({ project }: { project: any }) {
   const Icon = CATEGORY_ICONS[project.category ?? "video"] ?? Folder;
@@ -356,13 +385,14 @@ function ProjectCard({ project }: { project: any }) {
 
         {/* Content */}
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span
               className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded"
               style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600" }}
             >
               {project.category ?? "project"}
             </span>
+            <ProjectStatusBadge status={project.projectStatus} />
           </div>
           <h3 className="font-bold text-base mb-1" style={{ color: "#FAFAFA" }}>{project.title}</h3>
           {project.description && (

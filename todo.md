@@ -362,3 +362,6 @@
 ## Hide Comments on Approve
 - [x] Client view: hide all deliverable comments when reviewStatus === 'approved' (video player inline + fullscreen, audio card)
 - [x] Comments reappear if client toggles back from Approved to Pending
+
+## Project Status Badge on Cards
+- [x] Show project status badge (In Queue / In Progress / Completed) on each project card in the Home.tsx grid

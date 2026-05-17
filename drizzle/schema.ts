@@ -207,7 +207,48 @@ export const clientProjectRequests = mysqlTable("client_project_requests", {
 export type ClientProjectRequest = typeof clientProjectRequests.$inferSelect;
 export type InsertClientProjectRequest = typeof clientProjectRequests.$inferInsert;
 
-// ── Custom Auth Sessions ───────────────────────────────────────────────
+// ── Project Shares (vendor / third-party access) ─────────────────────────────
+export const projectShares = mysqlTable("project_shares", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  grantedByUserId: int("grantedByUserId"), // null = admin-created
+  email: varchar("email", { length: 320 }).notNull(),
+  accessLevel: mysqlEnum("accessLevel", ["read", "download"]).default("read").notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  isRevoked: int("isRevoked").default(0).notNull(),
+  expiresAt: timestamp("expiresAt"), // null = never expires
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProjectShare = typeof projectShares.$inferSelect;
+export type InsertProjectShare = typeof projectShares.$inferInsert;
+
+// ── Share OTPs (one-time codes for guest email verification) ───────────────────────────────────────────────────────────────
+export const shareOtps = mysqlTable("share_otps", {
+  id: int("id").autoincrement().primaryKey(),
+  shareId: int("shareId").notNull(),
+  code: varchar("code", { length: 8 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ShareOtp = typeof shareOtps.$inferSelect;
+export type InsertShareOtp = typeof shareOtps.$inferInsert;
+
+// ── Share Sessions (authenticated guest sessions) ───────────────────────────────────────────────────────────────
+export const shareSessions = mysqlTable("share_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  shareId: int("shareId").notNull(),
+  sessionToken: varchar("sessionToken", { length: 128 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ShareSession = typeof shareSessions.$inferSelect;
+export type InsertShareSession = typeof shareSessions.$inferInsert;
+
+// ── Custom Auth Sessions ─────────────────────────────────────────────────────
 export const customSessions = mysqlTable("custom_sessions", {
   id: int("id").autoincrement().primaryKey(),
   token: varchar("token", { length: 128 }).notNull().unique(),

@@ -62,6 +62,7 @@ import { parse as parseCookies } from "cookie";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { sharesRouter } from "./routers/shares";
 import { nanoid } from "nanoid";
 import {
   checkClientPassword,
@@ -76,6 +77,7 @@ import {
 
 export const appRouter = router({
   system: systemRouter,
+  shares: sharesRouter,
 
   auth: router({
     // Returns current session info — reads token from x-session-token header or cookie

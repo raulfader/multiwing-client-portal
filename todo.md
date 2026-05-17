@@ -369,3 +369,20 @@
 ## Project Overview Filter
 - [x] Make stat cards (Total, In Queue, In Progress, Completed) clickable filters for the project grid
 - [x] Active filter card gets highlighted; clicking Total resets to show all projects
+
+## Project Sharing (Vendor/Third-Party Access)
+- [x] DB: project_shares table (id, projectId, grantedByUserId, email, accessLevel: read|download, token, expiresAt, createdAt)
+- [x] DB: share_otps table (id, shareId, email, code, expiresAt, usedAt)
+- [x] DB: share_sessions table (id, shareId, sessionToken, expiresAt)
+- [x] Backend: shares.create procedure (client creates share for a project + email + access level, sends OTP email)
+- [x] Backend: shares.requestOtp procedure (resend OTP to guest email)
+- [x] Backend: shares.verifyOtp procedure (verify 6-digit code, return 24h session token scoped to share)
+- [x] Backend: shares.getProject procedure (public, requires share token + verified session, returns project + deliverables)
+- [x] Backend: shares.list procedure (client can see all active shares for a project)
+- [x] Backend: shares.revoke procedure (client can revoke a share)
+- [x] Backend: shares.checkToken procedure (guest landing page validation)
+- [x] Client UI: Share button on project detail page (Project.tsx)
+- [x] Client UI: Share modal — enter email, choose Read Only or Read + Download, copy shareable link
+- [x] Client UI: Manage shares panel — list of active shares with revoke button
+- [x] Guest UI: /share/:token route — email entry gate → OTP verification → project view (read or read+download)
+- [x] Guest view: deliverables visible but download buttons hidden for read-only shares

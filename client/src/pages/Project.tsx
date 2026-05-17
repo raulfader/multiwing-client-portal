@@ -5,7 +5,8 @@ import { useParams, Link, useLocation } from "wouter";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
-  Play, Pause, Volume2, Download, Loader2, Maximize2, X
+  Play, Pause, Volume2, Download, Loader2, Maximize2, X,
+  Share2, Copy, Trash2, Eye, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,8 +16,201 @@ const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4
 const FL_LOGO_P = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
 const PILLAR_ACCENT_COLORS = ["#64DD17", "#FFD600", "#d60000", "#A78BFA", "#FB923C"];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Share Modal ────────────────────────────────────────────────────────────────────────────
 
+function ShareModal({ project, onClose }: { project: any; onClose: () => void }) {
+  const [tab, setTab] = useState<"create" | "manage">("create");
+  const [email, setEmail] = useState("");
+  const [accessLevel, setAccessLevel] = useState<"read" | "download">("read");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const createShare = trpc.shares.create.useMutation({
+    onSuccess: (data) => {
+      setShareUrl(data.shareUrl);
+      toast.success("Invite sent! An email with a verification code has been sent.");
+      refetchShares();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const { data: shares = [], refetch: refetchShares } = trpc.shares.list.useQuery(
+    { projectId: project.id },
+    { enabled: true }
+  );
+
+  const revokeShare = trpc.shares.revoke.useMutation({
+    onSuccess: () => { toast.success("Access revoked"); refetchShares(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleCreate = () => {
+    if (!email.trim()) return toast.error("Please enter an email address");
+    createShare.mutate({
+      projectId: project.id,
+      email: email.trim(),
+      accessLevel,
+      origin: window.location.origin,
+    });
+  };
+
+  const handleCopy = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.8)" }}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid #1A1A1A" }}>
+          <div className="flex items-center gap-2">
+            <Share2 size={16} style={{ color: "#FFD600" }} />
+            <span className="font-semibold text-white">Share Project</span>
+          </div>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex" style={{ borderBottom: "1px solid #1A1A1A" }}>
+          {(["create", "manage"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="flex-1 py-3 text-sm font-medium transition-colors"
+              style={tab === t ? { color: "#FFD600", borderBottom: "2px solid #FFD600" } : { color: "#666" }}
+            >
+              {t === "create" ? "Invite Someone" : `Manage Access (${shares.length})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {tab === "create" ? (
+            <div className="space-y-4">
+              {!shareUrl ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Email Address</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                      placeholder="vendor@company.com"
+                      className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-yellow-400/50"
+                      style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Access Level</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["read", "download"] as const).map((level) => (
+                        <button
+                          key={level}
+                          onClick={() => setAccessLevel(level)}
+                          className="flex flex-col items-start gap-1.5 p-4 rounded-xl transition-all"
+                          style={{
+                            background: accessLevel === level ? "rgba(255,214,0,0.08)" : "#1A1A1A",
+                            border: accessLevel === level ? "1px solid rgba(255,214,0,0.4)" : "1px solid #2A2A2A",
+                          }}
+                        >
+                          {level === "read" ? <Eye size={16} style={{ color: accessLevel === level ? "#FFD600" : "#666" }} /> : <Download size={16} style={{ color: accessLevel === level ? "#FFD600" : "#666" }} />}
+                          <span className="text-sm font-semibold" style={{ color: accessLevel === level ? "#FFD600" : "#FAFAFA" }}>
+                            {level === "read" ? "View Only" : "View + Download"}
+                          </span>
+                          <span className="text-xs" style={{ color: "#666" }}>
+                            {level === "read" ? "Can see deliverables, no downloads" : "Can view and download all files"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCreate}
+                    disabled={createShare.isPending}
+                    className="w-full py-3 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                    style={{ background: "#FFD600", color: "#0A0A0A" }}
+                  >
+                    {createShare.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {createShare.isPending ? "Sending invite…" : "Send Invite"}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                    <CheckCircle2 size={18} style={{ color: "#22C55E" }} />
+                    <div>
+                      <p className="text-sm font-semibold text-white">Invite sent to {email}</p>
+                      <p className="text-xs" style={{ color: "#666" }}>They'll receive a verification code by email</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Shareable Link</label>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        value={shareUrl}
+                        className="flex-1 px-3 py-2.5 rounded-lg text-xs text-white/70 outline-none"
+                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                      />
+                      <button
+                        onClick={handleCopy}
+                        className="px-3 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+                        style={{ background: copied ? "rgba(34,197,94,0.15)" : "#1A1A1A", border: "1px solid #2A2A2A", color: copied ? "#22C55E" : "#FAFAFA" }}
+                      >
+                        <Copy size={14} />{copied ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setShareUrl(null); setEmail(""); }}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888" }}
+                  >
+                    Invite Another Person
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-72 overflow-y-auto">
+              {shares.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users size={32} className="mx-auto mb-3 opacity-20 text-white" />
+                  <p className="text-sm" style={{ color: "#666" }}>No active shares yet</p>
+                </div>
+              ) : (
+                shares.map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-xl" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{s.email}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#666" }}>
+                        {s.accessLevel === "download" ? "View + Download" : "View Only"} &middot; Added {new Date(s.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => revokeShare.mutate({ shareId: s.id })}
+                      className="shrink-0 p-2 rounded-lg transition-colors hover:bg-red-500/10"
+                      style={{ color: "#666" }}
+                      title="Revoke access"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────────────
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";
   const m = Math.floor(seconds / 60);
@@ -1497,6 +1691,7 @@ export default function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const [showShareModal, setShowShareModal] = useState(false);
   const isSonicBranding = slug === "sonic-branding";
   // Always call all hooks unconditionally — no early returns before hooks
   const { data: project, isLoading: loadingProject } = trpc.projects.bySlug.useQuery(
@@ -1554,9 +1749,20 @@ export default function ProjectPage() {
               <span>Back to Hub</span>
             </button>
           </Link>
-          <img src={MW_LOGO} alt="Multi-Wing" className="h-7 object-contain" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
+              style={{ background: "rgba(255,214,0,0.12)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
+            >
+              <Share2 size={14} />
+              Share
+            </button>
+            <img src={MW_LOGO} alt="Multi-Wing" className="h-7 object-contain" />
+          </div>
         </div>
       </header>
+      {showShareModal && project && <ShareModal project={project} onClose={() => setShowShareModal(false)} />}
       {/* Hero */}
       <div className="relative overflow-hidden">
         {project.coverImageUrl && (

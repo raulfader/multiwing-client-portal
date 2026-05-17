@@ -162,3 +162,96 @@ export async function sendProjectNotification(params: {
     return { success: false, error: err?.message ?? "Unknown error" };
   }
 }
+
+// ── Share OTP email ───────────────────────────────────────────────────────────
+export async function sendShareOtpEmail(params: {
+  to: string;
+  projectTitle: string;
+  code: string;
+  accessLevel: "read" | "download";
+  shareUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { to, projectTitle, code, accessLevel, shareUrl } = params;
+  const accessLabel = accessLevel === "download" ? "view and download files" : "view deliverables";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your verification code</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; padding: 0; background: #0a0a0a; font-family: 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 0 auto; background: #111111; }
+    .header { background: #0a0a0a; padding: 32px 40px 24px; border-bottom: 1px solid #222; text-align: center; }
+    .header img { height: 36px; display: block; margin: 0 auto; }
+    .body { padding: 40px 40px 32px; }
+    .greeting { font-size: 15px; color: #ffffff; margin: 0 0 16px; }
+    .message { font-size: 15px; line-height: 1.7; color: #cccccc; margin: 0 0 28px; }
+    .otp-block { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 28px; margin-bottom: 28px; text-align: center; }
+    .otp-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #FFD600; margin: 0 0 12px; }
+    .otp-code { font-size: 42px; font-weight: 900; letter-spacing: 0.2em; color: #FFD600; font-family: 'Courier New', monospace; margin: 0 0 12px; }
+    .otp-expiry { font-size: 12px; color: #666; margin: 0; }
+    .cta-btn { display: inline-block; background: #FFD600; color: #0a0a0a; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px; letter-spacing: 0.04em; }
+    .footer { background: #0a0a0a; padding: 24px 40px; border-top: 1px solid #222; text-align: center; }
+    .footer p { font-size: 12px; color: #555; margin: 0 0 4px; }
+    .footer a { color: #FFD600; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><img src="${FL_LOGO}" alt="Faderlabs" /></div>
+    <div class="body">
+      <p class="greeting">Hi there,</p>
+      <p class="message">
+        You've been invited to ${accessLabel} for the project <strong style="color:#fff;">${projectTitle}</strong>.
+        Enter the verification code below to access the project.
+      </p>
+      <div class="otp-block">
+        <p class="otp-label">Your verification code</p>
+        <p class="otp-code">${code}</p>
+        <p class="otp-expiry">This code expires in 15 minutes</p>
+      </div>
+      <p style="text-align:center;margin-bottom:28px;">
+        <a href="${shareUrl}" class="cta-btn">Open Project Portal &rarr;</a>
+      </p>
+      <p class="message" style="font-size:13px;color:#888;">
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    </div>
+    <div class="footer">
+      <p>Faderlabs &mdash; <a href="https://faderlabs.com">faderlabs.com</a></p>
+      <p>This email was sent on behalf of the Faderlabs production team.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Hi there,
+
+You've been invited to ${accessLabel} for the project "${projectTitle}".
+
+Your verification code: ${code}
+
+This code expires in 15 minutes.
+
+Open the project portal: ${shareUrl}
+
+If you didn't request this, you can safely ignore this email.
+
+— Faderlabs Team`;
+
+  try {
+    await transporter.sendMail({
+      from: `"Faderlabs" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `Your access code for "${projectTitle}"`,
+      html,
+      text,
+    });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message ?? "Unknown error" };
+  }
+}

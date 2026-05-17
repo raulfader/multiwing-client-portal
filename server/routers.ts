@@ -54,7 +54,7 @@ import {
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
 import { getDb } from "./db";
-import { projectContacts, emailLog, projectShares, projects } from "../drizzle/schema";
+import { projectContacts, emailLog, projectShares, projects, deliverables } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { COOKIE_NAME } from "@shared/const";
@@ -628,6 +628,21 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteDeliverable(input.id);
+        return { success: true };
+      }),
+
+    reorder: adminProcedure
+      .input(z.object({
+        items: z.array(z.object({ id: z.number(), sortOrder: z.number() })),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        await Promise.all(
+          input.items.map(({ id, sortOrder }) =>
+            db.update(deliverables).set({ sortOrder }).where(eq(deliverables.id, id))
+          )
+        );
         return { success: true };
       }),
   }),

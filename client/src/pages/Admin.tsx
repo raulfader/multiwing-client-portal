@@ -1291,7 +1291,7 @@ function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, for
   );
 }
 
-function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
+function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any; onDelete: () => void; onSaved: () => void; dragHandleProps?: React.HTMLAttributes<HTMLButtonElement> }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(d.title);
   const [description, setDescription] = useState(d.description ?? "");
@@ -1341,6 +1341,16 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
     return (
       <div className="p-2 rounded-lg space-y-2" style={{ background: "#111", border: "1px solid #2A2A2A" }}>
         <div className="flex items-center gap-2">
+          {/* Drag handle */}
+          <button
+            {...dragHandleProps}
+            className="p-1 rounded cursor-grab active:cursor-grabbing flex-shrink-0"
+            style={{ color: "#444", touchAction: "none" }}
+            title="Drag to reorder"
+            tabIndex={-1}
+          >
+            <GripVertical size={12} />
+          </button>
           {d.thumbnailUrl
             ? <img src={d.thumbnailUrl} alt={d.title} className="w-10 h-7 object-cover rounded flex-shrink-0" />
             : <div className="w-10 h-7 rounded flex-shrink-0" style={{ background: "#1A1A1A" }} />}
@@ -1402,6 +1412,28 @@ function DeliverableEditRow({ d, onDelete, onSaved }: { d: any; onDelete: () => 
   );
 }
 
+//// ── Sortable wrapper for DeliverableEditRow ────────────────────────
+function SortableDeliverableRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: d.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    position: isDragging ? "relative" : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DeliverableEditRow
+        d={d}
+        onDelete={onDelete}
+        onSaved={onSaved}
+        dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
+      />
+    </div>
+  );
+}
+
 //// ── Sortable wrapper for ProjectAdminRow ────────────────────────
 function SortableProjectRow({ project, onRefresh }: { project: any; onRefresh: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id });
@@ -1458,6 +1490,28 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
     onSuccess: () => { refetchDeliverables(); toast.success("Deliverable removed"); },
     onError: (e) => toast.error(e.message),
   });
+
+  // ── Deliverable drag-and-drop state ──
+  const [orderedDeliverables, setOrderedDeliverables] = React.useState<any[]>([]);
+  React.useEffect(() => { if (deliverables) setOrderedDeliverables(deliverables); }, [deliverables]);
+
+  const reorderDeliverables = trpc.deliverables.reorder.useMutation({
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deliverableSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDeliverableDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedDeliverables.findIndex((d) => d.id === active.id);
+    const newIndex = orderedDeliverables.findIndex((d) => d.id === over.id);
+    const reordered = arrayMove(orderedDeliverables, oldIndex, newIndex);
+    setOrderedDeliverables(reordered);
+    reorderDeliverables.mutate({
+      items: reordered.map((d, i) => ({ id: d.id, sortOrder: i })),
+    });
+  }
 
   return (
     <div className="fl-card overflow-hidden">
@@ -1551,14 +1605,18 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
             {!deliverables || deliverables.length === 0 ? (
               <p className="text-xs py-2" style={{ color: "#555" }}>No deliverables yet.</p>
             ) : (
-              deliverables.map((d: any) => (
-                <DeliverableEditRow
-                  key={d.id}
-                  d={d}
-                  onDelete={() => deleteDeliverable.mutate({ id: d.id })}
-                  onSaved={refetchDeliverables}
-                />
-              ))
+              <DndContext sensors={deliverableSensors} collisionDetection={closestCenter} onDragEnd={handleDeliverableDragEnd}>
+                <SortableContext items={orderedDeliverables.map((d) => d.id)} strategy={verticalListSortingStrategy}>
+                  {orderedDeliverables.map((d: any) => (
+                    <SortableDeliverableRow
+                      key={d.id}
+                      d={d}
+                      onDelete={() => deleteDeliverable.mutate({ id: d.id })}
+                      onSaved={refetchDeliverables}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
             <AddDeliverableForm projectId={project.id} onCreated={refetchDeliverables} />
           </div>

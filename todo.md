@@ -426,3 +426,9 @@
 - [x] Fix: Home.tsx redirects guests directly to their project when projects load (no full grid visible)
 - [x] Fix: Share button hidden for guests in both ProjectPage and SonicBrandingProjectView (!isGuest guard)
 - [x] Fix: New Project button hidden for guests on Home page
+
+## Deliverable Drag-and-Drop Reorder (Admin)
+- [x] Add sortOrder column to deliverables table
+- [x] Add deliverables.reorder tRPC procedure
+- [x] Install @dnd-kit/core and @dnd-kit/sortable
+- [x] Add drag handle and DnD reordering to admin deliverable rows in Admin.tsx

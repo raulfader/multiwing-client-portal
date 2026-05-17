@@ -394,3 +394,7 @@
 - [x] Add Share button to Sonic Branding project page (/projects/sonic-branding uses project ID 30001)
 - [x] Add GuestPillarCard + GuestTrackPlayer for Sonic Branding guest view (read-only audio player)
 - [x] shares.getProject now returns pillars+tracks for audio/sonic-branding projects
+
+## Share Guest Flow Fix
+- [x] Fix: email link now skips straight to OTP entry screen (auto-sends code on load when email is known)
+- [x] Fix: session stored in localStorage so it persists across page refreshes (was sessionStorage)

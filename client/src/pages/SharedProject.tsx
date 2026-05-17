@@ -12,6 +12,10 @@ const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4
 const FL_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
 
 const SESSION_KEY = (token: string) => `share_session_${token}`;
+// Use localStorage so the session survives page refreshes
+const getStoredSession = (token: string) => localStorage.getItem(SESSION_KEY(token));
+const setStoredSession = (token: string, value: string) => localStorage.setItem(SESSION_KEY(token), value);
+const clearStoredSession = (token: string) => localStorage.removeItem(SESSION_KEY(token));
 
 // ── Category icon ─────────────────────────────────────────────────────────────
 function CategoryIcon({ category, size = 16 }: { category: string; size?: number }) {
@@ -35,21 +39,32 @@ function EmailGate({
   projectTitle: string;
   onVerified: (sessionToken: string) => void;
 }) {
-  const [step, setStep] = useState<"email" | "otp">("email");
+  // If we already know the guest email (from the share record), skip straight to OTP entry
+  const [step, setStep] = useState<"email" | "otp">(guestEmail ? "otp" : "email");
   const [email, setEmail] = useState(guestEmail);
   const [code, setCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
 
   const requestOtp = trpc.shares.requestOtp.useMutation({
     onSuccess: () => {
       setStep("otp");
-      toast.success("Verification code sent — check your inbox");
+      setOtpSent(true);
+      if (!guestEmail) toast.success("Verification code sent — check your inbox");
     },
     onError: (err) => toast.error(err.message),
   });
 
+  // Auto-send OTP when we land on the OTP step with a known email
+  useEffect(() => {
+    if (step === "otp" && email && !otpSent && !requestOtp.isPending) {
+      requestOtp.mutate({ token: shareToken, email: email.trim(), origin: window.location.origin });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const verifyOtp = trpc.shares.verifyOtp.useMutation({
     onSuccess: (data) => {
-      sessionStorage.setItem(SESSION_KEY(shareToken), data.sessionToken);
+      setStoredSession(shareToken, data.sessionToken);
       onVerified(data.sessionToken);
     },
     onError: (err) => toast.error(err.message),
@@ -105,10 +120,17 @@ function EmailGate({
             </div>
           ) : (
             <div className="space-y-4">
+              {requestOtp.isPending ? (
+              <div className="flex items-center justify-center gap-2 py-4">
+                <Loader2 size={16} className="animate-spin" style={{ color: "#FFD600" }} />
+                <span className="text-sm" style={{ color: "#888" }}>Sending verification code to <strong className="text-white">{email}</strong>…</span>
+              </div>
+            ) : (
               <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: "rgba(255,214,0,0.06)", border: "1px solid rgba(255,214,0,0.15)" }}>
                 <Mail size={14} style={{ color: "#FFD600" }} />
                 <p className="text-sm" style={{ color: "#ccc" }}>Code sent to <strong className="text-white">{email}</strong></p>
               </div>
+            )}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>
                   Verification Code
@@ -327,7 +349,7 @@ function GuestPillarCard({ pillar, index }: { pillar: any; index: number }) {
 export default function SharedProjectPage() {
   const { token } = useParams<{ token: string }>();
   const [sessionToken, setSessionToken] = useState<string | null>(() =>
-    token ? sessionStorage.getItem(SESSION_KEY(token)) : null
+    token ? getStoredSession(token) : null
   );
 
   // Check if the share token is valid
@@ -345,7 +367,7 @@ export default function SharedProjectPage() {
   // If session token is invalid/expired, clear it so user re-verifies
   useEffect(() => {
     if (projectError && sessionToken) {
-      sessionStorage.removeItem(SESSION_KEY(token ?? ""));
+      clearStoredSession(token ?? "");
       setSessionToken(null);
     }
   }, [projectError, sessionToken, token]);
@@ -403,7 +425,7 @@ export default function SharedProjectPage() {
         </p>
         <button
           onClick={() => {
-            sessionStorage.removeItem(SESSION_KEY(token));
+            clearStoredSession(token ?? "");
             setSessionToken(null);
           }}
           className="px-6 py-3 rounded-lg font-semibold text-sm"

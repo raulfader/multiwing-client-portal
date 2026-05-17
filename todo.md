@@ -406,3 +406,12 @@
 ## Invite Email Flow Fix
 - [x] First invite email: only project name + link, no OTP code (uses sendShareInviteEmail)
 - [x] OTP is sent automatically when guest lands on the share link page (requestOtp called on page load in SharedProject.tsx)
+
+## Full Mirror Shared Project View
+- [x] auth.me now validates share session tokens (share_sessions table) and returns isGuest: true
+- [x] server context validates share session tokens so protectedProcedure works for guests
+- [x] checkToken returns projectSlug for redirect after OTP verification
+- [x] SharedProject.tsx: after OTP verify, stores session as portal_session_token and redirects to /projects/:slug
+- [x] Guest sees full 1:1 project view — same ProjectPage / SonicBrandingProjectView components, no restrictions
+- [x] Share button hidden for guests (isGuest flag from useAuth in both ProjectPage and SonicBrandingProjectView)
+- [x] All 19 tests pass, TypeScript clean

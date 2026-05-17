@@ -48,6 +48,7 @@ export function useAuth(options?: UseAuthOptions) {
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
+      isGuest: meQuery.data?.isGuest === true,
     };
   }, [
     meQuery.data,

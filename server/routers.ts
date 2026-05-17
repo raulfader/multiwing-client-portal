@@ -55,7 +55,7 @@ import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
 import { getDb } from "./db";
 import { projectContacts, emailLog } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { storagePut } from "./storage";
 import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookies } from "cookie";
@@ -72,6 +72,8 @@ import {
   validateSession,
   SESSION_COOKIE,
 } from "./customAuth";
+import { shareSessions } from "../drizzle/schema";
+import { gt as drizzleGt } from "drizzle-orm";
 
 // adminProcedure is imported from ./_core/trpc — checks ctx.user?.role === 'admin' directly
 
@@ -86,9 +88,23 @@ export const appRouter = router({
         (ctx.req.headers["x-session-token"] as string | undefined) ??
         parseCookies(ctx.req.headers.cookie ?? "")[SESSION_COOKIE];
       if (!token) return null;
+      // Check normal portal session first
       const session = await validateSession(token);
-      if (!session) return null;
-      return { role: session.role };
+      if (session) return { role: session.role, isGuest: false };
+      // Fall back to share session token — guests get role "user"
+      try {
+        const db = await getDb();
+        if (db) {
+          const now = new Date();
+          const rows = await db
+            .select({ id: shareSessions.id })
+            .from(shareSessions)
+            .where(and(eq(shareSessions.sessionToken, token), drizzleGt(shareSessions.expiresAt, now)))
+            .limit(1);
+          if (rows[0]) return { role: "user" as const, isGuest: true };
+        }
+      } catch { /* ignore */ }
+      return null;
     }),
 
     // Client login: portal password only — returns token in body for localStorage storage

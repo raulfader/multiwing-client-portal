@@ -298,7 +298,7 @@ export const sharesRouter = router({
       const db = await getDb();
       if (!db) return { valid: false };
       const projectRows = await db
-        .select({ title: projects.title, category: projects.category })
+        .select({ title: projects.title, category: projects.category, slug: projects.slug })
         .from(projects)
         .where(eq(projects.id, share.projectId))
         .limit(1);
@@ -307,6 +307,7 @@ export const sharesRouter = router({
         valid: true,
         projectTitle: projectRows[0]?.title ?? "Project",
         projectCategory: projectRows[0]?.category ?? "video",
+        projectSlug: projectRows[0]?.slug ?? "",
         accessLevel: share.accessLevel,
         guestEmail: share.email,
       };

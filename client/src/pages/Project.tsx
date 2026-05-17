@@ -1618,7 +1618,7 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
 const SONIC_BRANDING_PROJECT_ID = 30001;
 
 function SonicBrandingProjectView({ loading }: { loading: boolean }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isGuest } = useAuth();
   const [, navigate] = useLocation();
   const [showShareModal, setShowShareModal] = useState(false);
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -1652,14 +1652,16 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
             </button>
           </Link>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{ background: "rgba(255,214,0,0.1)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
-            >
-              <Share2 size={13} />
-              Share
-            </button>
+            {!isGuest && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: "rgba(255,214,0,0.1)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
+              >
+                <Share2 size={13} />
+                Share
+              </button>
+            )}
             <img src={FL_LOGO_P} alt="Faderlabs" className="h-6 object-contain" />
           </div>
         </div>
@@ -1703,7 +1705,7 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
 
 export default function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, isGuest } = useAuth();
   const [, navigate] = useLocation();
   const [showShareModal, setShowShareModal] = useState(false);
   const isSonicBranding = slug === "sonic-branding";
@@ -1764,14 +1766,16 @@ export default function ProjectPage() {
             </button>
           </Link>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
-              style={{ background: "rgba(255,214,0,0.12)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
-            >
-              <Share2 size={14} />
-              Share
-            </button>
+            {!isGuest && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:opacity-90"
+                style={{ background: "rgba(255,214,0,0.12)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
+              >
+                <Share2 size={14} />
+                Share
+              </button>
+            )}
             <img src={MW_LOGO} alt="Multi-Wing" className="h-7 object-contain" />
           </div>
         </div>

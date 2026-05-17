@@ -365,3 +365,7 @@
 
 ## Project Status Badge on Cards
 - [x] Show project status badge (In Queue / In Progress / Completed) on each project card in the Home.tsx grid
+
+## Project Overview Filter
+- [x] Make stat cards (Total, In Queue, In Progress, Completed) clickable filters for the project grid
+- [x] Active filter card gets highlighted; clicking Total resets to show all projects

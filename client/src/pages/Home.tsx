@@ -507,9 +507,12 @@ function LoginScreen() {
   );
 }
 
-// ── Main Portal ────────────────────────────────────────────────────────────────
+/// ── Main Portal ───────────────────────────────────────────────────────────────
+type StatusFilter = "all" | "started" | "in_progress" | "completed";
+
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   // Sonic Branding is now a project card in the grid
 
   const { data: projects, isLoading: projectsLoading } = trpc.projects.list.useQuery(undefined, {
@@ -603,6 +606,10 @@ export default function Home() {
           const inProgress = projects.filter((p: any) => p.projectStatus === "in_progress").length;
           const completed  = projects.filter((p: any) => p.projectStatus === "completed").length;
           const total      = projects.length;
+
+          const cardBase = "rounded-xl p-4 cursor-pointer transition-all duration-200 select-none";
+          const activeRing = "ring-2 ring-offset-1 ring-offset-[#0A0A0A]";
+
           return (
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
@@ -611,7 +618,11 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* Total */}
-                <div className="rounded-xl p-4" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
+                <div
+                  className={`${cardBase} ${statusFilter === "all" ? `${activeRing} ring-white/20` : "opacity-70 hover:opacity-100"}`}
+                  style={{ background: statusFilter === "all" ? "#1A1A1A" : "#111", border: statusFilter === "all" ? "1px solid rgba(255,255,255,0.15)" : "1px solid #1A1A1A" }}
+                  onClick={() => setStatusFilter("all")}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <Folder size={14} style={{ color: "#888" }} />
                     <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#555" }}>Total</span>
@@ -620,7 +631,11 @@ export default function Home() {
                   <div className="text-xs mt-1" style={{ color: "#444" }}>projects</div>
                 </div>
                 {/* In Queue */}
-                <div className="rounded-xl p-4" style={{ background: "rgba(136,136,136,0.06)", border: "1px solid rgba(136,136,136,0.15)" }}>
+                <div
+                  className={`${cardBase} ${statusFilter === "started" ? `${activeRing} ring-gray-500` : "opacity-70 hover:opacity-100"}`}
+                  style={{ background: statusFilter === "started" ? "rgba(136,136,136,0.12)" : "rgba(136,136,136,0.06)", border: statusFilter === "started" ? "1px solid rgba(136,136,136,0.4)" : "1px solid rgba(136,136,136,0.15)" }}
+                  onClick={() => setStatusFilter(statusFilter === "started" ? "all" : "started")}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <CircleDot size={14} style={{ color: "#888888" }} />
                     <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#888888" }}>In Queue</span>
@@ -629,7 +644,11 @@ export default function Home() {
                   <div className="text-xs mt-1" style={{ color: "rgba(136,136,136,0.5)" }}>project{inQueue !== 1 ? "s" : ""}</div>
                 </div>
                 {/* In Progress */}
-                <div className="rounded-xl p-4" style={{ background: "rgba(255,214,0,0.06)", border: "1px solid rgba(255,214,0,0.15)" }}>
+                <div
+                  className={`${cardBase} ${statusFilter === "in_progress" ? `${activeRing} ring-yellow-400` : "opacity-70 hover:opacity-100"}`}
+                  style={{ background: statusFilter === "in_progress" ? "rgba(255,214,0,0.12)" : "rgba(255,214,0,0.06)", border: statusFilter === "in_progress" ? "1px solid rgba(255,214,0,0.4)" : "1px solid rgba(255,214,0,0.15)" }}
+                  onClick={() => setStatusFilter(statusFilter === "in_progress" ? "all" : "in_progress")}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <Zap size={14} style={{ color: "#FFD600" }} />
                     <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#FFD600" }}>In Progress</span>
@@ -638,7 +657,11 @@ export default function Home() {
                   <div className="text-xs mt-1" style={{ color: "rgba(255,214,0,0.5)" }}>project{inProgress !== 1 ? "s" : ""}</div>
                 </div>
                 {/* Completed */}
-                <div className="rounded-xl p-4" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                <div
+                  className={`${cardBase} ${statusFilter === "completed" ? `${activeRing} ring-green-500` : "opacity-70 hover:opacity-100"}`}
+                  style={{ background: statusFilter === "completed" ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.06)", border: statusFilter === "completed" ? "1px solid rgba(34,197,94,0.4)" : "1px solid rgba(34,197,94,0.15)" }}
+                  onClick={() => setStatusFilter(statusFilter === "completed" ? "all" : "completed")}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <Trophy size={14} style={{ color: "#22C55E" }} />
                     <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#22C55E" }}>Completed</span>
@@ -696,9 +719,14 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {projects.map((project: any) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+            {projects
+              .filter((p: any) =>
+                statusFilter === "all" ||
+                (statusFilter === "started" ? (p.projectStatus ?? "started") === "started" : p.projectStatus === statusFilter)
+              )
+              .map((project: any) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
           </div>
         )}
       </main>

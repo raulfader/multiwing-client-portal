@@ -188,37 +188,48 @@ function GuestDeliverableCard({
   shareToken: string;
   sessionToken: string;
 }) {
-  const [downloading, setDownloading] = useState(false);
+  const [actionPending, setActionPending] = useState<"view" | "download" | null>(null);
+  const getViewUrl = trpc.shares.getViewUrl.useMutation();
   const getDownloadUrl = trpc.shares.getDownloadUrl.useMutation();
 
-  // A deliverable is downloadable if it has an S3 fileKey or a legacy downloadUrl
   const hasFile = !!(deliverable.fileKey || deliverable.downloadUrl);
   const canDownload = accessLevel === "download" && hasFile;
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const openUrl = (url: string, type: string, filename?: string) => {
+    if (type === "presigned" && filename) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleView = async () => {
+    if (!hasFile) return;
+    setActionPending("view");
     try {
-      const result = await getDownloadUrl.mutateAsync({
-        shareToken,
-        sessionToken,
-        deliverableId: deliverable.id,
-      });
-      if (result.type === "external") {
-        // Legacy link — open in new tab
-        window.open(result.url, "_blank", "noopener,noreferrer");
-      } else {
-        // Presigned S3 URL — force download
-        const a = document.createElement("a");
-        a.href = result.url;
-        a.download = deliverable.fileName || deliverable.title || "file";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+      const result = await getViewUrl.mutateAsync({ shareToken, sessionToken, deliverableId: deliverable.id });
+      openUrl(result.url, result.type);
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not open file");
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const handleDownload = async () => {
+    setActionPending("download");
+    try {
+      const result = await getDownloadUrl.mutateAsync({ shareToken, sessionToken, deliverableId: deliverable.id });
+      openUrl(result.url, result.type, deliverable.fileName || deliverable.title || "file");
     } catch (err: any) {
       toast.error(err.message ?? "Download failed");
     } finally {
-      setDownloading(false);
+      setActionPending(null);
     }
   };
 
@@ -226,13 +237,28 @@ function GuestDeliverableCard({
 
   return (
     <div className="rounded-2xl overflow-hidden transition-all hover:scale-[1.01]" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
-      {/* Thumbnail */}
-      <div className="relative aspect-video bg-[#0A0A0A] flex items-center justify-center overflow-hidden">
+      {/* Thumbnail — clicking it opens the file */}
+      <div
+        className={`relative aspect-video bg-[#0A0A0A] flex items-center justify-center overflow-hidden ${hasFile ? "cursor-pointer group" : ""}`}
+        onClick={hasFile ? handleView : undefined}
+      >
         {deliverable.thumbnailUrl ? (
           <img src={deliverable.thumbnailUrl} alt={deliverable.title} className="w-full h-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-2 text-white/20">
             <CategoryIcon category={cat} size={32} />
+          </div>
+        )}
+        {/* Play overlay on hover */}
+        {hasFile && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.5)" }}>
+            {actionPending === "view" ? (
+              <Loader2 size={32} className="animate-spin text-white" />
+            ) : (
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(255,214,0,0.9)" }}>
+                <ExternalLink size={22} style={{ color: "#000" }} />
+              </div>
+            )}
           </div>
         )}
         <div className="absolute top-3 left-3">
@@ -251,20 +277,32 @@ function GuestDeliverableCard({
           <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "#666" }}>{deliverable.description}</p>
         )}
         <div className="mt-3 flex items-center gap-2">
-          {canDownload ? (
+          {hasFile && (
+            <button
+              onClick={handleView}
+              disabled={actionPending !== null}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#ccc" }}
+            >
+              {actionPending === "view" ? <Loader2 size={12} className="animate-spin" /> : <ExternalLink size={12} />}
+              {actionPending === "view" ? "Opening…" : "View File"}
+            </button>
+          )}
+          {canDownload && (
             <button
               onClick={handleDownload}
-              disabled={downloading}
+              disabled={actionPending !== null}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
               style={{ background: "rgba(255,214,0,0.12)", border: "1px solid rgba(255,214,0,0.25)", color: "#FFD600" }}
             >
-              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {downloading ? "Preparing…" : "Download"}
+              {actionPending === "download" ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {actionPending === "download" ? "Preparing…" : "Download"}
             </button>
-          ) : (
+          )}
+          {!hasFile && (
             <span className="flex items-center gap-1.5 text-xs" style={{ color: "#555" }}>
               <Eye size={12} />
-              {accessLevel === "read" ? "View only" : "No file attached"}
+              No file attached
             </span>
           )}
         </div>

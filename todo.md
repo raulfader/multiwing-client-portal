@@ -398,3 +398,7 @@
 ## Share Guest Flow Fix
 - [x] Fix: email link now skips straight to OTP entry screen (auto-sends code on load when email is known)
 - [x] Fix: session stored in localStorage so it persists across page refreshes (was sessionStorage)
+
+## Guest View/Download Fix
+- [x] Fix: guest cannot view deliverables — added View File button + thumbnail click-to-open; getViewUrl procedure returns f.io link directly
+- [x] Fix: guest cannot download files — getDownloadUrl now returns f.io downloadUrl when fileKey is null; Download button opens link in new tab

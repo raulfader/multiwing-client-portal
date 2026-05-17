@@ -347,7 +347,41 @@ export const sharesRouter = router({
         const url = await generatePresignedDownloadUrl(deliverable.fileKey, deliverable.fileName ?? undefined);
         return { url, type: "presigned" as const };
       }
-      // Legacy downloadUrl (f.io / OneDrive link)
+      // Legacy downloadUrl (f.io / OneDrive / CDN link) — open in browser
+      if (deliverable.downloadUrl) {
+        return { url: deliverable.downloadUrl, type: "external" as const };
+      }
+      throw new TRPCError({ code: "NOT_FOUND", message: "No file attached to this deliverable" });
+    }),
+
+  // Guest: get a view URL for a deliverable (any access level — read or download)
+  getViewUrl: publicProcedure
+    .input(z.object({ shareToken: z.string(), sessionToken: z.string(), deliverableId: z.number() }))
+    .mutation(async ({ input }) => {
+      const share = await getActiveShare(input.shareToken);
+      if (!share) throw new TRPCError({ code: "NOT_FOUND", message: "Share link not found or expired" });
+      const session = await getShareSession(input.sessionToken);
+      if (!session || session.shareId !== share.id) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Session expired. Please verify your email again." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const deliverableRows = await db
+        .select()
+        .from(deliverables)
+        .where(eq(deliverables.id, input.deliverableId))
+        .limit(1);
+      const deliverable = deliverableRows[0];
+      if (!deliverable || deliverable.projectId !== share.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+      }
+      // S3 file: generate presigned stream URL
+      if (deliverable.fileKey) {
+        const { generatePresignedStreamUrl } = await import("../s3Upload");
+        const url = await generatePresignedStreamUrl(deliverable.fileKey);
+        return { url, type: "presigned" as const };
+      }
+      // Legacy downloadUrl — open directly
       if (deliverable.downloadUrl) {
         return { url: deliverable.downloadUrl, type: "external" as const };
       }

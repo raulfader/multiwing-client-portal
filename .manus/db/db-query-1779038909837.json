@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, title, fileType, fileKey, downloadUrl, fileName, fileSize FROM deliverables LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute SELECT id, title, fileType, fileKey, downloadUrl, fileName, fileSize FROM deliverables LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "title": "Archive Footage",
+      "fileType": "archive",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/mvsi9znP",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "2",
+      "title": "Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/vLn8VFWg",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "3",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/DIPT3b6J",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "4",
+      "title": "Starlet Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/x09bft7F",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "5",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/ro_EOgxy",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "6",
+      "title": "SoMe Clip 2",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/hYfVmveQ",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "7",
+      "title": "Starlet Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/jl52hqEM",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "8",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/JrS2hzya",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "9",
+      "title": "SoMe Clip 2",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/CIjcIa2A",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    },
+    {
+      "id": "10",
+      "title": "SoMe Clip 3",
+      "fileType": "video",
+      "fileKey": "NULL",
+      "downloadUrl": "https://f.io/JTK5qQS0",
+      "fileName": "NULL",
+      "fileSize": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tfileType\tfileKey\tdownloadUrl\tfileName\tfileSize\n1\tArchive Footage\tarchive\tNULL\thttps://f.io/mvsi9znP\tNULL\tNULL\n2\tVideo Wall\tvideo\tNULL\thttps://f.io/vLn8VFWg\tNULL\tNULL\n3\tSoMe Clip 1\tvideo\tNULL\thttps://f.io/DIPT3b6J\tNULL\tNULL\n4\tStarlet Video Wall\tvideo\tNULL\thttps://f.io/x09bft7F\tNULL\tNULL\n5\tSoMe Clip 1\tvideo\tNULL\thttps://f.io/ro_EOgxy\tNULL\tNULL\n6\tSoMe Clip 2\tvideo\tNULL\thttps://f.io/hYfVmveQ\tNULL\tNULL\n7\tStarlet Video Wall\tvideo\tNULL\thttps://f.io/jl52hqEM\tNULL\tNULL\n8\tSoMe Clip 1\tvideo\tNULL\thttps://f.io/JrS2hzya\tNULL\tNULL\n9\tSoMe Clip 2\tvideo\tNULL\thttps://f.io/CIjcIa2A\tNULL\tNULL\n10\tSoMe Clip 3\tvideo\tNULL\thttps://f.io/JTK5qQS0\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 277
+}

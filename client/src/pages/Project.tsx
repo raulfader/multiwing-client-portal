@@ -419,9 +419,8 @@ function SonicTrackRow({
     }
   };
 
-  // Audio event handlers — re-run when audioSrc is set so the <audio> element exists in the DOM
+  // Attach audio event listeners once on mount (audio element is always in DOM)
   useEffect(() => {
-    if (!audioSrc) return; // wait until the presigned URL is ready
     const audio = audioRef.current;
     if (!audio) return;
     const onTime = () => setCurrentTime(audio.currentTime);
@@ -436,8 +435,6 @@ function SonicTrackRow({
     audio.addEventListener("waiting", onWaiting);
     audio.addEventListener("canplay", onCanPlay);
     audio.addEventListener("error", onError);
-    // Force metadata load in case the browser cached a previous load attempt
-    audio.load();
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("loadedmetadata", onMeta);
@@ -446,6 +443,14 @@ function SonicTrackRow({
       audio.removeEventListener("canplay", onCanPlay);
       audio.removeEventListener("error", onError);
     };
+  }, []);
+
+  // When the presigned URL arrives, set src and trigger metadata load
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioSrc) return;
+    audio.src = audioSrc;
+    audio.load();
   }, [audioSrc]);
 
   const togglePlay = async () => {
@@ -519,7 +524,7 @@ function SonicTrackRow({
 
       {/* Audio player */}
       <div className="px-4 pb-3">
-        {audioSrc && <audio ref={audioRef} src={audioSrc} preload="metadata" crossOrigin="anonymous" />}
+        <audio ref={audioRef} src={audioSrc ?? ""} preload="metadata" crossOrigin="anonymous" />
 
         <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           {/* Top row: waveform icon + title + time */}

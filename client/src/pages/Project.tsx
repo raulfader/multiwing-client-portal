@@ -419,8 +419,9 @@ function SonicTrackRow({
     }
   };
 
-  // Audio event handlers
+  // Audio event handlers — re-run when audioSrc is set so the <audio> element exists in the DOM
   useEffect(() => {
+    if (!audioSrc) return; // wait until the presigned URL is ready
     const audio = audioRef.current;
     if (!audio) return;
     const onTime = () => setCurrentTime(audio.currentTime);
@@ -435,6 +436,8 @@ function SonicTrackRow({
     audio.addEventListener("waiting", onWaiting);
     audio.addEventListener("canplay", onCanPlay);
     audio.addEventListener("error", onError);
+    // Force metadata load in case the browser cached a previous load attempt
+    audio.load();
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("loadedmetadata", onMeta);
@@ -443,7 +446,7 @@ function SonicTrackRow({
       audio.removeEventListener("canplay", onCanPlay);
       audio.removeEventListener("error", onError);
     };
-  }, []);
+  }, [audioSrc]);
 
   const togglePlay = async () => {
     const audio = audioRef.current;

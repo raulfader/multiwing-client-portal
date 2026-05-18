@@ -345,12 +345,9 @@ function SonicTrackRow({
   const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
-  // Static server-proxy URL — always valid, supports HTTP Range for seeking.
-  // Token is passed as a query param because <audio> elements can't send custom headers.
-  const sessionToken =
-    localStorage.getItem("portal_session_token") ??
-    localStorage.getItem("guest_session_token") ?? "";
-  const audioSrc = `/api/tracks/stream/${track.id}?token=${encodeURIComponent(sessionToken)}`;
+  // Direct public S3 URL — bucket tracks/ prefix is publicly readable.
+  // No auth needed, no proxy, no timing issues. Works natively in <audio>.
+  const audioSrc: string = track.audioUrl;
 
   // Pending timestamp for new comment (set by clicking progress bar)
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
@@ -512,7 +509,7 @@ function SonicTrackRow({
 
       {/* Audio player */}
       <div className="px-4 pb-3">
-        <audio ref={audioRef} src={audioSrc} preload="metadata" />
+        <audio ref={audioRef} src={audioSrc} preload="metadata" crossOrigin="anonymous" />
 
         <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           {/* Top row: waveform icon + title + time */}

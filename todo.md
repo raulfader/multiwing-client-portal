@@ -437,3 +437,12 @@
 - [x] Share modal: replace single email input with multi-email tag input (add email on Enter/comma, remove with ×)
 - [x] Share modal: send one invite per email (loop shares.create calls on submit)
 - [x] Backend: shares.create already handles one email — no backend change needed (called once per email from frontend)
+
+## Guest Session Isolation Fix
+- [x] Store guest share sessions under a separate key (guest_session_token) instead of portal_session_token
+- [x] Update SharedProject.tsx to write to guest_session_token instead of portal_session_token
+- [x] Update trpc.ts client to send guest_session_token only on /projects/ paths (not on root /)
+- [x] Update Home.tsx: do not redirect guests who land on / — show normal login screen instead
+- [x] Update useAuth.ts: logout clears both portal_session_token and guest_session_token
+- [x] Ensure regular client login still writes to portal_session_token (no change needed)
+- [x] Remove early-redirect shortcut in SharedProject.tsx (guests always verify OTP on share page)

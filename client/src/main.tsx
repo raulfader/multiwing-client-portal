@@ -32,6 +32,7 @@ queryClient.getMutationCache().subscribe(event => {
 });
 
 const SESSION_TOKEN_KEY = "portal_session_token";
+const GUEST_TOKEN_KEY = "guest_session_token";
 
 const trpcClient = trpc.createClient({
   links: [
@@ -39,8 +40,19 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
-        const token = localStorage.getItem(SESSION_TOKEN_KEY);
-        return token ? { "x-session-token": token } : {};
+        // Regular client session always takes priority.
+        const regularToken = localStorage.getItem(SESSION_TOKEN_KEY);
+        if (regularToken) return { "x-session-token": regularToken };
+
+        // Guest token is ONLY sent when the browser is on a /projects/ page.
+        // This prevents a stored guest session from auto-authenticating a
+        // regular visit to the root URL (/) and showing the login screen.
+        const guestToken = localStorage.getItem(GUEST_TOKEN_KEY);
+        if (guestToken && window.location.pathname.startsWith("/projects/")) {
+          return { "x-session-token": guestToken };
+        }
+
+        return {};
       },
       fetch(input, init) {
         return globalThis.fetch(input, {

@@ -20,6 +20,7 @@ export function useAuth(options?: UseAuthOptions) {
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       localStorage.removeItem("portal_session_token");
+      localStorage.removeItem("guest_session_token");
       utils.auth.me.setData(undefined, null);
     },
   });
@@ -37,6 +38,7 @@ export function useAuth(options?: UseAuthOptions) {
       throw error;
     } finally {
       localStorage.removeItem("portal_session_token");
+      localStorage.removeItem("guest_session_token");
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }

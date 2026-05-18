@@ -8,8 +8,9 @@ import {
 const MW_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/MCxqt4HyvEAyGGokboGjqW/MWlogo_0d44da07.webp";
 const FL_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663488436824/iLXUQ5XAKoVQ9DttVq4BTX/faderlabs-logo-white_d7a18ec8.png";
 
-// The same key used by main.tsx and the tRPC client
-const SESSION_TOKEN_KEY = "portal_session_token";
+// Guest sessions are stored under a SEPARATE key so they never interfere
+// with the regular client login (portal_session_token).
+const GUEST_TOKEN_KEY = "guest_session_token";
 
 /**
  * SharedProject — landing page for share links.
@@ -18,9 +19,13 @@ const SESSION_TOKEN_KEY = "portal_session_token";
  *  1. Validate the share token (checkToken)
  *  2. Auto-send OTP to the guest's email (requestOtp)
  *  3. Guest enters 6-digit code (verifyOtp)
- *  4. Store sessionToken as "portal_session_token" in localStorage
+ *  4. Store sessionToken as "guest_session_token" in localStorage
  *  5. Redirect to /projects/:slug — guest now has full authenticated access
  *     and sees the exact same view as the client (no restrictions)
+ *
+ * Isolation guarantee: visiting the root URL (/) never auto-logs in a guest
+ * because the tRPC client only sends guest_session_token when
+ * portal_session_token is absent AND the current path is a /projects/ page.
  */
 export default function SharedProjectPage() {
   const { token } = useParams<{ token: string }>();
@@ -61,14 +66,6 @@ export default function SharedProjectPage() {
     const guestEmail = checkToken.data.guestEmail ?? "";
     setEmail(guestEmail);
 
-    // If there's already a stored session, redirect immediately
-    const stored = localStorage.getItem(SESSION_TOKEN_KEY);
-    if (stored) {
-      setStep("redirecting");
-      navigate(`/projects/${info.slug}`, { replace: true });
-      return;
-    }
-
     // Auto-send OTP and show code entry
     setStep("otp");
     if (!otpSent) {
@@ -93,8 +90,9 @@ export default function SharedProjectPage() {
         email,
         code: code.trim(),
       });
-      // Store as portal_session_token — the tRPC client will pick this up automatically
-      localStorage.setItem(SESSION_TOKEN_KEY, result.sessionToken);
+      // Store as guest_session_token — the tRPC client falls back to this key
+      // when portal_session_token is absent, so API calls work for guests.
+      localStorage.setItem(GUEST_TOKEN_KEY, result.sessionToken);
       setStep("redirecting");
       setTimeout(() => {
         navigate(`/projects/${projectInfo?.slug}`, { replace: true });

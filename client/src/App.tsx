@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import Project from "./pages/Project";
 import NewProjectRequest from "./pages/NewProjectRequest";
 import SharedProject from "./pages/SharedProject";
+import GuestLogout from "./pages/GuestLogout";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/projects/:slug" component={Project} />
       <Route path="/new-project" component={NewProjectRequest} />
       <Route path="/share/:token" component={SharedProject} />
+      <Route path="/guest-logout" component={GuestLogout} />
       <Route path="/project/:slug">{(params) => <Redirect to={`/projects/${params.slug}`} />}</Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

@@ -1686,9 +1686,13 @@ function BackToHubButton({ isGuest }: { isGuest: boolean }) {
   const [, navigate] = useLocation();
   const handleBack = () => {
     if (isGuest) {
-      // Clear the guest session so the root URL shows the login screen
-      localStorage.removeItem("guest_session_token");
-      window.location.href = "/";
+      // Navigate to the dedicated /guest-logout route which:
+      //  1. Clears guest_session_token from localStorage
+      //  2. Nullifies the auth.me React Query cache
+      //  3. Renders the login screen directly — bypassing Home.tsx's
+      //     isGuest redirect that would otherwise send the guest back
+      //     to their project before auth.me can re-fetch.
+      navigate("/guest-logout", { replace: true });
     } else {
       navigate("/");
     }
@@ -1699,7 +1703,7 @@ function BackToHubButton({ isGuest }: { isGuest: boolean }) {
       className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm"
     >
       <ArrowLeft className="w-4 h-4" />
-      <span>Back to Hub</span>
+      <span>{isGuest ? "Leave Project" : "Back to Hub"}</span>
     </button>
   );
 }

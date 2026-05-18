@@ -6,7 +6,7 @@ import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
   Play, Pause, Volume2, Download, Loader2, Maximize2, X,
-  Share2, Copy, Trash2, Eye, Users
+  Share2, Copy, Trash2, Eye, Users, Pencil, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -1729,6 +1729,20 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const [, navigate] = useLocation();
   const [showShareModal, setShowShareModal] = useState(false);
   const { data: pillars, isLoading: pillarsLoading } = trpc.pillars.list.useQuery(undefined, { enabled: isAuthenticated });
+
+  // Hero text settings
+  const { data: heroSettings, refetch: refetchHero } = trpc.sonicBrandingSettings.get.useQuery();
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingSubtitle, setEditingSubtitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [subtitleDraft, setSubtitleDraft] = useState("");
+  const updateSettings = trpc.sonicBrandingSettings.update.useMutation({
+    onSuccess: () => { refetchHero(); toast.success("Updated"); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const heroTitle = heroSettings?.heroTitle ?? "Sonic Branding Proposal";
+  const heroSubtitle = heroSettings?.heroSubtitle ?? "Listen to each track, click the progress bar to leave timestamped feedback, and mark your decision for each track.";
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate("/?returnTo=/projects/sonic-branding", { replace: true });
@@ -1777,10 +1791,79 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
             <Music2 size={12} className="text-[#FFD600]" />
             <span className="text-[#FFD600] text-xs font-medium uppercase tracking-widest">Sonic Branding</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Sonic Branding Proposal</h1>
-          <p className="text-white/60 text-lg max-w-2xl leading-relaxed">
-            Listen to each track, click the progress bar to leave timestamped feedback, and mark your decision for each track.
-          </p>
+          {/* Editable Hero Title */}
+          {!isGuest && editingTitle ? (
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                autoFocus
+                className="text-4xl md:text-5xl font-bold text-white bg-transparent border-b-2 border-[#FFD600] outline-none w-full max-w-2xl"
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { updateSettings.mutate({ heroTitle: titleDraft }); setEditingTitle(false); }
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+              />
+              <button onClick={() => { updateSettings.mutate({ heroTitle: titleDraft }); setEditingTitle(false); }}
+                className="text-[#FFD600] hover:text-white transition-colors" title="Save">
+                <Check size={20} />
+              </button>
+              <button onClick={() => setEditingTitle(false)} className="text-white/40 hover:text-white transition-colors" title="Cancel">
+                <X size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-3 group">
+              <h1 className="text-4xl md:text-5xl font-bold text-white">{heroTitle}</h1>
+              {!isGuest && (
+                <button
+                  onClick={() => { setTitleDraft(heroTitle); setEditingTitle(true); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-[#FFD600] ml-1"
+                  title="Edit title"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Editable Hero Subtitle */}
+          {!isGuest && editingSubtitle ? (
+            <div className="flex items-start gap-2">
+              <textarea
+                autoFocus
+                rows={3}
+                className="text-white/60 text-lg max-w-2xl leading-relaxed bg-transparent border border-[#FFD600]/40 rounded-lg p-2 outline-none resize-none w-full"
+                value={subtitleDraft}
+                onChange={(e) => setSubtitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setEditingSubtitle(false);
+                }}
+              />
+              <div className="flex flex-col gap-1 mt-1">
+                <button onClick={() => { updateSettings.mutate({ heroSubtitle: subtitleDraft }); setEditingSubtitle(false); }}
+                  className="text-[#FFD600] hover:text-white transition-colors" title="Save">
+                  <Check size={18} />
+                </button>
+                <button onClick={() => setEditingSubtitle(false)} className="text-white/40 hover:text-white transition-colors" title="Cancel">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 group">
+              <p className="text-white/60 text-lg max-w-2xl leading-relaxed">{heroSubtitle}</p>
+              {!isGuest && (
+                <button
+                  onClick={() => { setSubtitleDraft(heroSubtitle); setEditingSubtitle(true); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-[#FFD600] mt-1 shrink-0"
+                  title="Edit subtitle"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-6 pb-16 space-y-10">

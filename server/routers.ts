@@ -50,6 +50,8 @@ import {
   getAllClientProjectRequests,
   updateClientProjectRequestStatus,
   deleteClientProjectRequest,
+  getSiteSettings,
+  setSiteSetting,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification } from "./email";
@@ -985,7 +987,37 @@ View in admin dashboard: https://multiwing.faderlabs.ai/admin`;
       }),
   }),
 
-  // ── Image Upload ──────────────────────────────────────────────────────────────────
+  // ── Sonic Branding Settings ──────────────────────────────────────────────────────────────────────────────
+  sonicBrandingSettings: router({
+    // Get hero title and subtitle (public)
+    get: publicProcedure.query(async () => {
+      const settings = await getSiteSettings([
+        "sonic_branding_hero_title",
+        "sonic_branding_hero_subtitle",
+      ]);
+      return {
+        heroTitle: settings["sonic_branding_hero_title"] ?? "Sonic Branding Proposal",
+        heroSubtitle: settings["sonic_branding_hero_subtitle"] ?? "Listen to each track, click the progress bar to leave timestamped feedback, and mark your decision for each track.",
+      };
+    }),
+    // Update hero title and/or subtitle (admin only)
+    update: adminProcedure
+      .input(z.object({
+        heroTitle: z.string().min(1).max(200).optional(),
+        heroSubtitle: z.string().max(500).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.heroTitle !== undefined) {
+          await setSiteSetting("sonic_branding_hero_title", input.heroTitle);
+        }
+        if (input.heroSubtitle !== undefined) {
+          await setSiteSetting("sonic_branding_hero_subtitle", input.heroSubtitle);
+        }
+        return { success: true };
+      }),
+  }),
+
+  // ── Image Upload ──────────────────────────────────────────────────────────────────────────────────
   uploadImage: router({
     upload: adminProcedure
       .input(z.object({

@@ -463,5 +463,11 @@
 - [x] Update admin UI to remove "Upload Track 1/2" numbering cap
 
 ## ProRes & Sonic Branding Comment Fixes
-- [ ] ProRes video: browser cannot decode ProRes codec — replace video player with a "Download to view" card for .mov/.prores files
-- [ ] Sonic Branding comments: fix timestamp comment submission not working in SonicTrackRow
+- [x] ProRes video: browser cannot decode ProRes codec — replace video player with a "Download to view" card for .mov/.prores files
+- [x] Sonic Branding comments: fix timestamp comment submission not working in SonicTrackRow
+
+## Sonic Branding Hero Text Editing
+- [x] DB: add sonic_branding_settings table (heroTitle, heroSubtitle) or use a settings key-value store
+- [x] Backend: add sonicBranding.getSettings and sonicBranding.updateSettings procedures
+- [x] Admin UI: inline editable hero title and subtitle on Sonic Branding project page (pencil icon, click to edit)
+- [x] Client view: hero title and subtitle rendered from DB (not hardcoded)

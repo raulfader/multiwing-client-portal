@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertUser, pillars, projects, trackApprovals, tracks, users } from "../drizzle/schema";
+import { approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertUser, pillars, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -656,4 +656,35 @@ export async function deleteClientProjectRequest(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.delete(clientProjectRequests).where(eq(clientProjectRequests.id, id));
+}
+
+// ── Site Settings ─────────────────────────────────────────────────────────────
+
+export async function getSiteSetting(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+  return result[0]?.value ?? null;
+}
+
+export async function setSiteSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db
+    .insert(siteSettings)
+    .values({ key, value })
+    .onDuplicateKeyUpdate({ set: { value } });
+}
+
+export async function getSiteSettings(keys: string[]): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db.select().from(siteSettings);
+  const map: Record<string, string> = {};
+  for (const row of rows) {
+    if (keys.includes(row.key) && row.value != null) {
+      map[row.key] = row.value;
+    }
+  }
+  return map;
 }

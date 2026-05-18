@@ -248,6 +248,17 @@ export const shareSessions = mysqlTable("share_sessions", {
 export type ShareSession = typeof shareSessions.$inferSelect;
 export type InsertShareSession = typeof shareSessions.$inferInsert;
 
+// ── Site Settings (key-value store for editable portal content) ─────────────
+export const siteSettings = mysqlTable("site_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type InsertSiteSetting = typeof siteSettings.$inferInsert;
+
 // ── Custom Auth Sessions ─────────────────────────────────────────────────────
 export const customSessions = mysqlTable("custom_sessions", {
   id: int("id").autoincrement().primaryKey(),

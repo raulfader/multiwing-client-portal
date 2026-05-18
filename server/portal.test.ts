@@ -41,6 +41,8 @@ vi.mock("./db", () => ({
   getApprovalsByPillar: vi.fn().mockResolvedValue([]),
   upsertUser: vi.fn().mockResolvedValue(undefined),
   getUserByOpenId: vi.fn().mockResolvedValue(undefined),
+  getSiteSettings: vi.fn().mockResolvedValue({}),
+  setSiteSetting: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./_core/notification", () => ({
@@ -192,5 +194,43 @@ describe("auth.logout", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.auth.logout();
     expect(result.success).toBe(true);
+  });
+});
+
+describe("sonicBrandingSettings.get", () => {
+  it("returns default hero text when no settings exist", async () => {
+    const { getSiteSettings } = await import("./db");
+    vi.mocked(getSiteSettings).mockResolvedValueOnce({});
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.sonicBrandingSettings.get();
+    expect(result.heroTitle).toBe("Sonic Branding Proposal");
+    expect(result.heroSubtitle).toContain("timestamped feedback");
+  });
+
+  it("returns stored hero text when settings exist", async () => {
+    const { getSiteSettings } = await import("./db");
+    vi.mocked(getSiteSettings).mockResolvedValueOnce({
+      sonic_branding_hero_title: "Custom Title",
+      sonic_branding_hero_subtitle: "Custom subtitle.",
+    });
+    const caller = appRouter.createCaller(makePublicCtx());
+    const result = await caller.sonicBrandingSettings.get();
+    expect(result.heroTitle).toBe("Custom Title");
+    expect(result.heroSubtitle).toBe("Custom subtitle.");
+  });
+});
+
+describe("sonicBrandingSettings.update", () => {
+  it("allows admin to update hero title", async () => {
+    const { setSiteSetting } = await import("./db");
+    const caller = appRouter.createCaller(makeAdminCtx());
+    const result = await caller.sonicBrandingSettings.update({ heroTitle: "New Title" });
+    expect(result.success).toBe(true);
+    expect(vi.mocked(setSiteSetting)).toHaveBeenCalledWith("sonic_branding_hero_title", "New Title");
+  });
+
+  it("rejects non-admin update", async () => {
+    const caller = appRouter.createCaller(makeUserCtx());
+    await expect(caller.sonicBrandingSettings.update({ heroTitle: "Hack" })).rejects.toThrow();
   });
 });

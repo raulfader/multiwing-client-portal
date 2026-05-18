@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerEmailTrackingRoutes } from "../emailTracking";
 import { registerTrackDownloadRoute } from "../trackDownload";
+import { registerTrackStreamRoute } from "../trackStream";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -41,6 +42,8 @@ async function startServer() {
   registerEmailTrackingRoutes(app);
   // Track audio proxy download (CDN → browser with Content-Disposition: attachment)
   registerTrackDownloadRoute(app);
+  // Track audio proxy stream (S3 → browser with Range support for seeking)
+  registerTrackStreamRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -451,3 +451,8 @@
 - [x] Find all Back Home / back navigation buttons shown to guests in Project.tsx and Home.tsx
 - [x] On click: clear guest_session_token from localStorage, then hard-navigate to / (login screen)
 - [x] Regular (non-guest) Back Home links remain unchanged
+
+## WAV File Upload Fix
+- [x] Normalize audio/x-wav and audio/wave MIME types to audio/wav before generating presigned S3 URL
+- [x] Apply same normalization in Sonic Branding track upload (base64 flow)
+- [x] Improve XHR error handling to surface S3 XML error messages instead of just HTTP status codes

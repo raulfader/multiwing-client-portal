@@ -491,7 +491,7 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
       uploadTrack.mutate({
         pillarId,
         filename: file.name,
-        contentType: file.type || "audio/mpeg",
+        contentType: (file.type === "audio/x-wav" || file.type === "audio/wave") ? "audio/wav" : (file.type || "audio/mpeg"),
         title,
         description: description || undefined,
         fileBase64: base64,
@@ -1195,7 +1195,11 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
     setUploadError(null);
     setUploadProgress(0);
     try {
-      const contentType = file.type || "application/octet-stream";
+      // Normalize WAV MIME types — browsers report audio/x-wav or audio/wave;
+      // S3 presigned URLs reject the PUT if the signed ContentType doesn't match exactly.
+      const rawType = file.type || "application/octet-stream";
+      const contentType =
+        rawType === "audio/x-wav" || rawType === "audio/wave" ? "audio/wav" : rawType;
       const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
         fileName: file.name,
         contentType,
@@ -1206,8 +1210,13 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
           if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
         });
         xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed: ${xhr.status}`));
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            // Extract S3 XML error message if present
+            const xmlMsg = xhr.responseText?.match(/<Message>([^<]+)<\/Message>/)?.[1];
+            reject(new Error(xmlMsg || `Upload failed: ${xhr.status}`));
+          }
         });
         xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
         xhr.open("PUT", uploadUrl);

@@ -1129,8 +1129,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
               className="absolute w-3.5 h-3.5 rounded-full -translate-x-1/2 shadow-md"
               style={{ left: `${progress}%`, background: accentColor, top: "50%", transform: `translateX(-50%) translateY(-50%)` }}
             />
-            {/* Timestamp comment markers — hidden when approved */}
-            {reviewStatus !== "approved" && timestampedComments.map((c) =>
+            {/* Timestamp comment markers */}
+            {timestampedComments.map((c) =>
               duration > 0 ? (
                 <div
                   key={c.id}
@@ -1144,11 +1144,11 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
 
           <span className="text-xs font-mono text-white/40 shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
         </div>
-        {reviewStatus !== "approved" && <p className="text-xs text-white/30 mt-2">Click the timeline to leave a timestamped comment</p>}
+        <p className="text-xs text-white/30 mt-2">Click the timeline to leave a timestamped comment</p>
       </div>
 
-      {/* Pending comment box — hidden when approved */}
-      {reviewStatus !== "approved" && showCommentBox && (
+      {/* Pending comment box */}
+      {showCommentBox && (
         <div className="px-4 pb-3">
           <div className="rounded-lg p-3 space-y-2" style={{ background: "#111", border: `1px solid ${accentColor}33` }}>
             <div className="flex items-center gap-2">
@@ -1196,8 +1196,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
         </div>
       )}
 
-      {/* Comments list — hidden when approved */}
-      {reviewStatus !== "approved" && sortedComments.length > 0 && (
+      {/* Comments list */}
+      {sortedComments.length > 0 && (
         <div className="px-4 pb-4 space-y-2">
           <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">
             <MessageSquare size={10} className="inline mr-1" />
@@ -1342,8 +1342,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             <p className="text-xs text-white/30">Click the timeline to leave a timestamped comment · Press Esc to exit</p>
           </div>
 
-          {/* Fullscreen comment box — hidden when approved */}
-          {reviewStatus !== "approved" && showCommentBox && (
+          {/* Fullscreen comment box */}
+          {showCommentBox && (
             <div className="shrink-0 px-5 pb-3" style={{ background: "#111" }}>
               <div className="rounded-lg p-3 space-y-2" style={{ background: "#0A0A0A", border: `1px solid ${accentColor}33` }}>
                 <div className="flex items-center gap-2">
@@ -1416,8 +1416,8 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             </button>
           </div>
 
-          {/* Fullscreen comments list — hidden when approved */}
-          {reviewStatus !== "approved" && sortedComments.length > 0 && (
+          {/* Fullscreen comments list */}
+          {sortedComments.length > 0 && (
             <div className="shrink-0 max-h-48 overflow-y-auto px-5 pb-4 space-y-2" style={{ background: "#0A0A0A", borderTop: "1px solid #1A1A1A" }}>
               <p className="text-xs font-semibold text-white/30 uppercase tracking-widest pt-3 mb-2">
                 <MessageSquare size={10} className="inline mr-1" />

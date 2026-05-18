@@ -1854,11 +1854,6 @@ export default function Admin() {
           <StatsBar allApprovals={allApprovals} allTrackApprovals={allTrackApprovals ?? []} allComments={allComments} />
         )}
 
-        {/* Track Decisions Panel */}
-        {allTrackApprovals && allTrackApprovals.length > 0 && (
-          <TrackDecisionsPanel trackApprovals={allTrackApprovals} />
-        )}
-
         {/* Tab Navigation */}
         <div className="flex gap-1 p-1 rounded-xl w-fit mb-8" style={{ background: "#141414", border: "1px solid #2A2A2A" }}>
           <button

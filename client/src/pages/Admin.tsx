@@ -464,46 +464,79 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const uploadTrack = trpc.tracks.getUploadUrl.useMutation({
+  const getPresignedUrl = trpc.tracks.getUploadUrl.useMutation();
+  const createTrack = trpc.tracks.create.useMutation({
     onSuccess: () => {
       setTitle("");
       setDescription("");
       setFile(null);
       setOpen(false);
+      setUploadProgress(null);
       onUploaded();
       toast.success("Track uploaded successfully");
     },
     onError: (e) => {
       toast.error(e.message);
       setUploading(false);
+      setUploadProgress(null);
     },
   });
 
   const handleUpload = async () => {
     if (!file || !title.trim()) return;
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      uploadTrack.mutate({
+    setUploadProgress(0);
+    try {
+      // Normalize WAV MIME type variants so the presigned URL and PUT header match
+      const rawType = file.type || "audio/mpeg";
+      const contentType =
+        rawType === "audio/x-wav" || rawType === "audio/wave" ? "audio/wav" : rawType;
+
+      // Step 1: get presigned S3 URL (no file size limit, no base64 overhead)
+      const { uploadUrl, fileKey, publicUrl } = await getPresignedUrl.mutateAsync({
         pillarId,
-        filename: file.name,
-        contentType: (file.type === "audio/x-wav" || file.type === "audio/wave") ? "audio/wav" : (file.type || "audio/mpeg"),
+        fileName: file.name,
+        contentType,
+      });
+
+      // Step 2: PUT file directly to S3
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        });
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            const xmlMsg = xhr.responseText?.match(/<Message>([^<]+)<\/Message>/)?.[1];
+            reject(new Error(xmlMsg || `Upload failed: ${xhr.status}`));
+          }
+        });
+        xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", contentType);
+        xhr.send(file);
+      });
+
+      // Step 3: register track in DB
+      createTrack.mutate({
+        pillarId,
         title,
         description: description || undefined,
-        fileBase64: base64,
+        audioUrl: publicUrl,
+        audioKey: fileKey,
         sortOrder: trackCount,
       });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
       setUploading(false);
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read file");
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
+      setUploadProgress(null);
+    }
   };
 
   if (!open) {
@@ -564,20 +597,30 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
         </p>
       )}
 
+      {uploadProgress !== null && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs" style={{ color: "#888" }}>Uploading… {uploadProgress}%</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full" style={{ background: "#2A2A2A" }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${uploadProgress}%`, background: "#FFD600" }} />
+          </div>
+        </div>
+      )}
       <div className="flex gap-2">
         <button
           onClick={handleUpload}
-          disabled={!file || !title.trim() || uploading || uploadTrack.isPending}
+          disabled={!file || !title.trim() || uploading || getPresignedUrl.isPending || createTrack.isPending}
           className="fl-btn-primary flex-1 justify-center py-2 text-sm"
         >
-          {uploading || uploadTrack.isPending ? (
+          {uploading || getPresignedUrl.isPending || createTrack.isPending ? (
             <><Loader2 size={14} className="animate-spin" /> Uploading…</>
           ) : (
             <><Upload size={14} /> Upload</>
           )}
         </button>
         <button
-          onClick={() => setOpen(false)}
+          onClick={() => { setOpen(false); setUploadProgress(null); }}
           className="px-3 py-2 rounded-lg text-sm font-semibold"
           style={{ background: "#1A1A1A", color: "#888888", border: "1px solid #2A2A2A" }}
         >

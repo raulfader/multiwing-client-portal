@@ -51,6 +51,14 @@ vi.mock("./storage", () => ({
   storagePut: vi.fn().mockResolvedValue({ url: "https://cdn.example.com/track.mp3", key: "tracks/1/abc.mp3" }),
 }));
 
+vi.mock("./s3Upload", () => ({
+  generatePresignedUploadUrl: vi.fn().mockResolvedValue({
+    uploadUrl: "https://s3.example.com/presigned-put",
+    fileKey: "tracks/pillar-1/abc123.mp3",
+    publicUrl: "https://cdn.example.com/tracks/pillar-1/abc123.mp3",
+  }),
+}));
+
 // ── Context helpers ────────────────────────────────────────────────────────────
 function makePublicCtx(): TrpcContext {
   return {
@@ -121,16 +129,16 @@ describe("tracks.byPillar", () => {
 });
 
 describe("tracks.getUploadUrl", () => {
-  it("allows admin to upload a track", async () => {
+  it("allows admin to get a presigned upload URL", async () => {
     const caller = appRouter.createCaller(makeAdminCtx());
     const result = await caller.tracks.getUploadUrl({
       pillarId: 1,
-      filename: "test.mp3",
+      fileName: "test.mp3",
       contentType: "audio/mpeg",
-      title: "New Track",
-      fileBase64: Buffer.from("fake audio data").toString("base64"),
     });
-    expect(result.success).toBe(true);
+    expect(result.uploadUrl).toBeDefined();
+    expect(result.fileKey).toBeDefined();
+    expect(result.publicUrl).toBeDefined();
   });
 
   it("blocks upload when pillar already has 2 tracks", async () => {
@@ -140,10 +148,8 @@ describe("tracks.getUploadUrl", () => {
     await expect(
       caller.tracks.getUploadUrl({
         pillarId: 1,
-        filename: "test.mp3",
+        fileName: "test.mp3",
         contentType: "audio/mpeg",
-        title: "Third Track",
-        fileBase64: Buffer.from("data").toString("base64"),
       })
     ).rejects.toThrow("Maximum 2 tracks per pillar allowed");
   });

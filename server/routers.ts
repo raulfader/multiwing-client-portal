@@ -192,19 +192,15 @@ export const appRouter = router({
         return getTracksByPillar(input.pillarId);
       }),
 
+    // Step 1: get a presigned S3 URL for direct browser-to-S3 upload (no file size limit)
     getUploadUrl: adminProcedure
       .input(z.object({
         pillarId: z.number(),
-        filename: z.string(),
+        fileName: z.string(),
         contentType: z.string(),
-        title: z.string().min(1),
-        description: z.string().optional(),
-        sortOrder: z.number().optional(),
-        durationSeconds: z.number().optional(),
-        fileBase64: z.string(), // base64 encoded audio
       }))
       .mutation(async ({ input }) => {
-        // Check max 2 tracks per pillar
+        // Check max 2 tracks per pillar before issuing URL
         const count = await countTracksByPillar(input.pillarId);
         if (count >= 2) {
           throw new TRPCError({
@@ -212,25 +208,42 @@ export const appRouter = router({
             message: "Maximum 2 tracks per pillar allowed",
           });
         }
+        // Normalize WAV MIME type variants
+        const contentType =
+          input.contentType === "audio/x-wav" || input.contentType === "audio/wave"
+            ? "audio/wav"
+            : input.contentType;
+        const { generatePresignedUploadUrl } = await import("./s3Upload");
+        return generatePresignedUploadUrl({
+          fileName: input.fileName,
+          contentType,
+          folder: `tracks/pillar-${input.pillarId}`,
+        });
+      }),
 
-        const suffix = nanoid(8);
-        const ext = input.filename.split(".").pop() ?? "mp3";
-        const key = `tracks/pillar-${input.pillarId}/${suffix}.${ext}`;
-
-        const buffer = Buffer.from(input.fileBase64, "base64");
-        const { url } = await storagePut(key, buffer, input.contentType);
-
+    // Step 2: after browser uploads directly to S3, register the track in the DB
+    create: adminProcedure
+      .input(z.object({
+        pillarId: z.number(),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        audioUrl: z.string(),
+        audioKey: z.string(),
+        sortOrder: z.number().optional(),
+        durationSeconds: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const count = await countTracksByPillar(input.pillarId);
         await createTrack({
           pillarId: input.pillarId,
           title: input.title,
           description: input.description,
-          audioUrl: url,
-          audioKey: key,
+          audioUrl: input.audioUrl,
+          audioKey: input.audioKey,
           durationSeconds: input.durationSeconds,
           sortOrder: input.sortOrder ?? count,
         });
-
-        return { success: true, url, key };
+        return { success: true };
       }),
 
     delete: adminProcedure

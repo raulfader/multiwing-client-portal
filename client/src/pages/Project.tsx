@@ -509,7 +509,7 @@ function SonicTrackRow({
 
       {/* Audio player */}
       <div className="px-4 pb-3">
-        <audio ref={audioRef} src={audioSrc} preload="metadata" crossOrigin="anonymous" />
+        <audio ref={audioRef} src={audioSrc} preload="metadata" />
 
         <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           {/* Top row: waveform icon + title + time */}
@@ -578,8 +578,8 @@ function SonicTrackRow({
                 style={{ background: "transparent" }}
                 aria-label="Seek"
               />
-              {/* Timestamp comment markers — hidden when approved */}
-              {myApproval?.status !== "approved" && timestampedComments.map((c) => (
+              {/* Timestamp comment markers */}
+              {timestampedComments.map((c) => (
                 duration > 0 && (
                   <div
                     key={c.id}
@@ -593,8 +593,8 @@ function SonicTrackRow({
         </div>
       </div>
 
-      {/* Pending timestamp comment box — hidden when approved */}
-      {myApproval?.status !== "approved" && showCommentBox && (
+      {/* Pending timestamp comment box — always visible when open */}
+      {showCommentBox && (
         <div className="px-4 pb-3">
           <div className="rounded-lg p-3 space-y-2" style={{ background: "#111", border: `1px solid ${accentColor}33` }}>
             <div className="flex items-center gap-2">
@@ -644,8 +644,8 @@ function SonicTrackRow({
         </div>
       )}
 
-      {/* Comments list — hidden when approved */}
-      {myApproval?.status !== "approved" && sortedComments.length > 0 && (
+      {/* Comments list — always visible */}
+      {sortedComments.length > 0 && (
         <div className="px-4 pb-4 space-y-2">
           <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">
             <MessageSquare size={10} className="inline mr-1" />

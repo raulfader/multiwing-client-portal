@@ -461,3 +461,7 @@
 - [x] Fix "Failed to load audio" in client Sonic Branding view (audio URL not accessible / CORS issue)
 - [x] Remove 2-track-per-pillar limit from tracks.getUploadUrl and tracks.create procedures
 - [x] Update admin UI to remove "Upload Track 1/2" numbering cap
+
+## ProRes & Sonic Branding Comment Fixes
+- [ ] ProRes video: browser cannot decode ProRes codec — replace video player with a "Download to view" card for .mov/.prores files
+- [ ] Sonic Branding comments: fix timestamp comment submission not working in SonicTrackRow

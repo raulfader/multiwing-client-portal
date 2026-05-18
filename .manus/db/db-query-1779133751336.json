@@ -1,0 +1,64 @@
+{
+  "query": "SELECT id, title, fileType, fileKey FROM deliverables WHERE id > 20 ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute SELECT id, title, fileType, fileKey FROM deliverables WHERE id > 20 ORDER BY id;",
+  "rows": [
+    {
+      "id": "21",
+      "title": "Storyboard 3.1",
+      "fileType": "document",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "60001",
+      "title": "Tutorial Video Rev 1",
+      "fileType": "video",
+      "fileKey": "deliverables/1776029066945-3f034ede6e905a6d-MW_Fan_Selector_Rev1.mp4"
+    },
+    {
+      "id": "90001",
+      "title": "Tutorial Video Rev 2",
+      "fileType": "video",
+      "fileKey": "deliverables/1776301664477-6bdd5d6245f8b6da-MW_Fan_Selector_Rev2.mp4"
+    },
+    {
+      "id": "120001",
+      "title": "Starlet HVAC AU (Revision 1)",
+      "fileType": "video",
+      "fileKey": "deliverables/1776814400482-e05704a45120c9f3-Starlet_LED_AU_HVAC_Rev1.mp4"
+    },
+    {
+      "id": "150001",
+      "title": "Tutorial Video Rev 3",
+      "fileType": "video",
+      "fileKey": "deliverables/1777490221021-1854c0c05ebb6312-MW_Fan_Selector_Rev3.mp4"
+    },
+    {
+      "id": "180001",
+      "title": "Tutorial Video Rev 4",
+      "fileType": "video",
+      "fileKey": "deliverables/1778779836764-b31f83ee69d9e3bc-MW_Fan_Selector_Rev4.mp4"
+    },
+    {
+      "id": "210001",
+      "title": "Fanbase Loop Video Rev1 (ProRes)",
+      "fileType": "video",
+      "fileKey": "deliverables/1778780590063-234715df8f23b299-Fanbase_Loop_Video_Rev1.mov"
+    },
+    {
+      "id": "240001",
+      "title": "Fanbase Loop Video Rev 1 (MP4)",
+      "fileType": "video",
+      "fileKey": "deliverables/1778781798962-b3ce3420c17fcfac-Fanbase_Loop_Video_Rev1.mp4"
+    },
+    {
+      "id": "270001",
+      "title": "Tutorial Video Rev 5",
+      "fileType": "video",
+      "fileKey": "deliverables/1778874476988-35268bfd86499d0a-MW_Fan_Selector_Rev5.mp4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tfileType\tfileKey\n21\tStoryboard 3.1\tdocument\tNULL\n60001\tTutorial Video Rev 1\tvideo\tdeliverables/1776029066945-3f034ede6e905a6d-MW_Fan_Selector_Rev1.mp4\n90001\tTutorial Video Rev 2\tvideo\tdeliverables/1776301664477-6bdd5d6245f8b6da-MW_Fan_Selector_Rev2.mp4\n120001\tStarlet HVAC AU (Revision 1)\tvideo\tdeliverables/1776814400482-e05704a45120c9f3-Starlet_LED_AU_HVAC_Rev1.mp4\n150001\tTutorial Video Rev 3\tvideo\tdeliverables/1777490221021-1854c0c05ebb6312-MW_Fan_Selector_Rev3.mp4\n180001\tTutorial Video Rev 4\tvideo\tdeliverables/1778779836764-b31f83ee69d9e3bc-MW_Fan_Selector_Rev4.mp4\n210001\tFanbase Loop Video Rev1 (ProRes)\tvideo\tdeliverables/1778780590063-234715df8f23b299-Fanbase_Loop_Video_Rev1.mov\n240001\tFanbase Loop Video Rev 1 (MP4)\tvideo\tdeliverables/1778781798962-b3ce3420c17fcfac-Fanbase_Loop_Video_Rev1.mp4\n270001\tTutorial Video Rev 5\tvideo\tdeliverables/1778874476988-35268bfd86499d0a-MW_Fan_Selector_Rev5.mp4\n",
+  "stderr": "",
+  "execution_time_ms": 260
+}

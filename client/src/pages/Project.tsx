@@ -412,31 +412,7 @@ function SonicTrackRow({
     }
   };
 
-  // Attach audio event listeners once on mount
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onTime = () => setCurrentTime(audio.currentTime);
-    const onMeta = () => { setDuration(audio.duration); setIsLoading(false); };
-    const onEnded = () => setIsPlaying(false);
-    const onWaiting = () => setIsLoading(true);
-    const onCanPlay = () => setIsLoading(false);
-    const onError = () => { setAudioError("Failed to load audio"); setIsLoading(false); setIsPlaying(false); };
-    audio.addEventListener("timeupdate", onTime);
-    audio.addEventListener("loadedmetadata", onMeta);
-    audio.addEventListener("ended", onEnded);
-    audio.addEventListener("waiting", onWaiting);
-    audio.addEventListener("canplay", onCanPlay);
-    audio.addEventListener("error", onError);
-    return () => {
-      audio.removeEventListener("timeupdate", onTime);
-      audio.removeEventListener("loadedmetadata", onMeta);
-      audio.removeEventListener("ended", onEnded);
-      audio.removeEventListener("waiting", onWaiting);
-      audio.removeEventListener("canplay", onCanPlay);
-      audio.removeEventListener("error", onError);
-    };
-  }, []);
+  // Audio events are handled via JSX props directly on the <audio> element above.
 
   const togglePlay = async () => {
     const audio = audioRef.current;
@@ -509,7 +485,17 @@ function SonicTrackRow({
 
       {/* Audio player */}
       <div className="px-4 pb-3">
-        <audio ref={audioRef} src={audioSrc} preload="metadata" />
+        <audio
+          ref={audioRef}
+          src={audioSrc}
+          preload="metadata"
+          onLoadedMetadata={(e) => { setDuration((e.target as HTMLAudioElement).duration); setIsLoading(false); }}
+          onTimeUpdate={(e) => setCurrentTime((e.target as HTMLAudioElement).currentTime)}
+          onEnded={() => setIsPlaying(false)}
+          onWaiting={() => setIsLoading(true)}
+          onCanPlay={() => setIsLoading(false)}
+          onError={() => { setAudioError("Failed to load audio"); setIsLoading(false); setIsPlaying(false); }}
+        />
 
         <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           {/* Top row: waveform icon + title + time */}
@@ -573,7 +559,17 @@ function SonicTrackRow({
                 step={0.1}
                 value={currentTime}
                 onChange={handleSeek}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  // Open comment box at the clicked timestamp
+                  if (!duration) return;
+                  const input = e.currentTarget as HTMLInputElement;
+                  const rect = input.getBoundingClientRect();
+                  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                  const ts = Math.floor(ratio * duration);
+                  setPendingTimestamp(ts);
+                  setShowCommentBox(true);
+                  if (audioRef.current) { audioRef.current.currentTime = ts; setCurrentTime(ts); }
+                }}
                 className="audio-progress relative z-10"
                 style={{ background: "transparent" }}
                 aria-label="Seek"
@@ -851,6 +847,39 @@ function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: 
 // ── Deliverable Video Player with Timestamped Comments ───────────────────────
 
 function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deliverable: any; accentColor?: string }) {
+  // ProRes / MOV files cannot be decoded by browsers — show a download card instead
+  const fileExt = (deliverable.fileKey ?? "").split(".").pop()?.toLowerCase();
+  const isProRes = fileExt === "mov" || fileExt === "prores";
+  if (isProRes) {
+    const publicUrl = deliverable.fileKey
+      ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
+      : null;
+    return (
+      <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="aspect-video flex flex-col items-center justify-center gap-4" style={{ background: "#111" }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(255,214,0,0.1)", border: "2px solid #FFD60033" }}>
+            <Film size={28} style={{ color: accentColor }} />
+          </div>
+          <div className="text-center px-6">
+            <p className="text-white font-semibold text-sm mb-1">ProRes / MOV File</p>
+            <p className="text-white/40 text-xs leading-relaxed">This file uses Apple ProRes codec which browsers cannot play.<br />Download it to watch in QuickTime, DaVinci Resolve, or Premiere Pro.</p>
+          </div>
+          {publicUrl && (
+            <a
+              href={publicUrl}
+              download
+              className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+              style={{ background: accentColor, color: "#0A0A0A" }}
+            >
+              <Download size={13} />
+              Download ProRes File
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);

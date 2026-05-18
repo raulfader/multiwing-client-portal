@@ -1,0 +1,184 @@
+{
+  "query": "SELECT id, title, fileType, fileKey FROM deliverables ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute SELECT id, title, fileType, fileKey FROM deliverables ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "title": "Archive Footage",
+      "fileType": "archive",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "2",
+      "title": "Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "3",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "4",
+      "title": "Starlet Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "5",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "6",
+      "title": "SoMe Clip 2",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "7",
+      "title": "Starlet Video Wall",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "8",
+      "title": "SoMe Clip 1",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "9",
+      "title": "SoMe Clip 2",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "10",
+      "title": "SoMe Clip 3",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "11",
+      "title": "SoMe Clip 4",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "12",
+      "title": "Brand Video",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "13",
+      "title": "Blooper Reel",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "14",
+      "title": "Working at Multi-Wing",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "15",
+      "title": "EB Video — R&D and Engineering",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "16",
+      "title": "EB Video — Supply Chain and Operations",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "17",
+      "title": "EB Video — Sales and Marketing",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "18",
+      "title": "EB Video — Business Support",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "19",
+      "title": "Video Mock-up — Storyboard 3.0",
+      "fileType": "video",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "20",
+      "title": "Shot List 5.0",
+      "fileType": "document",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "21",
+      "title": "Storyboard 3.1",
+      "fileType": "document",
+      "fileKey": "NULL"
+    },
+    {
+      "id": "60001",
+      "title": "Tutorial Video Rev 1",
+      "fileType": "video",
+      "fileKey": "deliverables/1776029066945-3f034ede6e905a6d-MW_Fan_Selector_Rev1.mp4"
+    },
+    {
+      "id": "90001",
+      "title": "Tutorial Video Rev 2",
+      "fileType": "video",
+      "fileKey": "deliverables/1776301664477-6bdd5d6245f8b6da-MW_Fan_Selector_Rev2.mp4"
+    },
+    {
+      "id": "120001",
+      "title": "Starlet HVAC AU (Revision 1)",
+      "fileType": "video",
+      "fileKey": "deliverables/1776814400482-e05704a45120c9f3-Starlet_LED_AU_HVAC_Rev1.mp4"
+    },
+    {
+      "id": "150001",
+      "title": "Tutorial Video Rev 3",
+      "fileType": "video",
+      "fileKey": "deliverables/1777490221021-1854c0c05ebb6312-MW_Fan_Selector_Rev3.mp4"
+    },
+    {
+      "id": "180001",
+      "title": "Tutorial Video Rev 4",
+      "fileType": "video",
+      "fileKey": "deliverables/1778779836764-b31f83ee69d9e3bc-MW_Fan_Selector_Rev4.mp4"
+    },
+    {
+      "id": "210001",
+      "title": "Fanbase Loop Video Rev1 (ProRes)",
+      "fileType": "video",
+      "fileKey": "deliverables/1778780590063-234715df8f23b299-Fanbase_Loop_Video_Rev1.mov"
+    },
+    {
+      "id": "240001",
+      "title": "Fanbase Loop Video Rev 1 (MP4)",
+      "fileType": "video",
+      "fileKey": "deliverables/1778781798962-b3ce3420c17fcfac-Fanbase_Loop_Video_Rev1.mp4"
+    },
+    {
+      "id": "270001",
+      "title": "Tutorial Video Rev 5",
+      "fileType": "video",
+      "fileKey": "deliverables/1778874476988-35268bfd86499d0a-MW_Fan_Selector_Rev5.mp4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tfileType\tfileKey\n1\tArchive Footage\tarchive\tNULL\n2\tVideo Wall\tvideo\tNULL\n3\tSoMe Clip 1\tvideo\tNULL\n4\tStarlet Video Wall\tvideo\tNULL\n5\tSoMe Clip 1\tvideo\tNULL\n6\tSoMe Clip 2\tvideo\tNULL\n7\tStarlet Video Wall\tvideo\tNULL\n8\tSoMe Clip 1\tvideo\tNULL\n9\tSoMe Clip 2\tvideo\tNULL\n10\tSoMe Clip 3\tvideo\tNULL\n11\tSoMe Clip 4\tvideo\tNULL\n12\tBrand Video\tvideo\tNULL\n13\tBlooper Reel\tvideo\tNULL\n14\tWorking at Multi-Wing\tvideo\tNULL\n15\tEB Video — R&D and Engineering\tvideo\tNULL\n16\tEB Video — Supply Chain and Operations\tvideo\tNULL\n17\tEB Video — Sales and Marketing\tvideo\tNULL\n18\tEB Video — Business Support\tvideo\tNULL\n19\tVideo Mock-up — Storyboard 3.0\tvideo\tNULL\n20\tShot List 5.0\tdocument\tNULL\n21\tStoryboard 3.1\tdocument\tNULL\n60001\tTutorial Video Rev 1\tvideo\tdeliverables/1776029066945-3f034ede6e905a6d-MW_Fan_Selector_Rev1.mp4\n90001\tTutorial Video Rev 2\tvideo\tdeliverables/1776301664477-6bdd5d6245f8b6da-MW_Fan_Selector_Rev2.mp4\n120001\tStarlet HVAC AU (Revision 1)\tvideo\tdeliverables/1776814400482-e05704a45120c9f3-Starlet_LED_AU_HVAC_Rev1.mp4\n150001\tTutorial Video Rev 3\tvideo\tdeliverables/1777490221021-1854c0c05ebb6312-MW_Fan_Selector_Rev3.mp4\n180001\tTutorial Video Rev 4\tvideo\tdeliverables/1778779836764-b31f83ee69d9e3bc-MW_Fan_Selector_Rev4.mp4\n210001\tFanbase Loop Video Rev1 (ProRes)\tvideo\tdeliverables/1778780590063-234715df8f23b299-Fanbase_Loop_Video_Rev1.mov\n240001\tFanbase Loop Video Rev 1 (MP4)\tvideo\tdeliverables/1778781798962-b3ce3420c17fcfac-Fanbase_Loop_Video_Rev1.mp4\n270001\tTutorial Video Rev 5\tvideo\tdeliverables/1778874476988-35268bfd86499d0a-MW_Fan_Selector_Rev5.mp4\n",
+  "stderr": "",
+  "execution_time_ms": 256
+}

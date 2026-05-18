@@ -1682,6 +1682,28 @@ function SonicPillarCard({ pillar, accentColor, index }: { pillar: any; accentCo
 
 const SONIC_BRANDING_PROJECT_ID = 30001;
 
+function BackToHubButton({ isGuest }: { isGuest: boolean }) {
+  const [, navigate] = useLocation();
+  const handleBack = () => {
+    if (isGuest) {
+      // Clear the guest session so the root URL shows the login screen
+      localStorage.removeItem("guest_session_token");
+      window.location.href = "/";
+    } else {
+      navigate("/");
+    }
+  };
+  return (
+    <button
+      onClick={handleBack}
+      className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      <span>Back to Hub</span>
+    </button>
+  );
+}
+
 function SonicBrandingProjectView({ loading }: { loading: boolean }) {
   const { isAuthenticated, isGuest } = useAuth();
   const [, navigate] = useLocation();
@@ -1710,12 +1732,7 @@ function SonicBrandingProjectView({ loading }: { loading: boolean }) {
     <div className="min-h-screen bg-[#0A0A0A] text-white">
       <header className="border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/">
-            <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Hub</span>
-            </button>
-          </Link>
+          <BackToHubButton isGuest={isGuest} />
           <div className="flex items-center gap-3">
             {!isGuest && (
               <button
@@ -1812,9 +1829,7 @@ export default function ProjectPage() {
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-white/60">Project not found.</p>
-          <Link href="/">
-            <Button variant="outline" className="border-white/20 text-white bg-transparent">Back to Hub</Button>
-          </Link>
+          <BackToHubButton isGuest={isGuest} />
         </div>
       </div>
     );
@@ -1824,12 +1839,7 @@ export default function ProjectPage() {
       {/* Header */}
       <header className="border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/">
-            <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Hub</span>
-            </button>
-          </Link>
+          <BackToHubButton isGuest={isGuest} />
           <div className="flex items-center gap-3">
             {!isGuest && (
               <button

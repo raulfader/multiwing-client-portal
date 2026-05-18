@@ -446,3 +446,8 @@
 - [x] Update useAuth.ts: logout clears both portal_session_token and guest_session_token
 - [x] Ensure regular client login still writes to portal_session_token (no change needed)
 - [x] Remove early-redirect shortcut in SharedProject.tsx (guests always verify OTP on share page)
+
+## Back Home Button Fix (Guest)
+- [x] Find all Back Home / back navigation buttons shown to guests in Project.tsx and Home.tsx
+- [x] On click: clear guest_session_token from localStorage, then hard-navigate to / (login screen)
+- [x] Regular (non-guest) Back Home links remain unchanged

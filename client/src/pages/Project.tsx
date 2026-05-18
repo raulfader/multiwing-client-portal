@@ -867,13 +867,15 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const [commentText, setCommentText] = useState("");
   const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  // Build direct public S3 URL from fileKey — bucket is fully public
+  const streamUrl = deliverable.fileKey
+    ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
+    : null;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>(deliverable.reviewStatus ?? "pending");
   // Separate ref for the fullscreen scrub bar (different DOM element)
   const fsProgressBarRef = useRef<HTMLDivElement>(null);
 
-  const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
   const setReviewStatusMutation = trpc.deliverables.setReviewStatus.useMutation({
     onSuccess: (_data, variables) => {
       setReviewStatus(variables.status);
@@ -898,18 +900,6 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
       targetSlot.appendChild(video);
     }
   }, [isFullscreen]);
-
-  // Fetch a presigned stream URL on mount (S3 requires signed GET for private buckets)
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setVideoError(null);
-    getStreamUrl.mutateAsync({ id: deliverable.id })
-      .then(({ url }) => { if (!cancelled) { setStreamUrl(url); setIsLoading(false); } })
-      .catch((e) => { if (!cancelled) { setVideoError("Could not load video: " + (e?.message ?? "Unknown error")); setIsLoading(false); } });
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deliverable.id]);
 
   const utils = trpc.useUtils();
   const { data: comments = [] } = trpc.deliverableComments.byDeliverable.useQuery({ deliverableId: deliverable.id });
@@ -1457,18 +1447,11 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
 
 // Separate component so hooks are always called at the top level
 function DeliverableAudioCard({ deliverable, downloading, handleDownload }: { deliverable: any; downloading: boolean; handleDownload: () => void }) {
-  const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
-
-  useEffect(() => {
-    let cancelled = false;
-    getStreamUrl.mutateAsync({ id: deliverable.id })
-      .then(({ url }) => { if (!cancelled) setAudioStreamUrl(url); })
-      .catch((e) => { if (!cancelled) setAudioError(e?.message ?? "Failed to load audio"); });
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deliverable.id]);
+  // Direct public S3 URL — bucket is fully public, no presigned URL needed
+  const audioStreamUrl = deliverable.fileKey
+    ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
+    : null;
+  const [audioError] = useState<string | null>(null);
 
   return (
       <div className="border border-white/10 rounded-xl overflow-hidden bg-white/3 hover:border-[#FFD600]/30 transition-all duration-300">

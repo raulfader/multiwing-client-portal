@@ -6,7 +6,7 @@ import { projectShares, shareOtps, shareSessions, projects, deliverables, pillar
 import { eq, and, isNull, or, gt, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { sendShareOtpEmail, sendShareInviteEmail } from "../email";
-import { generatePresignedDownloadUrl } from "../s3Upload";
+import { getPublicUrl } from "../s3Upload";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function generateOtp(): string {
@@ -337,10 +337,10 @@ export const sharesRouter = router({
       if (!deliverable || deliverable.projectId !== share.projectId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
       }
-      // S3 file: generate presigned URL
+      // S3 file: return direct public URL (bucket is public, no presigning needed)
       if (deliverable.fileKey) {
-        const url = await generatePresignedDownloadUrl(deliverable.fileKey, deliverable.fileName ?? undefined);
-        return { url, type: "presigned" as const };
+        const url = getPublicUrl(deliverable.fileKey);
+        return { url, type: "presigned" as const, fileName: deliverable.fileName ?? undefined };
       }
       // Legacy downloadUrl (f.io / OneDrive / CDN link) — open in browser
       if (deliverable.downloadUrl) {

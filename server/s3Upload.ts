@@ -59,6 +59,12 @@ export async function generatePresignedDownloadUrl(fileKey: string, originalFile
   return getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
 }
 
+// Direct public URL — works because the bucket has public-read ACL (no expiry, no signing)
+export function getPublicUrl(fileKey: string): string {
+  const region = process.env.AWS_S3_REGION || "us-east-2";
+  return `https://${BUCKET}.s3.${region}.amazonaws.com/${fileKey}`;
+}
+
 // Presigned GET URL for streaming (no Content-Disposition) — used for video/audio players
 export async function generatePresignedStreamUrl(fileKey: string): Promise<string> {
   const client = getS3Client();

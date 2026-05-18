@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, title, audioUrl, audioKey FROM tracks LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute SELECT id, title, audioUrl, audioKey FROM tracks LIMIT 5;",
+  "rows": [
+    {
+      "id": "90001",
+      "title": "Human Spark",
+      "audioUrl": "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-2/1779128492788-13d2fc01e2250c80-Human_Spark_Final_-_Pillar_1.wav",
+      "audioKey": "tracks/pillar-2/1779128492788-13d2fc01e2250c80-Human_Spark_Final_-_Pillar_1.wav"
+    },
+    {
+      "id": "90002",
+      "title": "Quiet Trust",
+      "audioUrl": "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-2/1779128608927-aa6e49b967ad9694-Quiet_Trust_Final_-_Pillar_1.wav",
+      "audioKey": "tracks/pillar-2/1779128608927-aa6e49b967ad9694-Quiet_Trust_Final_-_Pillar_1.wav"
+    },
+    {
+      "id": "90003",
+      "title": "Blue Wing",
+      "audioUrl": "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-3/1779128662926-51d9acfbc933f932-Blue_Wing_Final_-_Pillar_2.wav",
+      "audioKey": "tracks/pillar-3/1779128662926-51d9acfbc933f932-Blue_Wing_Final_-_Pillar_2.wav"
+    },
+    {
+      "id": "90004",
+      "title": "Clear Signal",
+      "audioUrl": "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-3/1779128723084-8de60da2fbf300a7-Clear_Signal_Final_-_Pillar_2.wav",
+      "audioKey": "tracks/pillar-3/1779128723084-8de60da2fbf300a7-Clear_Signal_Final_-_Pillar_2.wav"
+    },
+    {
+      "id": "90005",
+      "title": "Engineered Momentum",
+      "audioUrl": "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-4/1779128892338-4456a49b3b056cad-Engineered_Momentum_-_Pillar_3.wav",
+      "audioKey": "tracks/pillar-4/1779128892338-4456a49b3b056cad-Engineered_Momentum_-_Pillar_3.wav"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\taudioUrl\taudioKey\n90001\tHuman Spark\thttps://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-2/1779128492788-13d2fc01e2250c80-Human_Spark_Final_-_Pillar_1.wav\ttracks/pillar-2/1779128492788-13d2fc01e2250c80-Human_Spark_Final_-_Pillar_1.wav\n90002\tQuiet Trust\thttps://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-2/1779128608927-aa6e49b967ad9694-Quiet_Trust_Final_-_Pillar_1.wav\ttracks/pillar-2/1779128608927-aa6e49b967ad9694-Quiet_Trust_Final_-_Pillar_1.wav\n90003\tBlue Wing\thttps://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-3/1779128662926-51d9acfbc933f932-Blue_Wing_Final_-_Pillar_2.wav\ttracks/pillar-3/1779128662926-51d9acfbc933f932-Blue_Wing_Final_-_Pillar_2.wav\n90004\tClear Signal\thttps://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-3/1779128723084-8de60da2fbf300a7-Clear_Signal_Final_-_Pillar_2.wav\ttracks/pillar-3/1779128723084-8de60da2fbf300a7-Clear_Signal_Final_-_Pillar_2.wav\n90005\tEngineered Momentum\thttps://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/tracks/pillar-4/1779128892338-4456a49b3b056cad-Engineered_Momentum_-_Pillar_3.wav\ttracks/pillar-4/1779128892338-4456a49b3b056cad-Engineered_Momentum_-_Pillar_3.wav\n",
+  "stderr": "",
+  "execution_time_ms": 257
+}

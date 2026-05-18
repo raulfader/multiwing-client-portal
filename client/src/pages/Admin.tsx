@@ -641,23 +641,15 @@ function TrackAdminRow({ track, trackIndex, accentColor, onDelete }: { track: an
   const handleTrackDownload = async () => {
     setTrackDownloading(true);
     try {
-      const { url } = await getTrackDownloadUrl.mutateAsync({ id: track.id });
-      // Use fetch+blob so the browser saves the actual audio file (not JSON)
-      // Include x-session-token header since auth uses localStorage (not cookies)
-      const sessionToken = localStorage.getItem("portal_session_token");
-      const resp = await fetch(url, {
-        credentials: "include",
-        headers: sessionToken ? { "x-session-token": sessionToken } : {},
-      });
+      const { url, fileName } = await getTrackDownloadUrl.mutateAsync({ id: track.id });
+      // Direct public S3 URL — fetch as blob so browser uses the `download` attribute filename
+      const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
       const blob = await resp.blob();
-      const ext = (track.audioKey || "").split(".").pop()?.toLowerCase() || "wav";
-      const safeTitle = track.title.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
-      const filename = `${safeTitle}.${ext}`;
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = filename;
+      a.download = fileName || track.title;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1315,13 +1307,19 @@ function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, for
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const { url } = await getDownloadUrl.mutateAsync({ id: deliverableId });
+      const { url, fileName: serverFileName } = await getDownloadUrl.mutateAsync({ id: deliverableId });
+      // Fetch as blob so the browser honours the `download` attribute filename
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "";
+      a.href = objectUrl;
+      a.download = serverFileName || fileName || "file";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {

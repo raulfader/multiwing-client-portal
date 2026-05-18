@@ -471,3 +471,8 @@
 - [x] Backend: add sonicBranding.getSettings and sonicBranding.updateSettings procedures
 - [x] Admin UI: inline editable hero title and subtitle on Sonic Branding project page (pencil icon, click to edit)
 - [x] Client view: hero title and subtitle rendered from DB (not hardcoded)
+
+## Download Fix (Direct Public S3 URLs)
+- [x] Fix Sonic Branding track download: use direct public S3 URL instead of proxy/presigned
+- [x] Fix deliverable download (client + guest): use direct public S3 URL instead of presigned URL
+- [x] Fix admin track/deliverable download: use direct public S3 URL

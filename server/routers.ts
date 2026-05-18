@@ -258,11 +258,13 @@ export const appRouter = router({
         const track = await getTrackById(input.id);
         if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         if (!track.audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
-        // Return a server-side proxy URL so we can set Content-Disposition with the track title
+        // Return the direct public S3 URL — bucket is public, no presigning needed
+        const { getPublicUrl } = await import("./s3Upload");
+        const url = getPublicUrl(track.audioKey || track.audioUrl);
         const ext = (track.audioKey || track.audioUrl).split(".").pop()?.toLowerCase() ?? "wav";
         const safeTitle = track.title.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
-        const fileName = encodeURIComponent(`${safeTitle}.${ext}`);
-        return { url: `/api/tracks/download/${track.id}?filename=${fileName}` };
+        const fileName = `${safeTitle}.${ext}`;
+        return { url, fileName };
       }),
 
     // Return a presigned S3 GET URL for streaming (no Content-Disposition, valid 2h)
@@ -594,7 +596,7 @@ export const appRouter = router({
         });
       }),
 
-    // Client-facing: generate a presigned download URL (Content-Disposition: attachment) for forced download
+    // Client-facing: return direct public S3 URL for forced download (bucket is public)
     getDownloadUrl: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -602,10 +604,9 @@ export const appRouter = router({
         const deliverable = await getDeliverableById(input.id);
         if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
         if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
-        const { generatePresignedDownloadUrl } = await import("./s3Upload");
-        // Pass original filename so Content-Disposition shows the correct name
-        const url = await generatePresignedDownloadUrl(deliverable.fileKey, deliverable.fileName ?? undefined);
-        return { url };
+        const { getPublicUrl } = await import("./s3Upload");
+        const url = getPublicUrl(deliverable.fileKey);
+        return { url, fileName: deliverable.fileName ?? undefined };
       }),
 
     // Client-facing: generate a presigned stream URL (no Content-Disposition) for video/audio players

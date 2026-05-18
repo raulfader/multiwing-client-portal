@@ -141,17 +141,16 @@ describe("tracks.getUploadUrl", () => {
     expect(result.publicUrl).toBeDefined();
   });
 
-  it("blocks upload when pillar already has 2 tracks", async () => {
+  it("allows upload even when pillar already has 2+ tracks (no limit)", async () => {
     const { countTracksByPillar } = await import("./db");
     vi.mocked(countTracksByPillar).mockResolvedValueOnce(2);
     const caller = appRouter.createCaller(makeAdminCtx());
-    await expect(
-      caller.tracks.getUploadUrl({
-        pillarId: 1,
-        fileName: "test.mp3",
-        contentType: "audio/mpeg",
-      })
-    ).rejects.toThrow("Maximum 2 tracks per pillar allowed");
+    const result = await caller.tracks.getUploadUrl({
+      pillarId: 1,
+      fileName: "test.mp3",
+      contentType: "audio/mpeg",
+    });
+    expect(result.uploadUrl).toBeDefined();
   });
 });
 

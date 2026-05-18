@@ -200,14 +200,6 @@ export const appRouter = router({
         contentType: z.string(),
       }))
       .mutation(async ({ input }) => {
-        // Check max 2 tracks per pillar before issuing URL
-        const count = await countTracksByPillar(input.pillarId);
-        if (count >= 2) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Maximum 2 tracks per pillar allowed",
-          });
-        }
         // Normalize WAV MIME type variants
         const contentType =
           input.contentType === "audio/x-wav" || input.contentType === "audio/wave"
@@ -233,7 +225,7 @@ export const appRouter = router({
         durationSeconds: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
-        const count = await countTracksByPillar(input.pillarId);
+        const count = await countTracksByPillar(input.pillarId); // used only for sortOrder default
         await createTrack({
           pillarId: input.pillarId,
           title: input.title,
@@ -271,15 +263,16 @@ export const appRouter = router({
         return { url: `/api/tracks/download/${track.id}?filename=${fileName}` };
       }),
 
-    // Return the CDN audioUrl directly for streaming (no Content-Disposition)
+    // Return a presigned S3 GET URL for streaming (no Content-Disposition, valid 2h)
     getStreamUrl: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const track = await getTrackById(input.id);
         if (!track) throw new TRPCError({ code: "NOT_FOUND", message: "Track not found" });
         if (!track.audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio file attached to this track" });
-        // CDN URL is directly accessible for streaming
-        return { url: track.audioUrl };
+        const { generatePresignedStreamUrl } = await import("./s3Upload");
+        const url = await generatePresignedStreamUrl(track.audioKey || track.audioUrl);
+        return { url };
       }),
   }),
 

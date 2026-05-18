@@ -342,8 +342,19 @@ function SonicTrackRow({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+
+  const getStreamUrl = trpc.tracks.getStreamUrl.useMutation();
+
+  // Fetch a presigned S3 stream URL on mount (direct public S3 URLs may be blocked by CORS/ACL)
+  useEffect(() => {
+    getStreamUrl.mutateAsync({ id: track.id })
+      .then(({ url }) => { setAudioSrc(url); setIsLoading(false); })
+      .catch(() => { setAudioError("Failed to load audio"); setIsLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id]);
 
   // Pending timestamp for new comment (set by clicking progress bar)
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
@@ -505,7 +516,7 @@ function SonicTrackRow({
 
       {/* Audio player */}
       <div className="px-4 pb-3">
-        <audio ref={audioRef} src={track.audioUrl} preload="metadata" crossOrigin="anonymous" />
+        {audioSrc && <audio ref={audioRef} src={audioSrc} preload="metadata" crossOrigin="anonymous" />}
 
         <div className="rounded-lg p-3" style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}>
           {/* Top row: waveform icon + title + time */}

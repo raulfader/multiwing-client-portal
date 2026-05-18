@@ -456,3 +456,8 @@
 - [x] Normalize audio/x-wav and audio/wave MIME types to audio/wav before generating presigned S3 URL
 - [x] Apply same normalization in Sonic Branding track upload (base64 flow)
 - [x] Improve XHR error handling to surface S3 XML error messages instead of just HTTP status codes
+
+## Audio Player Fix & Track Limit Removal
+- [x] Fix "Failed to load audio" in client Sonic Branding view (audio URL not accessible / CORS issue)
+- [x] Remove 2-track-per-pillar limit from tracks.getUploadUrl and tracks.create procedures
+- [x] Update admin UI to remove "Upload Track 1/2" numbering cap

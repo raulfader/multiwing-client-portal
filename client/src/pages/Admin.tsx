@@ -547,7 +547,7 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
         style={{ background: "#1A1A1A", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
       >
         <Upload size={12} />
-        Upload Track {trackCount + 1}
+        Add Track
       </button>
     );
   }
@@ -555,7 +555,7 @@ function UploadTrackForm({ pillarId, trackCount, onUploaded }: { pillarId: numbe
   return (
     <div className="rounded-xl p-4 space-y-3" style={{ background: "#111111", border: "1px solid #2A2A2A" }}>
       <h4 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#FFD600" }}>
-        Upload Track {trackCount + 1}
+        Add Track
       </h4>
       <input
         value={title}

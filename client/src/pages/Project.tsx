@@ -20,16 +20,19 @@ const PILLAR_ACCENT_COLORS = ["#64DD17", "#FFD600", "#d60000", "#A78BFA", "#FB92
 
 function ShareModal({ project, onClose }: { project: any; onClose: () => void }) {
   const [tab, setTab] = useState<"create" | "manage">("create");
-  const [email, setEmail] = useState("");
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // Multi-email tag state
+  const [emailTags, setEmailTags] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
+  const [tagError, setTagError] = useState("");
+  // Batch send state
+  const [sentEmails, setSentEmails] = useState<string[]>([]);
+  const [lastShareUrl, setLastShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const utils = trpc.useUtils();
 
   const createShare = trpc.shares.create.useMutation({
-    onSuccess: (data) => {
-      setShareUrl(data.shareUrl);
-      toast.success("Invite sent! An email with a verification code has been sent.");
-      refetchShares();
-    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -43,21 +46,81 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
     onError: (err) => toast.error(err.message),
   });
 
-  const handleCreate = () => {
-    if (!email.trim()) return toast.error("Please enter an email address");
-    createShare.mutate({
-      projectId: project.id,
-      email: email.trim(),
-      accessLevel: "download" as const,
-      origin: window.location.origin,
-    });
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  const addTag = (raw: string) => {
+    const val = raw.trim().toLowerCase();
+    if (!val) return;
+    if (!isValidEmail(val)) { setTagError(`"${val}" is not a valid email`); return; }
+    if (emailTags.includes(val)) { setTagError(`"${val}" is already in the list`); return; }
+    setEmailTags((prev) => [...prev, val]);
+    setEmailInput("");
+    setTagError("");
+  };
+
+  const removeTag = (idx: number) => setEmailTags((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(emailInput);
+    } else if (e.key === "Backspace" && !emailInput && emailTags.length > 0) {
+      setEmailTags((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const handleInputBlur = () => { if (emailInput.trim()) addTag(emailInput); };
+
+  const handleSendAll = async () => {
+    // Flush any typed-but-not-yet-tagged email
+    const pending = emailInput.trim().toLowerCase();
+    let finalTags = emailTags;
+    if (pending) {
+      if (!isValidEmail(pending)) { setTagError(`"${pending}" is not a valid email`); return; }
+      if (!emailTags.includes(pending)) finalTags = [...emailTags, pending];
+      setEmailTags(finalTags);
+      setEmailInput("");
+      setTagError("");
+    }
+    if (finalTags.length === 0) { toast.error("Add at least one email address"); return; }
+    setSending(true);
+    let lastUrl: string | null = null;
+    const succeeded: string[] = [];
+    for (const em of finalTags) {
+      try {
+        const result = await createShare.mutateAsync({
+          projectId: project.id,
+          email: em,
+          accessLevel: "download" as const,
+          origin: window.location.origin,
+        });
+        lastUrl = result.shareUrl;
+        succeeded.push(em);
+      } catch {
+        // individual error already toasted by onError
+      }
+    }
+    setSending(false);
+    if (succeeded.length > 0) {
+      setSentEmails(succeeded);
+      setLastShareUrl(lastUrl);
+      refetchShares();
+    }
   };
 
   const handleCopy = () => {
-    if (!shareUrl) return;
-    navigator.clipboard.writeText(shareUrl);
+    if (!lastShareUrl) return;
+    navigator.clipboard.writeText(lastShareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const resetForm = () => {
+    setEmailTags([]);
+    setEmailInput("");
+    setTagError("");
+    setSentEmails([]);
+    setLastShareUrl(null);
   };
 
   return (
@@ -81,7 +144,7 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
               className="flex-1 py-3 text-sm font-medium transition-colors"
               style={tab === t ? { color: "#FFD600", borderBottom: "2px solid #FFD600" } : { color: "#666" }}
             >
-              {t === "create" ? "Invite Someone" : `Manage Access (${shares.length})`}
+              {t === "create" ? "Invite People" : `Manage Access (${shares.length})`}
             </button>
           ))}
         </div>
@@ -89,64 +152,92 @@ function ShareModal({ project, onClose }: { project: any; onClose: () => void })
         <div className="p-6">
           {tab === "create" ? (
             <div className="space-y-4">
-              {!shareUrl ? (
+              {sentEmails.length === 0 ? (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Email Address</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                      placeholder="vendor@company.com"
-                      className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-yellow-400/50"
-                      style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                    />
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Email Addresses</label>
+                    {/* Tag container */}
+                    <div
+                      className="flex flex-wrap gap-1.5 px-3 py-2 rounded-lg min-h-[48px] cursor-text"
+                      style={{ background: "#1A1A1A", border: `1px solid ${tagError ? "#EF4444" : "#2A2A2A"}` }}
+                      onClick={(e) => (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.focus()}
+                    >
+                      {emailTags.map((tag, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "rgba(255,214,0,0.12)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}>
+                          {tag}
+                          <button onClick={() => removeTag(i)} className="ml-0.5 hover:text-white transition-colors" tabIndex={-1}><X size={10} /></button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={emailInput}
+                        onChange={(e) => { setEmailInput(e.target.value); setTagError(""); }}
+                        onKeyDown={handleInputKeyDown}
+                        onBlur={handleInputBlur}
+                        placeholder={emailTags.length === 0 ? "vendor@company.com, press Enter to add more" : "Add another email…"}
+                        className="flex-1 min-w-[160px] bg-transparent text-sm text-white placeholder-white/30 outline-none py-0.5"
+                      />
+                    </div>
+                    {tagError && <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{tagError}</p>}
+                    <p className="text-xs mt-1.5" style={{ color: "#555" }}>Press <kbd className="px-1 py-0.5 rounded text-xs" style={{ background: "#2A2A2A", color: "#888" }}>Enter</kbd> or <kbd className="px-1 py-0.5 rounded text-xs" style={{ background: "#2A2A2A", color: "#888" }}>,</kbd> after each address</p>
                   </div>
 
                   <button
-                    onClick={handleCreate}
-                    disabled={createShare.isPending}
+                    onClick={handleSendAll}
+                    disabled={sending || (emailTags.length === 0 && !emailInput.trim())}
                     className="w-full py-3 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                    style={{ background: "#FFD600", color: "#0A0A0A" }}
+                    style={{ background: "#FFD600", color: "#0A0A0A", opacity: (sending || (emailTags.length === 0 && !emailInput.trim())) ? 0.5 : 1 }}
                   >
-                    {createShare.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    {createShare.isPending ? "Sending invite…" : "Send Invite"}
+                    {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    {sending
+                      ? "Sending invites…"
+                      : emailTags.length > 1
+                        ? `Send ${emailTags.length} Invites`
+                        : "Send Invite"}
                   </button>
                 </>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
-                    <CheckCircle2 size={18} style={{ color: "#22C55E" }} />
+                  <div className="p-3 rounded-xl" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 size={16} style={{ color: "#22C55E" }} />
+                      <p className="text-sm font-semibold text-white">
+                        {sentEmails.length === 1 ? "Invite sent!" : `${sentEmails.length} invites sent!`}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sentEmails.map((em) => (
+                        <span key={em} className="text-xs px-2 py-0.5 rounded-md" style={{ background: "rgba(34,197,94,0.12)", color: "#22C55E", border: "1px solid rgba(34,197,94,0.25)" }}>{em}</span>
+                      ))}
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: "#666" }}>Each person will receive a verification code by email</p>
+                  </div>
+                  {lastShareUrl && (
                     <div>
-                      <p className="text-sm font-semibold text-white">Invite sent to {email}</p>
-                      <p className="text-xs" style={{ color: "#666" }}>They'll receive a verification code by email</p>
+                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Shareable Link (last invite)</label>
+                      <div className="flex gap-2">
+                        <input
+                          readOnly
+                          value={lastShareUrl}
+                          className="flex-1 px-3 py-2.5 rounded-lg text-xs text-white/70 outline-none"
+                          style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
+                        />
+                        <button
+                          onClick={handleCopy}
+                          className="px-3 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
+                          style={{ background: copied ? "rgba(34,197,94,0.15)" : "#1A1A1A", border: "1px solid #2A2A2A", color: copied ? "#22C55E" : "#FAFAFA" }}
+                        >
+                          <Copy size={14} />{copied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#888" }}>Shareable Link</label>
-                    <div className="flex gap-2">
-                      <input
-                        readOnly
-                        value={shareUrl}
-                        className="flex-1 px-3 py-2.5 rounded-lg text-xs text-white/70 outline-none"
-                        style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
-                      />
-                      <button
-                        onClick={handleCopy}
-                        className="px-3 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5"
-                        style={{ background: copied ? "rgba(34,197,94,0.15)" : "#1A1A1A", border: "1px solid #2A2A2A", color: copied ? "#22C55E" : "#FAFAFA" }}
-                      >
-                        <Copy size={14} />{copied ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
+                  )}
                   <button
-                    onClick={() => { setShareUrl(null); setEmail(""); }}
+                    onClick={resetForm}
                     className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors"
                     style={{ background: "#1A1A1A", border: "1px solid #2A2A2A", color: "#888" }}
                   >
-                    Invite Another Person
+                    Invite More People
                   </button>
                 </div>
               )}

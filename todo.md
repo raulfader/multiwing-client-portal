@@ -432,3 +432,8 @@
 - [x] Add deliverables.reorder tRPC procedure
 - [x] Install @dnd-kit/core and @dnd-kit/sortable
 - [x] Add drag handle and DnD reordering to admin deliverable rows in Admin.tsx
+
+## Multi-Email Share
+- [x] Share modal: replace single email input with multi-email tag input (add email on Enter/comma, remove with ×)
+- [x] Share modal: send one invite per email (loop shares.create calls on submit)
+- [x] Backend: shares.create already handles one email — no backend change needed (called once per email from frontend)

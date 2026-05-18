@@ -345,8 +345,12 @@ function SonicTrackRow({
   const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
-  // Static server-proxy URL — always valid, supports HTTP Range for seeking
-  const audioSrc = `/api/tracks/stream/${track.id}`;
+  // Static server-proxy URL — always valid, supports HTTP Range for seeking.
+  // Token is passed as a query param because <audio> elements can't send custom headers.
+  const sessionToken =
+    localStorage.getItem("portal_session_token") ??
+    localStorage.getItem("guest_session_token") ?? "";
+  const audioSrc = `/api/tracks/stream/${track.id}?token=${encodeURIComponent(sessionToken)}`;
 
   // Pending timestamp for new comment (set by clicking progress bar)
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);

@@ -16,8 +16,11 @@ import { generatePresignedStreamUrl } from "./s3Upload";
 export function registerTrackStreamRoute(app: Express) {
   (app as any).get("/api/tracks/stream/:id", async (req: any, res: any) => {
     try {
-      // Auth: x-session-token header first, then cookie
+      // Auth: query param token (used by <audio src> which can't send custom headers),
+      // then x-session-token header, then cookie.
+      // Accepts both portal_session_token (regular users) and guest_session_token.
       const token =
+        (req.query.token as string | undefined) ??
         (req.headers["x-session-token"] as string | undefined) ??
         parseCookies(req.headers.cookie ?? "")[SESSION_COOKIE];
       const session = token ? await validateSession(token) : null;

@@ -494,3 +494,8 @@
 - [x] DeliverableVideoPlayer: poll getProxyStatus every 10s when proxyStatus is pending/processing
 - [x] Stop polling once proxyStatus becomes ready or failed
 - [x] When ready: update local state with proxyUrl and switch to video player without page reload
+
+## Transcoding Progress Indicator
+- [x] Add elapsed time counter to the "Generating Preview…" card (e.g. "Transcoding for 2m 30s…")
+- [x] Use a useEffect + setInterval to tick every second from when the component mounts
+- [x] Show a subtle animated progress bar that fills over an estimated 5-minute window

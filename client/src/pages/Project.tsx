@@ -863,6 +863,26 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const proxyStatus = pollResult.data?.proxyStatus ?? initialStatus;
   const proxyUrl = pollResult.data?.proxyUrl ?? deliverable.proxyUrl ?? null;
 
+  // Elapsed time counter for transcoding progress
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const isTranscodingNow = proxyStatus === 'pending' || proxyStatus === 'processing';
+  useEffect(() => {
+    if (!isTranscodingNow) { setElapsedSeconds(0); return; }
+    setElapsedSeconds(0);
+    const timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isTranscodingNow]);
+
+  const formatElapsed = (s: number) => {
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return rem === 0 ? `${m}m` : `${m}m ${rem}s`;
+  };
+
+  const ESTIMATED_SECONDS = 300;
+  const progressPct = Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95);
+
   // If ProRes but proxy not ready yet, show status card
   if (isProRes && proxyStatus !== 'ready') {
     const publicUrl = deliverable.fileKey
@@ -876,14 +896,27 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
           <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(255,214,0,0.1)", border: "2px solid #FFD60033" }}>
             <Film size={28} style={{ color: accentColor }} />
           </div>
-          <div className="text-center px-6">
+          <div className="text-center px-6 w-full max-w-xs">
             {isTranscoding ? (
               <>
                 <p className="text-white font-semibold text-sm mb-1 flex items-center justify-center gap-2">
                   <span className="inline-block w-3 h-3 rounded-full animate-pulse" style={{ background: accentColor }} />
                   Generating Preview…
                 </p>
-                <p className="text-white/40 text-xs leading-relaxed">Your ProRes file is being transcoded for browser playback.<br />This usually takes 1–5 minutes. Download the original below.</p>
+                <p className="text-white/40 text-xs leading-relaxed mb-3">
+                  Transcoding for{" "}
+                  <span className="text-white/70 font-medium tabular-nums">{formatElapsed(elapsedSeconds)}</span>
+                  {" · "}usually 1–5 min
+                </p>
+                <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-1000 ease-linear"
+                    style={{
+                      width: `${progressPct}%`,
+                      background: `linear-gradient(90deg, ${accentColor}99, ${accentColor})`,
+                    }}
+                  />
+                </div>
               </>
             ) : isFailed ? (
               <>

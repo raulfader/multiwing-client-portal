@@ -1302,34 +1302,48 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
 // ── Admin Transcoding Progress ──────────────────────────────────────────────
 function AdminTranscodingProgress({ deliverableId, initialStatus }: { deliverableId: number; initialStatus?: string | null }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Once we've seen transcoding in-progress, latch it so stale parent re-renders
+  // can't hide the bar before the poll confirms it's actually done.
+  const [latchedTranscoding, setLatchedTranscoding] = useState(
+    () => initialStatus === 'pending' || initialStatus === 'processing'
+  );
 
-  // Poll proxy status every 10s — start immediately if we know it's transcoding,
-  // otherwise do a single fetch to get the live status
   const pollResult = trpc.deliverables.getProxyStatus.useQuery(
     { id: deliverableId },
     {
-      // Only poll actively if the initial status suggests transcoding is in progress
+      // Poll every 5s while transcoding; stop when confirmed done
       refetchInterval: (query) => {
-        const status = query.state.data?.proxyStatus ?? initialStatus;
-        if (status === 'ready' || status === 'failed' || status === 'none') return false;
-        return 10_000;
+        const status = query.state.data?.proxyStatus;
+        if (status === 'ready' || status === 'failed') return false;
+        // Keep polling if latched or status is still in-progress
+        if (latchedTranscoding || status === 'pending' || status === 'processing') return 5_000;
+        return false;
       },
       refetchIntervalInBackground: false,
-      // Fetch immediately on mount so we always have fresh status
+      // Always fetch fresh on mount — never use stale cache
       staleTime: 0,
     }
   );
 
-  // Use live polled status, falling back to the prop passed from parent list
-  const proxyStatus = pollResult.data?.proxyStatus ?? initialStatus ?? 'none';
+  // Live status from poll; fall back to initialStatus only before first fetch
+  const liveStatus = pollResult.data?.proxyStatus;
+  const proxyStatus = liveStatus ?? initialStatus ?? 'none';
   const isTranscoding = proxyStatus === 'pending' || proxyStatus === 'processing';
 
+  // Set the latch the moment we first see transcoding
   useEffect(() => {
-    if (!isTranscoding) { setElapsedSeconds(0); return; }
-    setElapsedSeconds(0);
+    if (isTranscoding && !latchedTranscoding) setLatchedTranscoding(true);
+    // Release latch only when poll has confirmed a terminal state
+    if (liveStatus === 'ready' || liveStatus === 'failed') setLatchedTranscoding(false);
+  }, [isTranscoding, liveStatus, latchedTranscoding]);
+
+  // Drive the elapsed timer — keep counting even if status briefly flickers
+  const shouldShow = latchedTranscoding || isTranscoding;
+  useEffect(() => {
+    if (!shouldShow) { setElapsedSeconds(0); return; }
     const timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
     return () => clearInterval(timer);
-  }, [isTranscoding]);
+  }, [shouldShow]);
 
   const formatElapsed = (s: number) => {
     if (s < 60) return `${s}s`;
@@ -1341,7 +1355,7 @@ function AdminTranscodingProgress({ deliverableId, initialStatus }: { deliverabl
   const ESTIMATED_SECONDS = 300;
   const progressPct = Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95);
 
-  if (!isTranscoding) return null;
+  if (!shouldShow) return null;
 
   return (
     <div className="mt-1.5 w-full">

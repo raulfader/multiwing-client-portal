@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import {
@@ -1299,24 +1299,94 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
   );
 }
 
+// ── Admin Transcoding Progress ──────────────────────────────────────────────
+function AdminTranscodingProgress({ deliverableId }: { deliverableId: number }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Poll proxy status every 10s while transcoding
+  const pollResult = trpc.deliverables.getProxyStatus.useQuery(
+    { id: deliverableId },
+    {
+      refetchInterval: (query) => {
+        const status = query.state.data?.proxyStatus;
+        if (status === 'ready' || status === 'failed') return false;
+        return 10_000;
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  const proxyStatus = pollResult.data?.proxyStatus ?? 'pending';
+  const isTranscoding = proxyStatus === 'pending' || proxyStatus === 'processing';
+
+  useEffect(() => {
+    if (!isTranscoding) { setElapsedSeconds(0); return; }
+    setElapsedSeconds(0);
+    const timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isTranscoding]);
+
+  const formatElapsed = (s: number) => {
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    const rem = s % 60;
+    return rem === 0 ? `${m}m` : `${m}m ${rem}s`;
+  };
+
+  const ESTIMATED_SECONDS = 300;
+  const progressPct = Math.min((elapsedSeconds / ESTIMATED_SECONDS) * 100, 95);
+
+  if (!isTranscoding) return null;
+
+  return (
+    <div className="mt-1.5 w-full">
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#FFD600' }} />
+        <span className="text-xs" style={{ color: '#FFD600' }}>
+          Transcoding · <span className="tabular-nums font-medium">{formatElapsed(elapsedSeconds)}</span>
+          <span className="text-white/30"> · usually 1–5 min</span>
+        </span>
+      </div>
+      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-1000 ease-linear"
+          style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #FFD60099, #FFD600)' }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Deliverable Edit Row ──────────────────────────────────────────────────────
 // ── Admin Deliverable Download Button ────────────────────────────────────────
-function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, formatBytes }: { deliverableId: number; fileName?: string; fileSize?: number; formatBytes: (b: number) => string }) {
+function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, proxyUrl, proxyStatus, formatBytes }: { deliverableId: number; fileName?: string; fileSize?: number; proxyUrl?: string | null; proxyStatus?: string | null; formatBytes: (b: number) => string }) {
   const getDownloadUrl = trpc.deliverables.getDownloadUrl.useMutation();
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<null | "original" | "proxy">(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const downloadFile = async (url: string, suggestedName: string, kind: "original" | "proxy") => {
+    setDownloading(kind);
+    setDownloadProgress(0);
     try {
-      const { url, fileName: serverFileName } = await getDownloadUrl.mutateAsync({ id: deliverableId });
-      // Fetch as blob so the browser honours the `download` attribute filename
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-      const blob = await resp.blob();
+      const contentLength = resp.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      const reader = resp.body!.getReader();
+      const chunks: BlobPart[] = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total > 0) setDownloadProgress(Math.round((received / total) * 100));
+      }
+      const blob = new Blob(chunks);
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = serverFileName || fileName || "file";
+      a.download = suggestedName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1324,21 +1394,61 @@ function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, for
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
-      setDownloading(false);
+      setDownloading(null);
+      setDownloadProgress(0);
     }
   };
 
+  const handleDownload = async () => {
+    const { url, fileName: serverFileName } = await getDownloadUrl.mutateAsync({ id: deliverableId });
+    await downloadFile(url, serverFileName || fileName || "file", "original");
+  };
+
+  const handleProxyDownload = async () => {
+    if (!proxyUrl) return;
+    const baseName = (fileName || "video").replace(/\.[^.]+$/, "");
+    await downloadFile(proxyUrl, `${baseName}-proxy.mp4`, "proxy");
+  };
+
+  const hasProxy = proxyStatus === "ready" && !!proxyUrl;
+
   return (
-    <button
-      onClick={handleDownload}
-      disabled={downloading}
-      className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-opacity"
-      style={{ background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
-    >
-      {downloading ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
-      {fileName || "Download File"}
-      {fileSize ? ` · ${formatBytes(fileSize)}` : ""}
-    </button>
+    <div className="flex flex-col gap-1 w-full">
+      {hasProxy && (
+        <button
+          onClick={handleProxyDownload}
+          disabled={!!downloading}
+          className="relative flex items-center gap-1 text-xs px-2 py-1 rounded overflow-hidden"
+          style={{ background: "rgba(34,197,94,0.08)", color: "#22C55E", border: "1px solid rgba(34,197,94,0.2)" }}
+        >
+          {downloading === "proxy" && downloadProgress > 0 && (
+            <span className="absolute inset-0 rounded" style={{ background: "rgba(34,197,94,0.15)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+          )}
+          <span className="relative flex items-center gap-1">
+            {downloading === "proxy" ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+            {downloading === "proxy"
+              ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+              : "Proxy (MP4)"}
+          </span>
+        </button>
+      )}
+      <button
+        onClick={handleDownload}
+        disabled={!!downloading}
+        className="relative flex items-center gap-1 text-xs px-2 py-1 rounded overflow-hidden"
+        style={{ background: "rgba(100,221,23,0.08)", color: "#64DD17", border: "1px solid rgba(100,221,23,0.2)" }}
+      >
+        {downloading === "original" && downloadProgress > 0 && (
+          <span className="absolute inset-0 rounded" style={{ background: "rgba(100,221,23,0.12)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+        )}
+        <span className="relative flex items-center gap-1">
+          {downloading === "original" ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+          {downloading === "original"
+            ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+            : hasProxy ? `Original (ProRes)${fileSize ? ` · ${formatBytes(fileSize)}` : ""}` : `${fileName || "Download File"}${fileSize ? ` · ${formatBytes(fileSize)}` : ""}`}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -1409,17 +1519,15 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
             <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
             <div className="flex items-center gap-1.5">
               <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
-              {d.proxyStatus === 'pending' || d.proxyStatus === 'processing' ? (
-                <span className="text-xs px-1.5 py-0.5 rounded font-medium flex items-center gap-1" style={{ background: 'rgba(255,214,0,0.1)', color: '#FFD600', border: '1px solid #FFD60033' }}>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFD600' }} />
-                  Transcoding
-                </span>
-              ) : d.proxyStatus === 'ready' ? (
+              {d.proxyStatus === 'ready' ? (
                 <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid #22c55e33' }}>Proxy Ready</span>
               ) : d.proxyStatus === 'failed' ? (
                 <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid #ef444433' }}>Transcode Failed</span>
               ) : null}
             </div>
+            {(d.proxyStatus === 'pending' || d.proxyStatus === 'processing') && (
+              <AdminTranscodingProgress deliverableId={d.id} />
+            )}
           </div>
           {d.downloadUrl && (
             <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
@@ -1436,7 +1544,7 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
         {/* File attachment row */}
         <div className="flex items-center gap-2 flex-wrap">
           {(fileKey ?? d.fileKey) ? (
-            <AdminDeliverableDownloadButton deliverableId={d.id} fileName={(fileName ?? d.fileName) || undefined} fileSize={(fileSize ?? d.fileSize) || undefined} formatBytes={formatBytes} />
+            <AdminDeliverableDownloadButton deliverableId={d.id} fileName={(fileName ?? d.fileName) || undefined} fileSize={(fileSize ?? d.fileSize) || undefined} proxyUrl={d.proxyUrl} proxyStatus={d.proxyStatus} formatBytes={formatBytes} />
           ) : (
             <span className="text-xs" style={{ color: "#444" }}>No file attached</span>
           )}

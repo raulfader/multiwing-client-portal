@@ -380,15 +380,28 @@ function SonicTrackRow({
 
   const getTrackDownloadUrl = trpc.tracks.getDownloadUrl.useMutation();
   const [trackDownloading, setTrackDownloading] = useState(false);
+  const [trackDownloadProgress, setTrackDownloadProgress] = useState(0);
 
   const handleTrackDownload = async () => {
     setTrackDownloading(true);
+    setTrackDownloadProgress(0);
     try {
       const { url, fileName } = await getTrackDownloadUrl.mutateAsync({ id: track.id });
-      // Direct public S3 URL — fetch as blob so browser uses the `download` attribute filename
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-      const blob = await resp.blob();
+      const contentLength = resp.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      const reader = resp.body!.getReader();
+      const chunks: BlobPart[] = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total > 0) setTrackDownloadProgress(Math.round((received / total) * 100));
+      }
+      const blob = new Blob(chunks);
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
@@ -401,6 +414,7 @@ function SonicTrackRow({
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
       setTrackDownloading(false);
+      setTrackDownloadProgress(0);
     }
   };
 
@@ -703,11 +717,23 @@ function SonicTrackRow({
         <button
           onClick={handleTrackDownload}
           disabled={trackDownloading}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ml-auto"
-          style={{ background: "rgba(255,214,0,0.08)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)" }}
+          className="relative flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ml-auto overflow-hidden"
+          style={{ background: "rgba(255,214,0,0.08)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.2)", minWidth: 110 }}
         >
-          {trackDownloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-          {trackDownloading ? "Preparing…" : "Download"}
+          {trackDownloading && trackDownloadProgress > 0 && (
+            <span
+              className="absolute inset-0 rounded-lg"
+              style={{ background: `rgba(255,214,0,0.18)`, width: `${trackDownloadProgress}%`, transition: "width 0.3s ease" }}
+            />
+          )}
+          <span className="relative flex items-center gap-1.5">
+            {trackDownloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+            {trackDownloading
+              ? trackDownloadProgress > 0
+                ? `Downloading ${trackDownloadProgress}%`
+                : "Downloading…"
+              : "Download"}
+          </span>
         </button>
       </div>
     </div>
@@ -1543,7 +1569,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
 }
 
 // Separate component so hooks are always called at the top level
-function DeliverableAudioCard({ deliverable, downloading, handleDownload }: { deliverable: any; downloading: boolean; handleDownload: () => void }) {
+function DeliverableAudioCard({ deliverable, downloading, downloadProgress, handleDownload }: { deliverable: any; downloading: "original" | "proxy" | null; downloadProgress: number; handleDownload: () => void }) {
   // Direct public S3 URL — bucket is fully public, no presigned URL needed
   const audioStreamUrl = deliverable.fileKey
     ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
@@ -1573,12 +1599,19 @@ function DeliverableAudioCard({ deliverable, downloading, handleDownload }: { de
           {deliverable.description && <p className="text-white/50 text-xs leading-relaxed">{deliverable.description}</p>}
           <button
             onClick={handleDownload}
-            disabled={downloading}
-            className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            disabled={!!downloading}
+            className="relative w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all overflow-hidden"
             style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
           >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {downloading ? "Preparing…" : "Download File"}
+            {downloading === "original" && downloadProgress > 0 && (
+              <span className="absolute inset-0 rounded-lg" style={{ background: "rgba(255,214,0,0.18)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              {downloading === "original" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {downloading === "original"
+                ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+                : "Download File"}
+            </span>
           </button>
         </div>
       </div>
@@ -1601,21 +1634,32 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
   const fallbackIcon = getFallbackIcon(deliverable.title ?? "");
 
   const getDownloadUrl = trpc.deliverables.getDownloadUrl.useMutation();
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<null | "original" | "proxy">(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const handleDownload = async () => {
-    if (!hasS3File) return;
-    setDownloading(true);
+  const downloadFile = async (url: string, suggestedName: string, kind: "original" | "proxy") => {
+    setDownloading(kind);
+    setDownloadProgress(0);
     try {
-      const { url, fileName } = await getDownloadUrl.mutateAsync({ id: deliverable.id });
-      // Fetch as blob so the browser honours the `download` attribute filename
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-      const blob = await resp.blob();
+      const contentLength = resp.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      const reader = resp.body!.getReader();
+      const chunks: BlobPart[] = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total > 0) setDownloadProgress(Math.round((received / total) * 100));
+      }
+      const blob = new Blob(chunks);
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = fileName || deliverable.fileName || deliverable.title;
+      a.download = suggestedName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1623,9 +1667,26 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
-      setDownloading(false);
+      setDownloading(null);
+      setDownloadProgress(0);
     }
   };
+
+  const handleDownload = async () => {
+    if (!hasS3File) return;
+    const { url, fileName } = await getDownloadUrl.mutateAsync({ id: deliverable.id });
+    await downloadFile(url, fileName || deliverable.fileName || deliverable.title, "original");
+  };
+
+  const handleProxyDownload = async () => {
+    const proxyUrl = deliverable.proxyUrl;
+    if (!proxyUrl) return;
+    // Derive a clean MP4 filename from the original filename
+    const baseName = (deliverable.fileName || deliverable.title || "video").replace(/\.[^.]+$/, "");
+    await downloadFile(proxyUrl, `${baseName}-proxy.mp4`, "proxy");
+  };
+
+  const hasProxyReady = deliverable.proxyStatus === "ready" && !!deliverable.proxyUrl;
 
   if (isVideo) {
     return (
@@ -1639,15 +1700,40 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           {deliverable.description && <p className="text-white/50 text-xs mb-3 leading-relaxed">{deliverable.description}</p>}
         </div>
         <DeliverableVideoPlayer deliverable={deliverable} accentColor="#FFD600" />
-        <div className="p-4 pt-3">
+        <div className="p-4 pt-3 space-y-2">
+          {hasProxyReady && (
+            <button
+              onClick={handleProxyDownload}
+              disabled={!!downloading}
+              className="relative w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all overflow-hidden"
+              style={{ background: "rgba(34,197,94,0.08)", color: "#22C55E", border: "1px solid rgba(34,197,94,0.2)" }}
+            >
+              {downloading === "proxy" && downloadProgress > 0 && (
+                <span className="absolute inset-0 rounded-lg" style={{ background: "rgba(34,197,94,0.15)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+              )}
+              <span className="relative flex items-center gap-1.5">
+                {downloading === "proxy" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                {downloading === "proxy"
+                  ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+                  : "Download Proxy (MP4)"}
+              </span>
+            </button>
+          )}
           <button
             onClick={handleDownload}
-            disabled={downloading}
-            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            disabled={!!downloading}
+            className="relative w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all overflow-hidden"
             style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
           >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {downloading ? "Preparing…" : "Download File"}
+            {downloading === "original" && downloadProgress > 0 && (
+              <span className="absolute inset-0 rounded-lg" style={{ background: "rgba(255,214,0,0.18)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              {downloading === "original" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {downloading === "original"
+                ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+                : hasProxyReady ? "Download Original (ProRes)" : "Download File"}
+            </span>
           </button>
         </div>
       </div>
@@ -1655,7 +1741,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
   }
 
   if (isAudio) {
-    return <DeliverableAudioCard deliverable={deliverable} downloading={downloading} handleDownload={handleDownload} />;
+    return <DeliverableAudioCard deliverable={deliverable} downloading={downloading} downloadProgress={downloadProgress} handleDownload={handleDownload} />;
   }
 
   // ── S3 non-media file (document/archive): thumbnail + download ─────────────────
@@ -1680,12 +1766,19 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           </div>
           <button
             onClick={handleDownload}
-            disabled={downloading}
-            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all"
+            disabled={!!downloading}
+            className="relative w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all overflow-hidden"
             style={{ background: "rgba(255,214,0,0.1)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
           >
-            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {downloading ? "Preparing…" : "Download File"}
+            {downloading === "original" && downloadProgress > 0 && (
+              <span className="absolute inset-0 rounded-lg" style={{ background: "rgba(255,214,0,0.18)", width: `${downloadProgress}%`, transition: "width 0.3s ease" }} />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              {downloading === "original" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {downloading === "original"
+                ? downloadProgress > 0 ? `Downloading ${downloadProgress}%` : "Downloading…"
+                : "Download File"}
+            </span>
           </button>
         </div>
       </div>

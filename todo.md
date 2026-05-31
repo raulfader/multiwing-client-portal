@@ -508,3 +508,8 @@
 - [x] Create notification Lambda to receive MediaConvert EventBridge completion events
 - [x] Configure EventBridge rule to route MediaConvert job state changes to notification Lambda
 - [ ] Test end-to-end with a ProRes file upload
+
+## Download & Transcoding UX Improvements
+- [x] Fix 1: Replace "Preparing…" with real download progress bar showing percentage (client + admin views)
+- [x] Fix 2: Show dual download buttons (Download Original ProRes + Download Proxy MP4) when proxy is ready
+- [x] Fix 3: Add full transcoding progress bar (elapsed time + animated fill) to admin AdminDeliverableCard

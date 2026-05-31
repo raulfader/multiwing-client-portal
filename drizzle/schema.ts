@@ -120,6 +120,10 @@ export const deliverables = mysqlTable("deliverables", {
    fileSize: bigint("fileSize", { mode: "number" }), // bytes
   sortOrder: int("sortOrder").default(0).notNull(),
   reviewStatus: varchar("reviewStatus", { length: 50 }).default("pending").notNull(), // pending, approved, needs_changes
+  // Proxy transcoding (ProRes → H.264 for browser playback)
+  proxyUrl: text("proxyUrl"), // H.264 MP4 proxy URL for browser playback
+  proxyKey: text("proxyKey"), // S3 key for the proxy file
+  proxyStatus: varchar("proxyStatus", { length: 20 }).default("none"), // none, pending, processing, ready, failed
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -1238,6 +1238,7 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
       const { uploadUrl, fileKey, publicUrl } = await getUploadUrl.mutateAsync({
         fileName: file.name,
         contentType,
+        deliverableId, // embed in S3 key so Lambda can identify the deliverable for transcoding
       });
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -1406,7 +1407,19 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
             : <div className="w-10 h-7 rounded flex-shrink-0" style={{ background: "#1A1A1A" }} />}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold truncate" style={{ color: "#FAFAFA" }}>{d.title}</p>
-            <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs" style={{ color: "#555" }}>{d.fileType}</p>
+              {d.proxyStatus === 'pending' || d.proxyStatus === 'processing' ? (
+                <span className="text-xs px-1.5 py-0.5 rounded font-medium flex items-center gap-1" style={{ background: 'rgba(255,214,0,0.1)', color: '#FFD600', border: '1px solid #FFD60033' }}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFD600' }} />
+                  Transcoding
+                </span>
+              ) : d.proxyStatus === 'ready' ? (
+                <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid #22c55e33' }}>Proxy Ready</span>
+              ) : d.proxyStatus === 'failed' ? (
+                <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid #ef444433' }}>Transcode Failed</span>
+              ) : null}
+            </div>
           </div>
           {d.downloadUrl && (
             <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>

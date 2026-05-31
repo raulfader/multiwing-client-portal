@@ -575,9 +575,21 @@ export const appRouter = router({
         fileName: z.string().nullable().optional(),
         fileSize: z.number().nullable().optional(),
         sortOrder: z.number().optional(),
+        // Proxy transcoding
+        proxyStatus: z.string().optional(),
+        proxyUrl: z.string().nullable().optional(),
+        proxyKey: z.string().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
+        // Auto-set proxyStatus=pending for ProRes/MOV files when a fileKey is set
+        if (data.fileKey && data.fileName) {
+          const ext = data.fileName.split('.').pop()?.toLowerCase() ?? '';
+          const needsProxy = ['mov', 'prores', 'mxf', 'dnxhd'].includes(ext);
+          if (needsProxy && !data.proxyStatus) {
+            data.proxyStatus = 'pending';
+          }
+        }
         await updateDeliverable(id, data);
         return { success: true };
       }),
@@ -586,11 +598,14 @@ export const appRouter = router({
       .input(z.object({
         fileName: z.string(),
         contentType: z.string(),
+        deliverableId: z.number().optional(), // embed in key so Lambda can identify the deliverable
       }))
       .mutation(async ({ input }) => {
         const { generatePresignedUploadUrl } = await import("./s3Upload");
+        // Prefix key with deliverableId so Lambda can extract it: deliverables/{id}-{random}-{name}
+        const prefix = input.deliverableId ? `${input.deliverableId}-` : "";
         return generatePresignedUploadUrl({
-          fileName: input.fileName,
+          fileName: `${prefix}${input.fileName}`,
           contentType: input.contentType,
           folder: "deliverables",
         });

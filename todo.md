@@ -476,3 +476,15 @@
 - [x] Fix Sonic Branding track download: use direct public S3 URL instead of proxy/presigned
 - [x] Fix deliverable download (client + guest): use direct public S3 URL instead of presigned URL
 - [x] Fix admin track/deliverable download: use direct public S3 URL
+
+## ProRes Proxy Transcoding (AWS Lambda)
+- [x] Add proxyUrl, proxyStatus (pending/processing/ready/failed), proxyKey columns to deliverables table
+- [x] Run DB migration for new columns
+- [x] Build AWS Lambda function with FFmpeg layer for ProRes→H.264 transcoding
+- [x] Configure S3 event notification to trigger Lambda on deliverables/ prefix uploads
+- [x] Add IAM permissions for Lambda to read/write S3 and call WebDev webhook
+- [x] Add /api/transcoding/complete webhook endpoint in WebDev app
+- [x] Update deliverables.getOne/list procedures to return proxyUrl and proxyStatus
+- [x] Update frontend video player to use proxyUrl when available, original as fallback
+- [x] Show "Transcoding…" badge on video deliverables while proxyStatus is pending/processing
+- [x] Keep original file URL as the download target regardless of proxy status

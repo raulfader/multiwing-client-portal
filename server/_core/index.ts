@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerEmailTrackingRoutes } from "../emailTracking";
 import { registerTrackDownloadRoute } from "../trackDownload";
 import { registerTrackStreamRoute } from "../trackStream";
+import { registerTranscodingWebhook } from "../transcodingWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -44,6 +45,8 @@ async function startServer() {
   registerTrackDownloadRoute(app);
   // Track audio proxy stream (S3 → browser with Range support for seeking)
   registerTrackStreamRoute(app);
+  // Transcoding webhook (Lambda → portal DB update)
+  registerTranscodingWebhook(app);
   // tRPC API
   app.use(
     "/api/trpc",

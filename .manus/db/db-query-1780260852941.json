@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `deliverables` ADD `proxyUrl` text;\nALTER TABLE `deliverables` ADD `proxyKey` text;\nALTER TABLE `deliverables` ADD `proxyStatus` varchar(20) DEFAULT 'none';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4CeWpXAUANmHnhE.46ea41931f6b --database MCxqt4HyvEAyGGokboGjqW --execute ALTER TABLE `deliverables` ADD `proxyUrl` text;\nALTER TABLE `deliverables` ADD `proxyKey` text;\nALTER TABLE `deliverables` ADD `proxyStatus` varchar(20) DEFAULT 'none';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1404
+}

@@ -839,13 +839,19 @@ function DeliverableAudioPlayer({ src, title, accentColor = "#FFD600" }: { src: 
 // ── Deliverable Video Player with Timestamped Comments ───────────────────────
 
 function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deliverable: any; accentColor?: string }) {
-  // ProRes / MOV files cannot be decoded by browsers — show a download card instead
+  // ProRes / MOV files: use proxy if ready, show transcoding badge if pending/processing, fallback download card if none
   const fileExt = (deliverable.fileKey ?? "").split(".").pop()?.toLowerCase();
-  const isProRes = fileExt === "mov" || fileExt === "prores";
-  if (isProRes) {
+  const isProRes = ['mov', 'prores', 'mxf', 'dnxhd'].includes(fileExt ?? '');
+  const proxyStatus = deliverable.proxyStatus ?? 'none';
+  const proxyUrl = deliverable.proxyUrl ?? null;
+
+  // If ProRes but proxy not ready yet, show status card
+  if (isProRes && proxyStatus !== 'ready') {
     const publicUrl = deliverable.fileKey
       ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
       : null;
+    const isTranscoding = proxyStatus === 'pending' || proxyStatus === 'processing';
+    const isFailed = proxyStatus === 'failed';
     return (
       <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="aspect-video flex flex-col items-center justify-center gap-4" style={{ background: "#111" }}>
@@ -853,8 +859,25 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
             <Film size={28} style={{ color: accentColor }} />
           </div>
           <div className="text-center px-6">
-            <p className="text-white font-semibold text-sm mb-1">ProRes / MOV File</p>
-            <p className="text-white/40 text-xs leading-relaxed">This file uses Apple ProRes codec which browsers cannot play.<br />Download it to watch in QuickTime, DaVinci Resolve, or Premiere Pro.</p>
+            {isTranscoding ? (
+              <>
+                <p className="text-white font-semibold text-sm mb-1 flex items-center justify-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full animate-pulse" style={{ background: accentColor }} />
+                  Generating Preview…
+                </p>
+                <p className="text-white/40 text-xs leading-relaxed">Your ProRes file is being transcoded for browser playback.<br />This usually takes 1–5 minutes. Download the original below.</p>
+              </>
+            ) : isFailed ? (
+              <>
+                <p className="text-white font-semibold text-sm mb-1">Preview Unavailable</p>
+                <p className="text-white/40 text-xs leading-relaxed">Transcoding failed. Download the original ProRes file below.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-white font-semibold text-sm mb-1">ProRes / MOV File</p>
+                <p className="text-white/40 text-xs leading-relaxed">This file uses Apple ProRes codec which browsers cannot play.<br />Download it to watch in QuickTime, DaVinci Resolve, or Premiere Pro.</p>
+              </>
+            )}
           </div>
           {publicUrl && (
             <a
@@ -864,7 +887,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
               style={{ background: accentColor, color: "#0A0A0A" }}
             >
               <Download size={13} />
-              Download ProRes File
+              Download Original ProRes
             </a>
           )}
         </div>
@@ -888,10 +911,12 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const [commentText, setCommentText] = useState("");
   const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
-  // Build direct public S3 URL from fileKey — bucket is fully public
-  const streamUrl = deliverable.fileKey
-    ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
-    : null;
+  // Use proxy URL for playback if available (ProRes transcoded to H.264), else direct S3 URL
+  const streamUrl = proxyUrl
+    ? proxyUrl
+    : (deliverable.fileKey
+      ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
+      : null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>(deliverable.reviewStatus ?? "pending");
   // Separate ref for the fullscreen scrub bar (different DOM element)

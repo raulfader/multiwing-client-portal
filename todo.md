@@ -507,9 +507,14 @@
 - [x] Remove FFmpeg layer from trigger Lambda (no longer needed)
 - [x] Create notification Lambda to receive MediaConvert EventBridge completion events
 - [x] Configure EventBridge rule to route MediaConvert job state changes to notification Lambda
-- [ ] Test end-to-end with a ProRes file upload
+- [x] Test end-to-end with a ProRes file upload
 
 ## Download & Transcoding UX Improvements
 - [x] Fix 1: Replace "Preparing…" with real download progress bar showing percentage (client + admin views)
 - [x] Fix 2: Show dual download buttons (Download Original ProRes + Download Proxy MP4) when proxy is ready
 - [x] Fix 3: Add full transcoding progress bar (elapsed time + animated fill) to admin AdminDeliverableCard
+
+## Admin Transcoding Bar & Email Notifications
+- [x] Fix/verify admin transcoding progress bar shows correctly when proxyStatus is pending/processing
+- [x] Send email to raul@faderlabs.com when a comment is posted (any project/track)
+- [x] Send email to raul@faderlabs.com when a file is downloaded (deliverable or track)

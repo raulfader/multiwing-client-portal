@@ -341,3 +341,67 @@ If you didn't request this, you can safely ignore this email.
     return { success: false, error: err?.message ?? "Unknown error" };
   }
 }
+
+// ── Admin alert email (comment / download notifications) ─────────────────────
+export async function sendAdminAlertEmail(params: {
+  subject: string;
+  heading: string;
+  lines: string[];
+}): Promise<{ success: boolean; error?: string }> {
+  const { subject, heading, lines } = params;
+
+  const rowsHtml = lines
+    .map((l) => `<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#cccccc;">${l}</p>`)
+    .join("\n");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>${subject}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin:0;padding:0;background:#0a0a0a;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif; }
+    .wrapper { max-width:600px;margin:0 auto;background:#111111; }
+    .header { background:#0a0a0a;padding:28px 40px 20px;border-bottom:1px solid #222;text-align:center; }
+    .header img { height:32px;display:block;margin:0 auto; }
+    .body { padding:36px 40px 28px; }
+    .heading { font-size:18px;font-weight:700;color:#ffffff;margin:0 0 20px; }
+    .card { background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:20px 24px;margin-bottom:24px; }
+    .footer { background:#0a0a0a;padding:20px 40px;border-top:1px solid #222;text-align:center; }
+    .footer p { font-size:12px;color:#555;margin:0 0 4px; }
+    .footer a { color:#FFD600;text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><img src="${FL_LOGO}" alt="Faderlabs" /></div>
+    <div class="body">
+      <p class="heading">${heading}</p>
+      <div class="card">${rowsHtml}</div>
+      <p style="font-size:12px;color:#555;margin:0;">This is an automated notification from the Faderlabs portal.</p>
+    </div>
+    <div class="footer">
+      <p>Faderlabs &mdash; <a href="https://faderlabs.com">faderlabs.com</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `${heading}\n\n${lines.map((l) => l.replace(/<[^>]+>/g, "")).join("\n")}\n\n— Faderlabs`;
+
+  try {
+    await transporter.sendMail({
+      from: `"Faderlabs" <hello@faderlabs.com>`,
+      to: "raul@faderlabs.com",
+      subject,
+      html,
+      text,
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("[admin-alert-email] failed:", err?.message);
+    return { success: false, error: err?.message ?? "Unknown error" };
+  }
+}

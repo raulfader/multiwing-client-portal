@@ -1300,23 +1300,28 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
 }
 
 // ── Admin Transcoding Progress ──────────────────────────────────────────────
-function AdminTranscodingProgress({ deliverableId }: { deliverableId: number }) {
+function AdminTranscodingProgress({ deliverableId, initialStatus }: { deliverableId: number; initialStatus?: string | null }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Poll proxy status every 10s while transcoding
+  // Poll proxy status every 10s — start immediately if we know it's transcoding,
+  // otherwise do a single fetch to get the live status
   const pollResult = trpc.deliverables.getProxyStatus.useQuery(
     { id: deliverableId },
     {
+      // Only poll actively if the initial status suggests transcoding is in progress
       refetchInterval: (query) => {
-        const status = query.state.data?.proxyStatus;
-        if (status === 'ready' || status === 'failed') return false;
+        const status = query.state.data?.proxyStatus ?? initialStatus;
+        if (status === 'ready' || status === 'failed' || status === 'none') return false;
         return 10_000;
       },
       refetchIntervalInBackground: false,
+      // Fetch immediately on mount so we always have fresh status
+      staleTime: 0,
     }
   );
 
-  const proxyStatus = pollResult.data?.proxyStatus ?? 'pending';
+  // Use live polled status, falling back to the prop passed from parent list
+  const proxyStatus = pollResult.data?.proxyStatus ?? initialStatus ?? 'none';
   const isTranscoding = proxyStatus === 'pending' || proxyStatus === 'processing';
 
   useEffect(() => {
@@ -1525,8 +1530,8 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
                 <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid #ef444433' }}>Transcode Failed</span>
               ) : null}
             </div>
-            {(d.proxyStatus === 'pending' || d.proxyStatus === 'processing') && (
-              <AdminTranscodingProgress deliverableId={d.id} />
+            {(d.fileType === 'video' || /\.(mov|prores|mxf|dnxhd|mp4|webm)$/i.test(d.fileName ?? '')) && (
+              <AdminTranscodingProgress deliverableId={d.id} initialStatus={d.proxyStatus} />
             )}
           </div>
           {d.downloadUrl && (

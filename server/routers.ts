@@ -54,7 +54,7 @@ import {
   setSiteSetting,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
-import { sendProjectNotification } from "./email";
+import { sendProjectNotification, sendAdminAlertEmail } from "./email";
 import { getDb } from "./db";
 import { projectContacts, emailLog, projectShares, projects, deliverables } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -264,6 +264,12 @@ export const appRouter = router({
         const ext = (track.audioKey || track.audioUrl).split(".").pop()?.toLowerCase() ?? "wav";
         const safeTitle = track.title.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
         const fileName = `${safeTitle}.${ext}`;
+        // Fire-and-forget email notification
+        sendAdminAlertEmail({
+          subject: `⬇️ Track downloaded: "${track.title}"`,
+          heading: `Track file downloaded`,
+          lines: [`<strong>Track:</strong> ${track.title}`, `<strong>File:</strong> ${fileName}`],
+        }).catch(() => {});
         return { url, fileName };
       }),
 
@@ -307,7 +313,7 @@ export const appRouter = router({
           timestampSeconds: input.timestampSeconds,
         });
 
-        // Notify owner
+        // Notify owner via in-app + email
         const timeLabel = input.timestampSeconds != null
           ? ` at ${Math.floor(input.timestampSeconds / 60)}:${String(input.timestampSeconds % 60).padStart(2, "0")}`
           : "";
@@ -315,6 +321,15 @@ export const appRouter = router({
           title: `New comment on "${track.title}"`,
           content: `${input.commenterName} commented${timeLabel}: "${input.content}"`,
         });
+        sendAdminAlertEmail({
+          subject: `💬 New comment on "${track.title}"`,
+          heading: `New comment on "${track.title}"`,
+          lines: [
+            `<strong>From:</strong> ${input.commenterName}`,
+            ...(timeLabel ? [`<strong>Timestamp:</strong>${timeLabel}`] : []),
+            `<strong>Comment:</strong> ${input.content}`,
+          ],
+        }).catch(() => {});
 
         return { success: true };
       }),
@@ -621,6 +636,15 @@ export const appRouter = router({
         if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
         const { getPublicUrl } = await import("./s3Upload");
         const url = getPublicUrl(deliverable.fileKey);
+        // Fire-and-forget email notification
+        sendAdminAlertEmail({
+          subject: `⬇️ Deliverable downloaded: "${deliverable.title}"`,
+          heading: `Deliverable file downloaded`,
+          lines: [
+            `<strong>Deliverable:</strong> ${deliverable.title}`,
+            `<strong>File:</strong> ${deliverable.fileName ?? deliverable.fileKey}`,
+          ],
+        }).catch(() => {});
         return { url, fileName: deliverable.fileName ?? undefined };
       }),
 
@@ -720,6 +744,15 @@ export const appRouter = router({
           title: `New comment on "${deliverable.title}"`,
           content: `${input.commenterName} commented on "${deliverable.title}"${timeLabel}: "${input.content}"`,
         });
+        sendAdminAlertEmail({
+          subject: `💬 New comment on "${deliverable.title}"`,
+          heading: `New comment on "${deliverable.title}"`,
+          lines: [
+            `<strong>From:</strong> ${input.commenterName}`,
+            ...(timeLabel ? [`<strong>Timestamp:</strong>${timeLabel}`] : []),
+            `<strong>Comment:</strong> ${input.content}`,
+          ],
+        }).catch(() => {});
 
         return { success: true };
       }),

@@ -669,6 +669,21 @@ export const appRouter = router({
         );
         return { success: true };
       }),
+
+    // Lightweight poll endpoint — returns only proxyStatus + proxyUrl for a single deliverable
+    getProxyStatus: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const row = await db
+          .select({ proxyStatus: deliverables.proxyStatus, proxyUrl: deliverables.proxyUrl })
+          .from(deliverables)
+          .where(eq(deliverables.id, input.id))
+          .limit(1);
+        if (!row[0]) throw new TRPCError({ code: "NOT_FOUND" });
+        return { proxyStatus: row[0].proxyStatus ?? "none", proxyUrl: row[0].proxyUrl ?? null };
+      }),
   }),
 
   // ── Deliverable Comments ──────────────────────────────────────────────────────

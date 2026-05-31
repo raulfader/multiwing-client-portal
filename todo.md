@@ -488,3 +488,9 @@
 - [x] Update frontend video player to use proxyUrl when available, original as fallback
 - [x] Show "Transcoding…" badge on video deliverables while proxyStatus is pending/processing
 - [x] Keep original file URL as the download target regardless of proxy status
+
+## Transcoding Auto-Refresh
+- [x] Add deliverables.getProxyStatus tRPC query (returns proxyStatus + proxyUrl for a single deliverable)
+- [x] DeliverableVideoPlayer: poll getProxyStatus every 10s when proxyStatus is pending/processing
+- [x] Stop polling once proxyStatus becomes ready or failed
+- [x] When ready: update local state with proxyUrl and switch to video player without page reload

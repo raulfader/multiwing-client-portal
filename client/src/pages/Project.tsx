@@ -842,8 +842,26 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   // ProRes / MOV files: use proxy if ready, show transcoding badge if pending/processing, fallback download card if none
   const fileExt = (deliverable.fileKey ?? "").split(".").pop()?.toLowerCase();
   const isProRes = ['mov', 'prores', 'mxf', 'dnxhd'].includes(fileExt ?? '');
-  const proxyStatus = deliverable.proxyStatus ?? 'none';
-  const proxyUrl = deliverable.proxyUrl ?? null;
+
+  // Poll proxyStatus every 10s while transcoding is in progress; stop once ready or failed
+  const initialStatus = deliverable.proxyStatus ?? 'none';
+  const isTranscodingInitially = initialStatus === 'pending' || initialStatus === 'processing';
+  const pollResult = trpc.deliverables.getProxyStatus.useQuery(
+    { id: deliverable.id },
+    {
+      enabled: isProRes && isTranscodingInitially,
+      refetchInterval: (query) => {
+        const status = query.state.data?.proxyStatus;
+        if (status === 'ready' || status === 'failed') return false;
+        return 10_000; // poll every 10 seconds
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  // Use polled status if available, otherwise fall back to prop values
+  const proxyStatus = pollResult.data?.proxyStatus ?? initialStatus;
+  const proxyUrl = pollResult.data?.proxyUrl ?? deliverable.proxyUrl ?? null;
 
   // If ProRes but proxy not ready yet, show status card
   if (isProRes && proxyStatus !== 'ready') {

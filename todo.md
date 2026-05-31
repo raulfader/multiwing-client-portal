@@ -499,3 +499,12 @@
 - [x] Add elapsed time counter to the "Generating Preview…" card (e.g. "Transcoding for 2m 30s…")
 - [x] Use a useEffect + setInterval to tick every second from when the component mounts
 - [x] Show a subtle animated progress bar that fills over an estimated 5-minute window
+
+## Switch to AWS MediaConvert (Large ProRes Support)
+- [x] Create MediaConvert IAM role with S3 read/write permissions
+- [x] Get account-specific MediaConvert endpoint
+- [x] Update trigger Lambda to submit MediaConvert jobs (not run FFmpeg)
+- [x] Remove FFmpeg layer from trigger Lambda (no longer needed)
+- [x] Create notification Lambda to receive MediaConvert EventBridge completion events
+- [x] Configure EventBridge rule to route MediaConvert job state changes to notification Lambda
+- [ ] Test end-to-end with a ProRes file upload

@@ -1300,6 +1300,35 @@ function DeliverableFileUpload({ deliverableId, onUploaded }: { deliverableId: n
 }
 
 // ── Admin Transcoding Progress ──────────────────────────────────────────────
+// ── Re-transcode Button ──────────────────────────────────────────────────────
+function RetranscodeButton({ deliverableId }: { deliverableId: number }) {
+  const utils = trpc.useUtils();
+  const retranscode = trpc.deliverables.retranscode.useMutation({
+    onSuccess: () => {
+      toast.success("Re-transcoding started — proxy will update in 1–5 minutes");
+      utils.deliverables.getProxyStatus.invalidate({ id: deliverableId });
+    },
+    onError: (e) => toast.error(`Re-transcode failed: ${e.message}`),
+  });
+
+  return (
+    <button
+      onClick={() => {
+        if (confirm("Re-transcode this file? The existing proxy will be replaced.")) {
+          retranscode.mutate({ id: deliverableId });
+        }
+      }}
+      disabled={retranscode.isPending}
+      className="text-xs px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
+      style={{ background: 'rgba(255,214,0,0.08)', color: '#FFD600', border: '1px solid #FFD60033', cursor: retranscode.isPending ? 'not-allowed' : 'pointer' }}
+      title="Re-generate proxy at higher quality"
+    >
+      {retranscode.isPending ? <Loader2 size={10} className="animate-spin" /> : null}
+      Re-transcode
+    </button>
+  );
+}
+
 function AdminTranscodingProgress({ deliverableId, initialStatus }: { deliverableId: number; initialStatus?: string | null }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   // Once we've seen transcoding in-progress, latch it so stale parent re-renders
@@ -1543,6 +1572,9 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
               ) : d.proxyStatus === 'failed' ? (
                 <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid #ef444433' }}>Transcode Failed</span>
               ) : null}
+              {(d.proxyStatus === 'ready' || d.proxyStatus === 'failed') && d.fileKey && (
+                <RetranscodeButton deliverableId={d.id} />
+              )}
             </div>
             {(d.fileType === 'video' || /\.(mov|prores|mxf|dnxhd|mp4|webm)$/i.test(d.fileName ?? '')) && (
               <AdminTranscodingProgress deliverableId={d.id} initialStatus={d.proxyStatus} />

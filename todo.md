@@ -518,3 +518,14 @@
 - [x] Fix/verify admin transcoding progress bar shows correctly when proxyStatus is pending/processing
 - [x] Send email to raul@faderlabs.com when a comment is posted (any project/track)
 - [x] Send email to raul@faderlabs.com when a file is downloaded (deliverable or track)
+
+## Re-transcode, Client Bar Fix, Email Digest
+- [x] Add re-transcode button in admin DeliverableEditRow (triggers Lambda via new tRPC adminProcedure)
+- [x] Apply transcoding bar latch fix to client-side Project.tsx (same pattern as Admin.tsx)
+- [x] Create activity_log DB table to record comments and downloads
+- [x] Remove per-event fire-and-forget sendAdminAlertEmail calls from routers.ts
+- [x] Add insertActivityLog helper to db.ts
+- [x] Log comments and downloads to activity_log table instead of emailing immediately
+- [x] Build digest email builder (groups activity by type, only sends if activity exists)
+- [x] Set up 6-hour heartbeat schedule (6am/12pm/6pm/12am EST) via manus-config
+- [x] Add heartbeat tRPC endpoint that queries activity_log since last 6h and sends digest

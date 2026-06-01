@@ -869,35 +869,50 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const fileExt = (deliverable.fileKey ?? "").split(".").pop()?.toLowerCase();
   const isProRes = ['mov', 'prores', 'mxf', 'dnxhd'].includes(fileExt ?? '');
 
-  // Poll proxyStatus every 10s while transcoding is in progress; stop once ready or failed
+  // Poll proxyStatus every 5s while transcoding is in progress; stop once ready or failed
   const initialStatus = deliverable.proxyStatus ?? 'none';
   const isTranscodingInitially = initialStatus === 'pending' || initialStatus === 'processing';
+
+  // Latch: once transcoding is detected, stay visible until poll confirms terminal state
+  const [latchedTranscoding, setLatchedTranscoding] = useState(
+    () => isTranscodingInitially
+  );
+
   const pollResult = trpc.deliverables.getProxyStatus.useQuery(
     { id: deliverable.id },
     {
-      enabled: isProRes && isTranscodingInitially,
+      enabled: isProRes,
       refetchInterval: (query) => {
         const status = query.state.data?.proxyStatus;
         if (status === 'ready' || status === 'failed') return false;
-        return 10_000; // poll every 10 seconds
+        if (latchedTranscoding || status === 'pending' || status === 'processing') return 5_000;
+        return false;
       },
       refetchIntervalInBackground: false,
+      staleTime: 0,
     }
   );
 
   // Use polled status if available, otherwise fall back to prop values
-  const proxyStatus = pollResult.data?.proxyStatus ?? initialStatus;
+  const liveStatus = pollResult.data?.proxyStatus;
+  const proxyStatus = liveStatus ?? initialStatus;
   const proxyUrl = pollResult.data?.proxyUrl ?? deliverable.proxyUrl ?? null;
+
+  // Manage latch: set when transcoding seen, release only on confirmed terminal state
+  const isTranscodingNow = proxyStatus === 'pending' || proxyStatus === 'processing';
+  useEffect(() => {
+    if (isTranscodingNow && !latchedTranscoding) setLatchedTranscoding(true);
+    if (liveStatus === 'ready' || liveStatus === 'failed') setLatchedTranscoding(false);
+  }, [isTranscodingNow, liveStatus, latchedTranscoding]);
 
   // Elapsed time counter for transcoding progress
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const isTranscodingNow = proxyStatus === 'pending' || proxyStatus === 'processing';
+  const shouldShowTranscoding = latchedTranscoding || isTranscodingNow;
   useEffect(() => {
-    if (!isTranscodingNow) { setElapsedSeconds(0); return; }
-    setElapsedSeconds(0);
+    if (!shouldShowTranscoding) { setElapsedSeconds(0); return; }
     const timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
     return () => clearInterval(timer);
-  }, [isTranscodingNow]);
+  }, [shouldShowTranscoding]);
 
   const formatElapsed = (s: number) => {
     if (s < 60) return `${s}s`;
@@ -914,8 +929,9 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     const publicUrl = deliverable.fileKey
       ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
       : null;
-    const isTranscoding = proxyStatus === 'pending' || proxyStatus === 'processing';
-    const isFailed = proxyStatus === 'failed';
+    // Use latch so the bar stays visible even if parent re-renders with stale 'none' status
+    const isTranscoding = shouldShowTranscoding;
+    const isFailed = liveStatus === 'failed' && !shouldShowTranscoding;
     return (
       <div className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="aspect-video flex flex-col items-center justify-center gap-4" style={{ background: "#111" }}>

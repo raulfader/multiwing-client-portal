@@ -43,6 +43,8 @@ vi.mock("./db", () => ({
   getUserByOpenId: vi.fn().mockResolvedValue(undefined),
   getSiteSettings: vi.fn().mockResolvedValue({}),
   setSiteSetting: vi.fn().mockResolvedValue(undefined),
+  insertActivityLog: vi.fn().mockResolvedValue(undefined),
+  getActivityLogSince: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("./_core/notification", () => ({

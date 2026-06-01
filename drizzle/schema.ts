@@ -274,3 +274,17 @@ export const customSessions = mysqlTable("custom_sessions", {
 
 export type CustomSession = typeof customSessions.$inferSelect;
 export type InsertCustomSession = typeof customSessions.$inferInsert;
+
+// ── Activity Log (for 6-hour digest emails) ──────────────────────────────────
+// Records comments and downloads so the digest query can group them by period.
+export const activityLog = mysqlTable("activity_log", {
+  id: int("id").autoincrement().primaryKey(),
+  eventType: mysqlEnum("eventType", ["comment", "download"]).notNull(),
+  // Human-readable context shown in the digest
+  subject: varchar("subject", { length: 500 }).notNull(),   // e.g. track/deliverable title
+  detail: text("detail"),                                    // e.g. commenter name + content
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;
+export type InsertActivityLogEntry = typeof activityLog.$inferInsert;

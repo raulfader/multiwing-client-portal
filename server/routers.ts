@@ -52,9 +52,11 @@ import {
   deleteClientProjectRequest,
   getSiteSettings,
   setSiteSetting,
+  insertActivityLog,
+  getActivityLogSince,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
-import { sendProjectNotification, sendAdminAlertEmail } from "./email";
+import { sendProjectNotification, sendAdminAlertEmail, sendDigestEmail } from "./email";
 import { getDb } from "./db";
 import { projectContacts, emailLog, projectShares, projects, deliverables } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -264,11 +266,11 @@ export const appRouter = router({
         const ext = (track.audioKey || track.audioUrl).split(".").pop()?.toLowerCase() ?? "wav";
         const safeTitle = track.title.replace(/[^a-zA-Z0-9\-_ ]/g, "").trim();
         const fileName = `${safeTitle}.${ext}`;
-        // Fire-and-forget email notification
-        sendAdminAlertEmail({
-          subject: `⬇️ Track downloaded: "${track.title}"`,
-          heading: `Track file downloaded`,
-          lines: [`<strong>Track:</strong> ${track.title}`, `<strong>File:</strong> ${fileName}`],
+        // Log to activity log for digest email
+        insertActivityLog({
+          eventType: 'download',
+          subject: track.title,
+          detail: `Track audio downloaded (${fileName})`,
         }).catch(() => {});
         return { url, fileName };
       }),
@@ -321,14 +323,10 @@ export const appRouter = router({
           title: `New comment on "${track.title}"`,
           content: `${input.commenterName} commented${timeLabel}: "${input.content}"`,
         });
-        sendAdminAlertEmail({
-          subject: `💬 New comment on "${track.title}"`,
-          heading: `New comment on "${track.title}"`,
-          lines: [
-            `<strong>From:</strong> ${input.commenterName}`,
-            ...(timeLabel ? [`<strong>Timestamp:</strong>${timeLabel}`] : []),
-            `<strong>Comment:</strong> ${input.content}`,
-          ],
+        insertActivityLog({
+          eventType: 'comment',
+          subject: track.title,
+          detail: `${input.commenterName}${timeLabel}: "${input.content}"`,
         }).catch(() => {});
 
         return { success: true };
@@ -636,14 +634,11 @@ export const appRouter = router({
         if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
         const { getPublicUrl } = await import("./s3Upload");
         const url = getPublicUrl(deliverable.fileKey);
-        // Fire-and-forget email notification
-        sendAdminAlertEmail({
-          subject: `⬇️ Deliverable downloaded: "${deliverable.title}"`,
-          heading: `Deliverable file downloaded`,
-          lines: [
-            `<strong>Deliverable:</strong> ${deliverable.title}`,
-            `<strong>File:</strong> ${deliverable.fileName ?? deliverable.fileKey}`,
-          ],
+        // Log to activity log for digest email
+        insertActivityLog({
+          eventType: 'download',
+          subject: deliverable.title,
+          detail: `File downloaded (${deliverable.fileName ?? deliverable.fileKey})`,
         }).catch(() => {});
         return { url, fileName: deliverable.fileName ?? undefined };
       }),
@@ -708,6 +703,50 @@ export const appRouter = router({
         if (!row[0]) throw new TRPCError({ code: "NOT_FOUND" });
         return { proxyStatus: row[0].proxyStatus ?? "none", proxyUrl: row[0].proxyUrl ?? null };
       }),
+
+    // Admin: reset proxy status to pending and invoke the Lambda transcoder via S3 copy-in-place
+    retranscode: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const row = await db
+          .select({ fileKey: deliverables.fileKey, proxyKey: deliverables.proxyKey })
+          .from(deliverables)
+          .where(eq(deliverables.id, input.id))
+          .limit(1);
+        if (!row[0]) throw new TRPCError({ code: "NOT_FOUND" });
+        const { fileKey, proxyKey } = row[0];
+        if (!fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No source file attached" });
+
+        // Reset proxy status to pending so the progress bar shows immediately
+        await db
+          .update(deliverables)
+          .set({ proxyStatus: "pending", proxyUrl: null, proxyKey: null, updatedAt: new Date() })
+          .where(eq(deliverables.id, input.id));
+
+        // Trigger the Lambda by copying the source file to itself — this fires the S3 ObjectCreated event
+        // which the Lambda is subscribed to, causing it to submit a new MediaConvert job.
+        const { S3Client, CopyObjectCommand } = await import("@aws-sdk/client-s3");
+        const region = process.env.AWS_S3_REGION || "us-east-2";
+        const bucket = process.env.AWS_S3_BUCKET || "faderlabs-client-uploads";
+        const s3 = new S3Client({
+          region,
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+        });
+        await s3.send(new CopyObjectCommand({
+          Bucket: bucket,
+          CopySource: `${bucket}/${fileKey}`,
+          Key: fileKey,
+          MetadataDirective: "REPLACE",
+          Metadata: { retranscode: String(Date.now()) },
+        }));
+
+        return { success: true };
+      }),
   }),
 
   // ── Deliverable Comments ──────────────────────────────────────────────────────
@@ -744,14 +783,10 @@ export const appRouter = router({
           title: `New comment on "${deliverable.title}"`,
           content: `${input.commenterName} commented on "${deliverable.title}"${timeLabel}: "${input.content}"`,
         });
-        sendAdminAlertEmail({
-          subject: `💬 New comment on "${deliverable.title}"`,
-          heading: `New comment on "${deliverable.title}"`,
-          lines: [
-            `<strong>From:</strong> ${input.commenterName}`,
-            ...(timeLabel ? [`<strong>Timestamp:</strong>${timeLabel}`] : []),
-            `<strong>Comment:</strong> ${input.content}`,
-          ],
+        insertActivityLog({
+          eventType: 'comment',
+          subject: deliverable.title,
+          detail: `${input.commenterName}${timeLabel}: "${input.content}"`,
         }).catch(() => {});
 
         return { success: true };

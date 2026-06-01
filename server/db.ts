@@ -1,6 +1,6 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertUser, pillars, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
+import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -687,4 +687,23 @@ export async function getSiteSettings(keys: string[]): Promise<Record<string, st
     }
   }
   return map;
+}
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+
+export async function insertActivityLog(entry: Omit<InsertActivityLogEntry, "id" | "createdAt">): Promise<void> {
+  const db = await getDb();
+  if (!db) { console.warn("[ActivityLog] DB unavailable, skipping log"); return; }
+  await db.insert(activityLog).values(entry);
+}
+
+/** Returns all activity_log rows created after `since` (UTC Date). */
+export async function getActivityLogSince(since: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(activityLog)
+    .where(gte(activityLog.createdAt, since))
+    .orderBy(asc(activityLog.createdAt));
 }

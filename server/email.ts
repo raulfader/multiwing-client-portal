@@ -405,3 +405,120 @@ export async function sendAdminAlertEmail(params: {
     return { success: false, error: err?.message ?? "Unknown error" };
   }
 }
+
+// ── 6-hour activity digest email ──────────────────────────────────────────────
+export async function sendDigestEmail(params: {
+  periodLabel: string; // e.g. "6:00 AM – 12:00 PM EST"
+  comments: Array<{ subject: string; detail: string | null; createdAt: Date }>;
+  downloads: Array<{ subject: string; detail: string | null; createdAt: Date }>;
+}): Promise<{ success: boolean; error?: string }> {
+  const { periodLabel, comments, downloads } = params;
+
+  const totalEvents = comments.length + downloads.length;
+  if (totalEvents === 0) return { success: true }; // nothing to send
+
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" });
+
+  const buildRows = (items: typeof comments) =>
+    items
+      .map(
+        (item) => `
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#ffffff;font-weight:600;">${item.subject}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#aaaaaa;">${item.detail ?? ""}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:12px;color:#555555;white-space:nowrap;">${formatTime(item.createdAt)}</td>
+        </tr>`
+      )
+      .join("\n");
+
+  const commentsSection =
+    comments.length > 0
+      ? `<h3 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFD600;margin:0 0 10px;">💬 Comments (${comments.length})</h3>
+         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;background:#161616;border-radius:8px;overflow:hidden;">
+           <thead><tr>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">On</th>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Comment</th>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Time</th>
+           </tr></thead>
+           <tbody>${buildRows(comments)}</tbody>
+         </table>`
+      : "";
+
+  const downloadsSection =
+    downloads.length > 0
+      ? `<h3 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFD600;margin:0 0 10px;">⬇️ Downloads (${downloads.length})</h3>
+         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;background:#161616;border-radius:8px;overflow:hidden;">
+           <thead><tr>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">File</th>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Detail</th>
+             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Time</th>
+           </tr></thead>
+           <tbody>${buildRows(downloads)}</tbody>
+         </table>`
+      : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Activity Digest</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { margin:0;padding:0;background:#0a0a0a;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif; }
+    .wrapper { max-width:640px;margin:0 auto;background:#111111; }
+    .header { background:#0a0a0a;padding:28px 40px 20px;border-bottom:1px solid #222;text-align:center; }
+    .header img { height:32px;display:block;margin:0 auto; }
+    .body { padding:36px 40px 28px; }
+    .summary-badge { display:inline-block;background:#FFD60022;border:1px solid #FFD60055;color:#FFD600;font-size:12px;font-weight:700;letter-spacing:0.08em;padding:4px 12px;border-radius:20px;margin-bottom:20px; }
+    .period { font-size:13px;color:#666;margin:0 0 24px; }
+    .footer { background:#0a0a0a;padding:20px 40px;border-top:1px solid #222;text-align:center; }
+    .footer p { font-size:12px;color:#555;margin:0 0 4px; }
+    .footer a { color:#FFD600;text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><img src="${FL_LOGO}" alt="Faderlabs" /></div>
+    <div class="body">
+      <div class="summary-badge">${totalEvents} event${totalEvents !== 1 ? "s" : ""}</div>
+      <p class="period">Activity digest for <strong style="color:#fff;">${periodLabel}</strong></p>
+      ${commentsSection}
+      ${downloadsSection}
+      <p style="font-size:12px;color:#555;margin:0;">This digest is sent every 6 hours when there is portal activity.</p>
+    </div>
+    <div class="footer">
+      <p>Faderlabs &mdash; <a href="https://faderlabs.com">faderlabs.com</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const textLines = [
+    `Activity Digest — ${periodLabel}`,
+    `${totalEvents} event(s)`,
+    "",
+    ...(comments.length > 0
+      ? [`COMMENTS (${comments.length})`, ...comments.map((c) => `  [${formatTime(c.createdAt)}] ${c.subject}: ${c.detail ?? ""}`), ""]
+      : []),
+    ...(downloads.length > 0
+      ? [`DOWNLOADS (${downloads.length})`, ...downloads.map((d) => `  [${formatTime(d.createdAt)}] ${d.subject}: ${d.detail ?? ""}`), ""]
+      : []),
+    "— Faderlabs",
+  ];
+
+  try {
+    await transporter.sendMail({
+      from: `"Faderlabs" <hello@faderlabs.com>`,
+      to: "raul@faderlabs.com",
+      subject: `📊 Portal Activity Digest — ${periodLabel} (${totalEvents} event${totalEvents !== 1 ? "s" : ""})`,
+      html,
+      text: textLines.join("\n"),
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("[digest-email] failed:", err?.message);
+    return { success: false, error: err?.message ?? "Unknown error" };
+  }
+}

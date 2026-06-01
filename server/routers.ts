@@ -55,6 +55,7 @@ import {
   insertActivityLog,
   getActivityLogSince,
   getDownloadCountsByDeliverables,
+  getGuestEmailByShareId,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification, sendAdminAlertEmail, sendDigestEmail } from "./email";
@@ -324,10 +325,14 @@ export const appRouter = router({
           title: `New comment on "${track.title}"`,
           content: `${input.commenterName} commented${timeLabel}: "${input.content}"`,
         });
+        // Tag guest comments with the share email so the digest shows who commented
+        const guestLabel = ctx.shareId != null
+          ? await getGuestEmailByShareId(ctx.shareId).then(e => e ? ` (guest: ${e})` : " (guest)")
+          : "";
         insertActivityLog({
           eventType: 'comment',
           subject: track.title,
-          detail: `${input.commenterName}${timeLabel}: "${input.content}"`,
+          detail: `${input.commenterName}${guestLabel}${timeLabel}: "${input.content}"`,
         }).catch(() => {});
 
         return { success: true };
@@ -791,10 +796,15 @@ export const appRouter = router({
           title: `New comment on "${deliverable.title}"`,
           content: `${input.commenterName} commented on "${deliverable.title}"${timeLabel}: "${input.content}"`,
         });
+        // Tag guest comments with the share email so the digest shows who commented
+        const guestLabel = ctx.shareId != null
+          ? await getGuestEmailByShareId(ctx.shareId).then(e => e ? ` (guest: ${e})` : " (guest)")
+          : "";
         insertActivityLog({
           eventType: 'comment',
           subject: deliverable.title,
-          detail: `${input.commenterName}${timeLabel}: "${input.content}"`,
+          detail: `${input.commenterName}${guestLabel}${timeLabel}: "${input.content}"`,
+          deliverableId: input.deliverableId,
         }).catch(() => {});
 
         return { success: true };

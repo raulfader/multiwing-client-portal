@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
+import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projectShares, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -706,6 +706,18 @@ export async function getActivityLogSince(since: Date) {
     .from(activityLog)
     .where(gte(activityLog.createdAt, since))
     .orderBy(asc(activityLog.createdAt));
+}
+
+/** Returns the guest email for a given shareId (from project_shares). */
+export async function getGuestEmailByShareId(shareId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ email: projectShares.email })
+    .from(projectShares)
+    .where(eq(projectShares.id, shareId))
+    .limit(1);
+  return rows[0]?.email ?? null;
 }
 
 /**

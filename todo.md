@@ -535,3 +535,6 @@
 - [x] Add getDownloadCountByDeliverable DB helper
 - [x] Add tRPC procedure to fetch download counts per deliverable
 - [x] Show download count badge on each deliverable card in admin panel
+
+## Guest Comment Tracking
+- [x] Log guest comments (track + deliverable) via share links to activity_log

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -706,4 +706,26 @@ export async function getActivityLogSince(since: Date) {
     .from(activityLog)
     .where(gte(activityLog.createdAt, since))
     .orderBy(asc(activityLog.createdAt));
+}
+
+/**
+ * Returns total download count per deliverable ID.
+ * Result is a map: { [deliverableId]: count }
+ */
+export async function getDownloadCountsByDeliverables(deliverableIds: number[]): Promise<Record<number, number>> {
+  if (deliverableIds.length === 0) return {};
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db
+    .select({ deliverableId: activityLog.deliverableId, total: count() })
+    .from(activityLog)
+    .where(eq(activityLog.eventType, "download"))
+    .groupBy(activityLog.deliverableId);
+  const map: Record<number, number> = {};
+  for (const row of rows) {
+    if (row.deliverableId != null && deliverableIds.includes(row.deliverableId)) {
+      map[row.deliverableId] = Number(row.total);
+    }
+  }
+  return map;
 }

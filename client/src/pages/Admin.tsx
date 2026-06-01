@@ -1500,7 +1500,7 @@ function AdminDeliverableDownloadButton({ deliverableId, fileName, fileSize, pro
   );
 }
 
-function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any; onDelete: () => void; onSaved: () => void; dragHandleProps?: React.HTMLAttributes<HTMLButtonElement> }) {
+function DeliverableEditRow({ d, downloadCount, onDelete, onSaved, dragHandleProps }: { d: any; downloadCount?: number; onDelete: () => void; onSaved: () => void; dragHandleProps?: React.HTMLAttributes<HTMLButtonElement> }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(d.title);
   const [description, setDescription] = useState(d.description ?? "");
@@ -1580,6 +1580,16 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
               <AdminTranscodingProgress deliverableId={d.id} initialStatus={d.proxyStatus} />
             )}
           </div>
+              {typeof downloadCount === "number" && downloadCount > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0"
+              style={{ background: "rgba(255,214,0,0.12)", color: "#FFD600", border: "1px solid rgba(255,214,0,0.25)" }}
+              title={`${downloadCount} download${downloadCount !== 1 ? "s" : ""}`}
+            >
+              <Download size={9} />
+              {downloadCount}
+            </span>
+          )}
           {d.downloadUrl && (
             <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded" style={{ color: "#FFD600" }}>
               <Link2 size={12} />
@@ -1635,7 +1645,7 @@ function DeliverableEditRow({ d, onDelete, onSaved, dragHandleProps }: { d: any;
 }
 
 //// ── Sortable wrapper for DeliverableEditRow ────────────────────────
-function SortableDeliverableRow({ d, onDelete, onSaved }: { d: any; onDelete: () => void; onSaved: () => void }) {
+function SortableDeliverableRow({ d, downloadCount, onDelete, onSaved }: { d: any; downloadCount?: number; onDelete: () => void; onSaved: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: d.id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -1648,6 +1658,7 @@ function SortableDeliverableRow({ d, onDelete, onSaved }: { d: any; onDelete: ()
     <div ref={setNodeRef} style={style}>
       <DeliverableEditRow
         d={d}
+        downloadCount={downloadCount ?? 0}
         onDelete={onDelete}
         onSaved={onSaved}
         dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
@@ -1684,6 +1695,12 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
   const { data: deliverables, refetch: refetchDeliverables } = trpc.deliverables.byProject.useQuery(
     { projectId: project.id },
     { enabled: expanded }
+  );
+
+  const deliverableIds = React.useMemo(() => (deliverables ?? []).map((d: any) => d.id), [deliverables]);
+  const { data: downloadCounts } = trpc.deliverables.getDownloadCounts.useQuery(
+    { deliverableIds },
+    { enabled: expanded && deliverableIds.length > 0, staleTime: 30_000 }
   );
 
   const updateProject = trpc.projects.update.useMutation({
@@ -1833,6 +1850,7 @@ function ProjectAdminRow({ project, onRefresh, dragHandleProps }: { project: any
                     <SortableDeliverableRow
                       key={d.id}
                       d={d}
+                      downloadCount={(downloadCounts as Record<number, number> | undefined)?.[d.id] ?? 0}
                       onDelete={() => deleteDeliverable.mutate({ id: d.id })}
                       onSaved={refetchDeliverables}
                     />

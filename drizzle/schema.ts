@@ -283,6 +283,8 @@ export const activityLog = mysqlTable("activity_log", {
   // Human-readable context shown in the digest
   subject: varchar("subject", { length: 500 }).notNull(),   // e.g. track/deliverable title
   detail: text("detail"),                                    // e.g. commenter name + content
+  // Optional FK to deliverables — used for per-deliverable download counts
+  deliverableId: int("deliverableId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
+import { getDb, insertActivityLog } from "../db";
 import { projectShares, shareOtps, shareSessions, projects, deliverables, pillars, tracks } from "../../drizzle/schema";
 import { eq, and, isNull, or, gt, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -340,10 +340,23 @@ export const sharesRouter = router({
       // S3 file: return direct public URL (bucket is public, no presigning needed)
       if (deliverable.fileKey) {
         const url = getPublicUrl(deliverable.fileKey);
+        // Log the guest download (fire-and-forget, never blocks the response)
+        insertActivityLog({
+          eventType: "download",
+          subject: deliverable.title ?? deliverable.fileName ?? "Deliverable",
+          detail: `Guest (${share.email}) downloaded via share link`,
+          deliverableId: deliverable.id,
+        }).catch((e) => console.error("[ActivityLog] share download log failed:", e));
         return { url, type: "presigned" as const, fileName: deliverable.fileName ?? undefined };
       }
       // Legacy downloadUrl (f.io / OneDrive / CDN link) — open in browser
       if (deliverable.downloadUrl) {
+        insertActivityLog({
+          eventType: "download",
+          subject: deliverable.title ?? "Deliverable",
+          detail: `Guest (${share.email}) downloaded via share link (external URL)`,
+          deliverableId: deliverable.id,
+        }).catch((e) => console.error("[ActivityLog] share download log failed:", e));
         return { url: deliverable.downloadUrl, type: "external" as const };
       }
       throw new TRPCError({ code: "NOT_FOUND", message: "No file attached to this deliverable" });

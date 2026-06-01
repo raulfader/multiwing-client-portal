@@ -54,6 +54,7 @@ import {
   setSiteSetting,
   insertActivityLog,
   getActivityLogSince,
+  getDownloadCountsByDeliverables,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification, sendAdminAlertEmail, sendDigestEmail } from "./email";
@@ -702,6 +703,13 @@ export const appRouter = router({
           .limit(1);
         if (!row[0]) throw new TRPCError({ code: "NOT_FOUND" });
         return { proxyStatus: row[0].proxyStatus ?? "none", proxyUrl: row[0].proxyUrl ?? null };
+      }),
+
+    // Get download counts for a list of deliverable IDs (admin use)
+    getDownloadCounts: adminProcedure
+      .input(z.object({ deliverableIds: z.array(z.number()) }))
+      .query(async ({ input }) => {
+        return getDownloadCountsByDeliverables(input.deliverableIds);
       }),
 
     // Admin: reset proxy status to pending and invoke the Lambda transcoder via S3 copy-in-place

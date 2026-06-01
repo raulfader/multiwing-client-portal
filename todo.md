@@ -529,3 +529,9 @@
 - [x] Build digest email builder (groups activity by type, only sends if activity exists)
 - [x] Set up 6-hour heartbeat schedule (6am/12pm/6pm/12am EST) via manus-config
 - [x] Add heartbeat tRPC endpoint that queries activity_log since last 6h and sends digest
+
+## Download Tracking & Count Badge
+- [x] Log guest/share link downloads to activity_log in shares router
+- [x] Add getDownloadCountByDeliverable DB helper
+- [x] Add tRPC procedure to fetch download counts per deliverable
+- [x] Show download count badge on each deliverable card in admin panel

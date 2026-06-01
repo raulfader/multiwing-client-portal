@@ -120,6 +120,13 @@
       "when": 1780271723919,
       "tag": "0016_many_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1780272674564,
+      "tag": "0017_fast_karma",
+      "breakpoints": true
     }
   ]
 }

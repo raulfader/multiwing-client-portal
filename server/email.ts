@@ -420,84 +420,150 @@ export async function sendDigestEmail(params: {
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" });
 
+  // Build event rows for a section table
   const buildRows = (items: typeof comments) =>
     items
       .map(
         (item) => `
         <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#ffffff;font-weight:600;">${item.subject}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#aaaaaa;">${item.detail ?? ""}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #1e1e1e;font-size:12px;color:#555555;white-space:nowrap;">${formatTime(item.createdAt)}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#ffffff;font-weight:600;vertical-align:top;">${item.subject}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #1e1e1e;font-size:13px;color:#aaaaaa;vertical-align:top;">${item.detail ?? ""}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #1e1e1e;font-size:12px;color:#555555;white-space:nowrap;vertical-align:top;">${formatTime(item.createdAt)}</td>
         </tr>`
       )
       .join("\n");
 
-  const commentsSection =
-    comments.length > 0
-      ? `<h3 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFD600;margin:0 0 10px;">💬 Comments (${comments.length})</h3>
-         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;background:#161616;border-radius:8px;overflow:hidden;">
-           <thead><tr>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">On</th>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Comment</th>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Time</th>
-           </tr></thead>
-           <tbody>${buildRows(comments)}</tbody>
-         </table>`
-      : "";
+  // Section block: yellow pill label + dark card table
+  const buildSection = (label: string, accentColor: string, items: typeof comments) => `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      <tr>
+        <td>
+          <!-- Section label pill -->
+          <table cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+            <tr>
+              <td style="background:${accentColor}22;border:1px solid ${accentColor}55;border-radius:20px;padding:3px 12px;">
+                <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${accentColor};font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">${label} &nbsp;(${items.length})</span>
+              </td>
+            </tr>
+          </table>
+          <!-- Table card -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#161616;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;">
+            <thead>
+              <tr style="background:#1a1a1a;">
+                <th style="padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Subject</th>
+                <th style="padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Detail</th>
+                <th style="padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Time (ET)</th>
+              </tr>
+            </thead>
+            <tbody>${buildRows(items)}</tbody>
+          </table>
+        </td>
+      </tr>
+    </table>`;
 
-  const downloadsSection =
-    downloads.length > 0
-      ? `<h3 style="font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFD600;margin:0 0 10px;">⬇️ Downloads (${downloads.length})</h3>
-         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;background:#161616;border-radius:8px;overflow:hidden;">
-           <thead><tr>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">File</th>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Detail</th>
-             <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:#555;text-align:left;border-bottom:1px solid #2a2a2a;">Time</th>
-           </tr></thead>
-           <tbody>${buildRows(downloads)}</tbody>
-         </table>`
-      : "";
+  const commentsSection = comments.length > 0
+    ? buildSection("Comments", "#FFD600", comments)
+    : "";
+
+  const downloadsSection = downloads.length > 0
+    ? buildSection("Downloads", "#4ADE80", downloads)
+    : "";
+
+  // Inline logo: "Faderlabs" text + three colored squares (matches portal header)
+  const logoHtml = `
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+      <tr>
+        <td style="font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;font-size:26px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;vertical-align:middle;">Faderlabs</td>
+        <td width="10"></td>
+        <td style="vertical-align:middle;">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:18px;height:18px;background:#4ADE80;border-radius:3px;"></td>
+              <td width="5"></td>
+              <td style="width:18px;height:18px;background:#FFD600;border-radius:3px;"></td>
+              <td width="5"></td>
+              <td style="width:18px;height:18px;background:#EF4444;border-radius:3px;"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Activity Digest</title>
+  <title>Portal Activity Digest</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    body { margin:0;padding:0;background:#0a0a0a;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif; }
-    .wrapper { max-width:640px;margin:0 auto;background:#111111; }
-    .header { background:#0a0a0a;padding:28px 40px 20px;border-bottom:1px solid #222;text-align:center; }
-    .header img { height:32px;display:block;margin:0 auto; }
-    .body { padding:36px 40px 28px; }
-    .summary-badge { display:inline-block;background:#FFD60022;border:1px solid #FFD60055;color:#FFD600;font-size:12px;font-weight:700;letter-spacing:0.08em;padding:4px 12px;border-radius:20px;margin-bottom:20px; }
-    .period { font-size:13px;color:#666;margin:0 0 24px; }
-    .footer { background:#0a0a0a;padding:20px 40px;border-top:1px solid #222;text-align:center; }
-    .footer p { font-size:12px;color:#555;margin:0 0 4px; }
-    .footer a { color:#FFD600;text-decoration:none; }
-  </style>
 </head>
-<body>
-  <div class="wrapper">
-    <div class="header"><img src="${FL_LOGO}" alt="Faderlabs" /></div>
-    <div class="body">
-      <div class="summary-badge">${totalEvents} event${totalEvents !== 1 ? "s" : ""}</div>
-      <p class="period">Activity digest for <strong style="color:#fff;">${periodLabel}</strong></p>
-      ${commentsSection}
-      ${downloadsSection}
-      <p style="font-size:12px;color:#555;margin:0;">This digest is sent every 6 hours when there is portal activity.</p>
-    </div>
-    <div class="footer">
-      <p>Faderlabs &mdash; <a href="https://faderlabs.com">faderlabs.com</a></p>
-    </div>
-  </div>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#111111;border-radius:16px;overflow:hidden;border:1px solid #222222;">
+
+        <!-- ── HEADER ── -->
+        <tr>
+          <td style="background:#0a0a0a;padding:28px 40px 24px;border-bottom:1px solid #222222;text-align:center;">
+            ${logoHtml}
+            <!-- CONTENT HUB pill -->
+            <table cellpadding="0" cellspacing="0" style="margin:14px auto 0;">
+              <tr>
+                <td style="border:1px solid #FFD60066;border-radius:20px;padding:4px 14px;">
+                  <span style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#FFD600;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">CONTENT HUB</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── BODY ── -->
+        <tr>
+          <td style="padding:36px 40px 28px;">
+
+            <!-- Summary bar -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;margin-bottom:28px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FFD600;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">Activity Digest</p>
+                  <p style="margin:0;font-size:15px;font-weight:600;color:#ffffff;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">${totalEvents} event${totalEvents !== 1 ? "s" : ""} &mdash; <span style="color:#888;font-weight:400;font-size:13px;">${periodLabel}</span></p>
+                </td>
+              </tr>
+            </table>
+
+            ${commentsSection}
+            ${downloadsSection}
+
+            <!-- CTA button -->
+            <table cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
+              <tr>
+                <td style="background:#FFD600;border-radius:8px;">
+                  <a href="https://multiwing.faderlabs.ai" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:700;color:#0a0a0a;text-decoration:none;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;letter-spacing:0.03em;">Open Portal &rarr;</a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:12px;color:#444444;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">This digest is sent every 6 hours when there is portal activity. No activity = no email.</p>
+          </td>
+        </tr>
+
+        <!-- ── FOOTER ── -->
+        <tr>
+          <td style="background:#0a0a0a;padding:20px 40px;border-top:1px solid #222222;text-align:center;">
+            <p style="margin:0 0 4px;font-size:12px;color:#444444;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">Faderlabs &mdash; <a href="https://faderlabs.com" style="color:#FFD600;text-decoration:none;">faderlabs.com</a></p>
+            <p style="margin:0;font-size:11px;color:#333333;font-family:'Plus Jakarta Sans','Helvetica Neue',Arial,sans-serif;">Sent to raul@faderlabs.com &middot; Faderlabs Content Hub</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 
   const textLines = [
-    `Activity Digest — ${periodLabel}`,
-    `${totalEvents} event(s)`,
+    `Faderlabs Content Hub — Activity Digest`,
+    `${totalEvents} event(s) — ${periodLabel}`,
     "",
     ...(comments.length > 0
       ? [`COMMENTS (${comments.length})`, ...comments.map((c) => `  [${formatTime(c.createdAt)}] ${c.subject}: ${c.detail ?? ""}`), ""]
@@ -505,6 +571,8 @@ export async function sendDigestEmail(params: {
     ...(downloads.length > 0
       ? [`DOWNLOADS (${downloads.length})`, ...downloads.map((d) => `  [${formatTime(d.createdAt)}] ${d.subject}: ${d.detail ?? ""}`), ""]
       : []),
+    `Open portal: https://multiwing.faderlabs.ai`,
+    "",
     "— Faderlabs",
   ];
 
@@ -512,7 +580,7 @@ export async function sendDigestEmail(params: {
     await transporter.sendMail({
       from: `"Faderlabs" <hello@faderlabs.com>`,
       to: "raul@faderlabs.com",
-      subject: `📊 Portal Activity Digest — ${periodLabel} (${totalEvents} event${totalEvents !== 1 ? "s" : ""})`,
+      subject: `Faderlabs Portal — ${totalEvents} event${totalEvents !== 1 ? "s" : ""} (${periodLabel})`,
       html,
       text: textLines.join("\n"),
     });

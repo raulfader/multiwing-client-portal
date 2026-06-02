@@ -538,3 +538,7 @@
 
 ## Guest Comment Tracking
 - [x] Log guest comments (track + deliverable) via share links to activity_log
+
+## Self-Contained Digest Cron (No Agent Credits)
+- [x] Remove Manus heartbeat schedule config for digest
+- [x] Install node-cron and add 6-hour digest cron job inside Express server (0 6,12,18,0 * * * America/New_York)

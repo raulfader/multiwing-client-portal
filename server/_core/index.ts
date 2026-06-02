@@ -11,6 +11,7 @@ import { registerTranscodingWebhook } from "../transcodingWebhook";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { startDigestCron } from "../digestCron";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -71,6 +72,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Start the self-contained 6-hour activity digest cron (no Manus agent required)
+    startDigestCron();
   });
 }
 

@@ -1,0 +1,35 @@
+name: Import approved Multiwing staging data
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_key:
+        description: Private migration-audit S3 key for the approved source archive
+        required: true
+        default: source-exports/multiwing-source-export-2026-08-18.zip
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  import-approved-staging-data:
+    name: Import approved isolated staging data
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      STACK_NAME: multiwing-staging
+    steps:
+      - name: Configure isolated Multiwing deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::735252691868:role/multiwing-github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Invoke approved private data import
+        env:
+          ARCHIVE_KEY: ${{ inputs.archive_key }}
+        run: |
+          IMPORTER=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='DataImportFunctionName'].OutputValue" --output text)
+          aws lambda invoke --function-name "$IMPORTER" --region "$AWS_REGION" --cli-binary-format raw-in-base64-out --payload "{\"archiveKey\":\"${ARCHIVE_KEY}\"}" import-response.json
+          cat import-response.json

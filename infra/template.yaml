@@ -1,10 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-<<<<<<< HEAD
 Description: Empty isolated AWS staging foundation for the Multiwing duplicate. No source data, DNS, or customer notifications are configured here.
-=======
-Description: Empty isolated AWS staging foundation for the Multiwing Client Portal duplicate. No source data, DNS, or customer notifications are configured here.
->>>>>>> a370a05 (Add isolated AWS duplicate foundation and runtime safeguards)
 
 Parameters:
   EnvironmentName:
@@ -177,10 +173,7 @@ Resources:
       MaxAllocatedStorage: 100
       StorageType: gp3
       StorageEncrypted: true
-<<<<<<< HEAD
       KmsKeyId: alias/aws/rds
-=======
->>>>>>> a370a05 (Add isolated AWS duplicate foundation and runtime safeguards)
       BackupRetentionPeriod: 7
       CopyTagsToSnapshot: true
       DeletionProtection: false

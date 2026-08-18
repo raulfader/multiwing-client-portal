@@ -561,6 +561,7 @@
 - [x] Establish GitHub OIDC deployment automation and a separate least-privilege Multiwing deployment role
 - [x] Correct the browser-committed Multiwing staging workflow formatting and revalidate its separate deployment path
 - [ ] Grant the Multiwing deployment role only the private portal-assets artifact upload permissions required for AWS Lambda packaging
+- [ ] Grant the Multiwing CloudFormation execution role the narrow artifact-read, Lambda, HTTP API, and generated-role controls required for the reviewed duplicate runtime
 - [ ] Adapt the Multiwing server bootstrap, configuration, database connection, storage abstraction, and safe staging flags for AWS without importing source data or enabling client-facing actions
 - [ ] Create an isolated Multiwing AWS stack with separate VPC, RDS database, S3 media bucket, CloudFront distribution, Secrets Manager secret, and deployment role
 - [ ] Replace Manus-specific authentication, storage, notification, and runtime helpers with AWS-managed equivalents

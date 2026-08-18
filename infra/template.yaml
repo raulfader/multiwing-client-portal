@@ -328,6 +328,8 @@ Resources:
           PORTAL_ASSETS_BUCKET: !Ref PortalAssetsBucket
           MIGRATION_AUDIT_BUCKET: !Ref MigrationAuditBucket
       Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
         - Statement:
             - Effect: Allow
               Action: secretsmanager:GetSecretValue

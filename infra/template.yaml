@@ -1,483 +1,310 @@
 AWSTemplateFormatVersion: "2010-09-09"
-
-Description: Empty isolated AWS staging foundation for the Multiwing Client Portal duplicate. No source data, DNS, or customer notifications are configured here.
-
-
+Description: Empty isolated AWS staging foundation for the Multiwing duplicate. No source data, DNS, or customer notifications are configured here.
 
 Parameters:
-
   EnvironmentName:
-  
     Type: String
-    
     Default: staging
-    
     AllowedPattern: "[a-z0-9-]+"
-    
     Description: Isolated environment label. This initial stack is deliberately non-production.
-    
   AdminEmail:
-  
     Type: String
-    
     Default: raul@faderlabs.com
-    
     Description: Owner notification and future administrator reference; no invitations are sent by this foundation stack.
-    
-
 
 Resources:
-
   MultiwingVpc:
-  
     Type: AWS::EC2::VPC
-    
     Properties:
-    
       CidrBlock: 10.57.0.0/16
-      
       EnableDnsHostnames: true
-      
       EnableDnsSupport: true
-      
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-vpc
-          
         - Key: Project
-        
           Value: multiwing
-          
         - Key: Environment
-        
           Value: !Ref EnvironmentName
-          
-
 
   InternetGateway:
-  
     Type: AWS::EC2::InternetGateway
-    
     Properties:
-    
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-igw
-          
-
 
   InternetGatewayAttachment:
-  
     Type: AWS::EC2::VPCGatewayAttachment
-    
     Properties:
-    
       InternetGatewayId: !Ref InternetGateway
-      
       VpcId: !Ref MultiwingVpc
-      
-
 
   PublicSubnet:
-  
     Type: AWS::EC2::Subnet
-    
     Properties:
-    
       VpcId: !Ref MultiwingVpc
-      
       AvailabilityZone: !Select [0, !GetAZs ""]
-      
       CidrBlock: 10.57.0.0/24
-      
       MapPublicIpOnLaunch: true
-      
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-public-az1
-          
-
 
   PrivateSubnetOne:
-  
     Type: AWS::EC2::Subnet
-    
     Properties:
-    
       VpcId: !Ref MultiwingVpc
-      
       AvailabilityZone: !Select [0, !GetAZs ""]
-      
       CidrBlock: 10.57.10.0/24
-      
       MapPublicIpOnLaunch: false
-      
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-private-az1
-          
-
 
   PrivateSubnetTwo:
-  
     Type: AWS::EC2::Subnet
-    
     Properties:
-    
       VpcId: !Ref MultiwingVpc
-      
       AvailabilityZone: !Select [1, !GetAZs ""]
-      
       CidrBlock: 10.57.11.0/24
-      
       MapPublicIpOnLaunch: false
-      
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-private-az2
-          
-
 
   PublicRouteTable:
-  
     Type: AWS::EC2::RouteTable
-    
     Properties:
-    
       VpcId: !Ref MultiwingVpc
-      
-
 
   PublicDefaultRoute:
-  
     Type: AWS::EC2::Route
-    
     DependsOn: InternetGatewayAttachment
-    
     Properties:
-    
       RouteTableId: !Ref PublicRouteTable
-      
       DestinationCidrBlock: 0.0.0.0/0
-      
       GatewayId: !Ref InternetGateway
-      
-
 
   PublicSubnetRouteAssociation:
-  
     Type: AWS::EC2::SubnetRouteTableAssociation
-    
     Properties:
-    
       RouteTableId: !Ref PublicRouteTable
-      
       SubnetId: !Ref PublicSubnet
-      
-
 
   NatElasticIp:
-  
     Type: AWS::EC2::EIP
-    
     DependsOn: InternetGatewayAttachment
-    
     Properties:
-    
       Domain: vpc
-      
-
 
   NatGateway:
-  
     Type: AWS::EC2::NatGateway
-    
     Properties:
-    
       AllocationId: !GetAtt NatElasticIp.AllocationId
-      
       SubnetId: !Ref PublicSubnet
-      
       Tags:
-      
         - Key: Name
-        
           Value: !Sub multiwing-${EnvironmentName}-nat
-          
-
 
   PrivateRouteTable:
-  
     Type: AWS::EC2::RouteTable
-    
     Properties:
-    
       VpcId: !Ref MultiwingVpc
-      
-
 
   PrivateDefaultRoute:
-  
     Type: AWS::EC2::Route
-    
     Properties:
-    
       RouteTableId: !Ref PrivateRouteTable
-      
       DestinationCidrBlock: 0.0.0.0/0
-      
       NatGatewayId: !Ref NatGateway
-      
-
 
   PrivateSubnetOneRouteAssociation:
-  
     Type: AWS::EC2::SubnetRouteTableAssociation
-    
     Properties:
-    
       RouteTableId: !Ref PrivateRouteTable
-      
       SubnetId: !Ref PrivateSubnetOne
-      
-
 
   PrivateSubnetTwoRouteAssociation:
-  
     Type: AWS::EC2::SubnetRouteTableAssociation
-    
     Properties:
-    
       RouteTableId: !Ref PrivateRouteTable
-      
       SubnetId: !Ref PrivateSubnetTwo
-      
-
 
   ApplicationSecurityGroup:
-  
     Type: AWS::EC2::SecurityGroup
-    
     Properties:
-    
       GroupDescription: Future Multiwing application compute egress only
-      
       VpcId: !Ref MultiwingVpc
-      
       SecurityGroupEgress:
-      
         - IpProtocol: "-1"
-        
           CidrIp: 0.0.0.0/0
-          
-
 
   DatabaseSecurityGroup:
-  
     Type: AWS::EC2::SecurityGroup
-    
     Properties:
-    
       GroupDescription: Permit MySQL only from the isolated Multiwing application security group
-      
       VpcId: !Ref MultiwingVpc
-      
       SecurityGroupIngress:
-      
         - IpProtocol: tcp
-        
           FromPort: 3306
-          
           ToPort: 3306
-          
           SourceSecurityGroupId: !Ref ApplicationSecurityGroup
-          
-
 
   DatabaseSubnetGroup:
-  
     Type: AWS::RDS::DBSubnetGroup
-    
     Properties:
-    
       DBSubnetGroupDescription: Private subnets for the Multiwing staging duplicate database
-      
       SubnetIds: [!Ref PrivateSubnetOne, !Ref PrivateSubnetTwo]
-      
-
 
   MultiwingDatabase:
-  
     Type: AWS::RDS::DBInstance
-    
     DeletionPolicy: Snapshot
-    
     UpdateReplacePolicy: Snapshot
-    
     Properties:
-    
       DBInstanceIdentifier: !Sub multiwing-${EnvironmentName}
-      
       DBInstanceClass: db.t4g.micro
-      
       Engine: mysql
-      
       DBName: multiwing
-      
       MasterUsername: multiwing_admin
-      
-      ManageMast
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      ManageMasterUserPassword: true
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: alias/aws/rds
+      BackupRetentionPeriod: 7
+      CopyTagsToSnapshot: true
+      DeletionProtection: false
+      AutoMinorVersionUpgrade: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]
+      Tags:
+        - Key: Project
+          Value: multiwing
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DataClassification
+          Value: staging-duplicate
+
+  PortalAssetsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Project
+          Value: multiwing
+        - Key: Purpose
+          Value: staging-portal-assets
+
+  PrivateMediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: transition-noncurrent-copy-versions
+            Status: Enabled
+            NoncurrentVersionTransitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 30
+      Tags:
+        - Key: Project
+          Value: multiwing
+        - Key: Purpose
+          Value: private-staging-media-duplicate
+        - Key: DataClassification
+          Value: client-media
+
+  MigrationAuditBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: retain-audit-evidence
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER_IR
+                TransitionInDays: 90
+      Tags:
+        - Key: Project
+          Value: multiwing
+        - Key: Purpose
+          Value: migration-reconciliation-evidence
+
+  ApplicationConfig:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub /multiwing/${AWS::StackName}/application
+      Description: Empty Multiwing duplicate configuration. Source credentials and production recipient settings must not be added during foundation provisioning.
+      GenerateSecretString:
+        GenerateStringKey: SESSION_SECRET
+        PasswordLength: 64
+        ExcludeCharacters: '"@/\\'
+        SecretStringTemplate: !Sub |
+          {
+            "APP_ENV":"${EnvironmentName}",
+            "OWNER_EMAIL":"${AdminEmail}",
+            "SOURCE_MUTATION_ALLOWED":"false",
+            "CLIENT_EMAIL_ENABLED":"false",
+            "LIVE_DNS_CHANGE_ALLOWED":"false"
+          }
+
+Outputs:
+  VpcId:
+    Value: !Ref MultiwingVpc
+  ApplicationSecurityGroupId:
+    Value: !Ref ApplicationSecurityGroup
+  DatabaseSecurityGroupId:
+    Value: !Ref DatabaseSecurityGroup
+  DatabaseEndpoint:
+    Value: !GetAtt MultiwingDatabase.Endpoint.Address
+  DatabaseMasterSecretArn:
+    Value: !GetAtt MultiwingDatabase.MasterUserSecret.SecretArn
+  PortalAssetsBucketName:
+    Value: !Ref PortalAssetsBucket
+  PrivateMediaBucketName:
+    Value: !Ref PrivateMediaBucket
+  MigrationAuditBucketName:
+    Value: !Ref MigrationAuditBucket
+  ApplicationConfigSecretArn:
+    Value: !Ref ApplicationConfig

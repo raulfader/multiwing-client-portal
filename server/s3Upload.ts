@@ -4,19 +4,18 @@ import crypto from "crypto";
 
 function getS3Client() {
   const region = process.env.AWS_S3_REGION || "us-east-2";
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
   return new S3Client({
     region,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    },
+    ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
     // Disable automatic checksum injection — required for browser-side presigned PUT uploads
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
-const BUCKET = process.env.AWS_S3_BUCKET || "faderlabs-client-uploads";
+const BUCKET = process.env.PORTAL_MEDIA_BUCKET || process.env.AWS_S3_BUCKET || "faderlabs-client-uploads";
 
 export async function generatePresignedUploadUrl(params: {
   fileName: string;
@@ -41,7 +40,7 @@ export async function generatePresignedUploadUrl(params: {
     expiresIn: 3600,
     unhoistableHeaders: new Set(["x-amz-checksum-crc32", "x-amz-sdk-checksum-algorithm"]),
   });
-  const publicUrl = `https://${BUCKET}.s3.${region}.amazonaws.com/${fileKey}`;
+  const publicUrl = `aws-media:${fileKey}`;
 
   return { uploadUrl, fileKey, publicUrl };
 }
@@ -59,7 +58,7 @@ export async function generatePresignedDownloadUrl(fileKey: string, originalFile
   return getSignedUrl(client, command, { expiresIn: 3600 }); // 1 hour
 }
 
-// Direct public URL — works because the bucket has public-read ACL (no expiry, no signing)
+// Legacy direct URL helper. Isolated AWS code should use presigned URLs for the private media bucket.
 export function getPublicUrl(fileKey: string): string {
   const region = process.env.AWS_S3_REGION || "us-east-2";
   return `https://${BUCKET}.s3.${region}.amazonaws.com/${fileKey}`;

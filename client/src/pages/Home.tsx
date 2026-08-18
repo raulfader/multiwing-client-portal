@@ -158,6 +158,19 @@ function TrackComments({ trackId, trackTitle }: { trackId: number; trackTitle: s
 }
 
 // ── Pillar Card ────────────────────────────────────────────────────────────────
+function TrackAudio({ track, onTimeUpdate }: { track: any; onTimeUpdate: (time: number) => void }) {
+  const stream = trpc.tracks.getStreamUrl.useMutation();
+  const [source, setSource] = useState(track.audioUrl);
+
+  useEffect(() => {
+    setSource(track.audioUrl);
+    if (!String(track.audioUrl).startsWith("aws-media:")) return;
+    stream.mutate({ id: track.id }, { onSuccess: ({ url }) => setSource(url), onError: () => toast.error("Audio stream is temporarily unavailable.") });
+  }, [track.id, track.audioUrl]);
+
+  return <AudioPlayer src={source} title={track.title} onTimeUpdate={onTimeUpdate} />;
+}
+
 function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: string; index: number }) {
   const { data: tracks, isLoading: tracksLoading } = trpc.tracks.byPillar.useQuery({ pillarId: pillar.id });
   const { data: myApproval, refetch: refetchApproval } = trpc.approvals.myApproval.useQuery({ pillarId: pillar.id });
@@ -232,11 +245,7 @@ function PillarCard({ pillar, accentColor, index }: { pillar: any; accentColor: 
               {track.description && (
                 <p className="text-xs mb-3" style={{ color: "#666666" }}>{track.description}</p>
               )}
-              <AudioPlayer
-                src={track.audioUrl}
-                title={track.title}
-                onTimeUpdate={(t) => setCurrentTimes((prev) => ({ ...prev, [track.id]: t }))}
-              />
+              <TrackAudio track={track} onTimeUpdate={(t) => setCurrentTimes((prev) => ({ ...prev, [track.id]: t }))} />
               <TrackComments trackId={track.id} trackTitle={track.title} />
             </div>
           ))

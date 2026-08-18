@@ -327,6 +327,7 @@ Resources:
           PORTAL_MEDIA_BUCKET: !Ref PrivateMediaBucket
           PORTAL_ASSETS_BUCKET: !Ref PortalAssetsBucket
           MIGRATION_AUDIT_BUCKET: !Ref MigrationAuditBucket
+          AWS_S3_REGION: !Ref AWS::Region
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole

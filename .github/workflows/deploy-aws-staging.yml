@@ -1,157 +1,36 @@
 name: Deploy Multiwing AWS Duplicate Staging
 
-
-
 on:
-
   workflow_dispatch:
-  
   push:
-  
     branches: [main]
-    
     paths:
-    
       - infra/template.yaml
-      
       - .github/workflows/deploy-aws-staging.yml
-      
-
 
 permissions:
-
   contents: read
-  
   id-token: write
-  
-
 
 jobs:
-
   validate-and-deploy-foundation:
-  
     name: Validate and deploy isolated staging foundation
-    
     runs-on: ubuntu-latest
-    
     env:
-    
       AWS_REGION: us-east-1
-      
       STACK_NAME: multiwing-staging
-      
       CFN_EXECUTION_ROLE_ARN: arn:aws:iam::735252691868:role/multiwing-cloudformation-execution
-      
     steps:
-    
       - name: Check out duplicate source
-      
         uses: actions/checkout@v4
-        
-
-
       - name: Configure isolated Multiwing deployment role
-      
         uses: aws-actions/configure-aws-credentials@v4
-        
         with:
-        
           role-to-assume: arn:aws:iam::735252691868:role/multiwing-github-deploy
-          
           aws-region: ${{ env.AWS_REGION }}
-          
-
-
       - name: Validate non-production template
-      
-        run: |
-        
-          aws cloudformation validate-template \
-          
-            --template-body file://infra/template.yaml \
-            
-            --region "$AWS_REGION" >/dev/null
-            
-
-
+        run: aws cloudformation validate-template --template-body file://infra/template.yaml --region "$AWS_REGION" >/dev/null
       - name: Deploy empty isolated staging foundation
-      
-        run: |
-        
-          aws cloudformation deploy \
-          
-            --template-file infra/template.yaml \
-            
-            --stack-name "$STACK_NAME" \
-            
-            --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com \
-            
-            --capabilities CAPABILITY_NAMED_IAM \
-            
-            --role-arn "$CFN_EXECUTION_ROLE_ARN" \
-            
-            --no-fail-on-empty-changeset \
-            
-            --region "$AWS_REGION"
-            
-
-
+        run: aws cloudformation deploy --template-file infra/template.yaml --stack-name "$STACK_NAME" --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com --capabilities CAPABILITY_NAMED_IAM --role-arn "$CFN_EXECUTION_ROLE_ARN" --no-fail-on-empty-changeset --region "$AWS_REGION"
       - name: Report non-sensitive duplicate outputs
-      
-        run: |
-        
-          aws cloudformation describe-stacks \
-          
-            --stack-name "$STACK_NAME" \
-            
-            --region "$AWS_REGION" \
-            
-            --query 'Stacks[0].Outputs[].[OutputKey,OutputValue]' \
-            
-            --output table
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        run: aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[].[OutputKey,OutputValue]" --output table

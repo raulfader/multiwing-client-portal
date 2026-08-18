@@ -422,6 +422,47 @@ Resources:
               Action: s3:GetObject
               Resource: !Sub ${MigrationAuditBucket.Arn}/source-exports/*
 
+  MediaCopyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../.lambda-build
+      Handler: mediaCopier.handlerForMediaCopy
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Timeout: 120
+      MemorySize: 1024
+      VpcConfig:
+        SecurityGroupIds: [!Ref ApplicationSecurityGroup]
+        SubnetIds: [!Ref PrivateSubnetOne, !Ref PrivateSubnetTwo]
+      Environment:
+        Variables:
+          NODE_ENV: production
+          APP_SECRET_ARN: !Ref ApplicationConfig
+          RDS_MASTER_SECRET_ARN: !GetAtt MultiwingDatabase.MasterUserSecret.SecretArn
+          RDS_DATABASE_NAME: multiwing
+          RDS_HOST: !GetAtt MultiwingDatabase.Endpoint.Address
+          RDS_PORT: !GetAtt MultiwingDatabase.Endpoint.Port
+          MIGRATION_AUDIT_BUCKET: !Ref MigrationAuditBucket
+          PORTAL_MEDIA_BUCKET: !Ref PrivateMediaBucket
+          DUPLICATE_MODE: "true"
+          CLIENT_EMAIL_ENABLED: "false"
+          SOURCE_MUTATION_ALLOWED: "false"
+          LIVE_DNS_CHANGE_ALLOWED: "false"
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !Ref ApplicationConfig
+                - !GetAtt MultiwingDatabase.MasterUserSecret.SecretArn
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource:
+                - !Sub ${MigrationAuditBucket.Arn}/source-exports/*
+                - !Sub ${PrivateMediaBucket.Arn}/legacy-source/*
+
 Outputs:
   VpcId:
     Value: !Ref MultiwingVpc
@@ -447,3 +488,5 @@ Outputs:
     Value: !Ref SchemaInitializerFunction
   DataImportFunctionName:
     Value: !Ref DataImportFunction
+  MediaCopyFunctionName:
+    Value: !Ref MediaCopyFunction

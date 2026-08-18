@@ -1,0 +1,59 @@
+name: Copy approved Multiwing staging media
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_key:
+        description: Private migration-audit S3 key for the approved source archive
+        required: true
+        default: source-exports/multiwing-source-export-2026-08-18.zip
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  copy-approved-staging-media:
+    name: Copy approved isolated staging media
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      STACK_NAME: multiwing-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies for manifest validation
+        run: pnpm install --frozen-lockfile
+      - name: Configure isolated Multiwing deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::735252691868:role/multiwing-github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Build private approved-media manifest
+        env:
+          ARCHIVE_KEY: ${{ inputs.archive_key }}
+        run: |
+          AUDIT_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='MigrationAuditBucketName'].OutputValue" --output text)
+          aws s3 cp "s3://${AUDIT_BUCKET}/${ARCHIVE_KEY}" source-export.zip --only-show-errors
+          node scripts/build-isolated-media-manifest.mjs source-export.zip media-manifest.json
+          echo "approved_media_objects=$(jq length media-manifest.json)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Copy only approved public source-S3 media into private isolated storage
+        run: |
+          MEDIA_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PrivateMediaBucketName'].OutputValue" --output text)
+          jq -r '.[] | [.sourceKey, .targetKey] | @tsv' media-manifest.json | while IFS=$'\t' read -r source_key target_key; do
+            aws s3 cp "s3://faderlabs-client-uploads/${source_key}" "s3://${MEDIA_BUCKET}/${target_key}" --sse AES256 --only-show-errors
+          done
+      - name: Verify copied objects and rewrite isolated staging references
+        env:
+          ARCHIVE_KEY: ${{ inputs.archive_key }}
+        run: |
+          REWRITER=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='MediaCopyFunctionName'].OutputValue" --output text)
+          aws lambda invoke --function-name "$REWRITER" --region "$AWS_REGION" --cli-binary-format raw-in-base64-out --payload "{\"archiveKey\":\"${ARCHIVE_KEY}\",\"objectsAlreadyCopied\":true}" media-copy-response.json
+          cat media-copy-response.json

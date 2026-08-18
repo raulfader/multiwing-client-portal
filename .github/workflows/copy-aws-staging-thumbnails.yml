@@ -1,0 +1,58 @@
+name: Copy approved Multiwing staging thumbnails
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_key:
+        description: Private migration-audit S3 key for the approved source archive
+        required: true
+        default: source-exports/multiwing-source-export-2026-08-18.zip
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  copy-approved-staging-thumbnails:
+    name: Copy approved isolated staging thumbnails
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      STACK_NAME: multiwing-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install locked dependencies for manifest validation
+        run: pnpm install --frozen-lockfile
+      - name: Configure isolated Multiwing deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::735252691868:role/multiwing-github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Build private approved-thumbnail manifest
+        env:
+          ARCHIVE_KEY: ${{ inputs.archive_key }}
+        run: |
+          AUDIT_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='MigrationAuditBucketName'].OutputValue" --output text)
+          aws s3 cp "s3://${AUDIT_BUCKET}/${ARCHIVE_KEY}" source-export.zip --only-show-errors
+          node scripts/build-isolated-thumbnail-manifest.mjs source-export.zip thumbnail-manifest.json
+          echo "approved_thumbnail_objects=$(jq length thumbnail-manifest.json)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Copy only approved public CloudFront thumbnails into private isolated storage
+        run: |
+          MEDIA_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PrivateMediaBucketName'].OutputValue" --output text)
+          jq -r '.[] | [.sourceUrl, .targetKey] | @tsv' thumbnail-manifest.json | while IFS=$'\t' read -r source_url target_key; do
+            curl --fail --location --retry 3 --silent --show-error "$source_url" --output thumbnail-object
+            aws s3 cp thumbnail-object "s3://${MEDIA_BUCKET}/${target_key}" --sse AES256 --only-show-errors
+          done
+      - name: Verify copied thumbnails and rewrite isolated staging references
+        env:
+          ARCHIVE_KEY: ${{ inputs.archive_key }}
+        run: |
+          REWRITER=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='ThumbnailCopyFunctionName'].OutputValue" --output text)
+          aws lambda invoke --function-name "$REWRITER" --region "$AWS_REGION" --cli-binary-format raw-in-base64-out --payload "{\"archiveKey\":\"${ARCHIVE_KEY}\",\"objectsAlreadyCopied\":true}" thumbnail-copy-response.json
+          cat thumbnail-copy-response.json

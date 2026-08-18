@@ -563,7 +563,11 @@ export const appRouter = router({
     byProject: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
-        return getDeliverablesByProject(input.projectId);
+        const rows = await getDeliverablesByProject(input.projectId);
+        const { generatePresignedStreamUrl } = await import("./s3Upload");
+        return Promise.all(rows.map(async (row) => row.thumbnailUrl?.startsWith("aws-thumbnail:")
+          ? { ...row, thumbnailUrl: await generatePresignedStreamUrl(row.thumbnailUrl.slice("aws-thumbnail:".length)) }
+          : row));
       }),
 
     create: adminProcedure

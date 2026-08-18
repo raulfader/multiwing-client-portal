@@ -1,17 +1,9 @@
 import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
 import net from "net";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerEmailTrackingRoutes } from "../emailTracking";
-import { registerTrackDownloadRoute } from "../trackDownload";
-import { registerTrackStreamRoute } from "../trackStream";
-import { registerTranscodingWebhook } from "../transcodingWebhook";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startDigestCron } from "../digestCron";
+import { createApp } from "../app";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -33,29 +25,11 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  const app = express();
+  const app = createApp({
+    enableLegacyOAuth: true,
+    enableExternalRoutes: true,
+  });
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
-  // Email open/click tracking (must be before Vite catch-all)
-  registerEmailTrackingRoutes(app);
-  // Track audio proxy download (CDN → browser with Content-Disposition: attachment)
-  registerTrackDownloadRoute(app);
-  // Track audio proxy stream (S3 → browser with Range support for seeking)
-  registerTrackStreamRoute(app);
-  // Transcoding webhook (Lambda → portal DB update)
-  registerTranscodingWebhook(app);
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
@@ -72,8 +46,11 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    // Start the self-contained 6-hour activity digest cron (no Manus agent required)
-    startDigestCron();
+    // A Lambda duplicate must never run process-local schedules. Keep this
+    // behavior for the untouched local source runtime only.
+    if (process.env.ENABLE_LOCAL_DIGEST_CRON === "true") {
+      startDigestCron();
+    }
   });
 }
 

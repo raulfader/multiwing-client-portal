@@ -542,3 +542,30 @@
 ## Self-Contained Digest Cron (No Agent Credits)
 - [x] Remove Manus heartbeat schedule config for digest
 - [x] Install node-cron and add 6-hour digest cron job inside Express server (0 6,12,18,0 * * * America/New_York)
+
+## AWS Migration Discovery
+- [x] Inventory the portal’s Manus, database, media, sharing, email, analytics, and scheduled-digest dependencies for AWS migration
+- [x] Obtain and reconcile independent OpenAI, Grok, and Anthropic critiques of the Multiwing AWS migration plan before implementation
+- [ ] Create an AWS duplicate with strictly read-only source exports, copy-only media transfer, no Manus database writes, no Manus media deletes, no live DNS changes, and no client notifications
+- [ ] Produce pre-copy manifests and post-copy reconciliation evidence before accepting the AWS duplicate as complete
+- [x] Document immutable source controls, copy-only safeguards, rollback boundaries, and the separate cutover gate
+- [x] Produce a read-only source schema/media inventory and written rollback runbook before any client-data migration
+- [ ] Compare Manus-hosted and AWS-hosted Multiwing operating costs, portability, and operational risk before provisioning AWS staging resources
+- [x] Estimate AWS-only Multiwing monthly infrastructure costs across transparent staging and production usage scenarios
+- [x] Validate AWS cost assumptions against the actual Multi-wing Client Portal task source, media pipeline, and operational integrations
+- [ ] Collect read-only aggregate Multiwing media-object counts and storage totals, without exposing client filenames or data
+- [x] Collect and analyze read-only AWS monthly cost history for Multiwing media, playback, transcoding, and supporting services in the current AWS account
+- [ ] Identify the AWS account that currently owns the legacy Multiwing S3/media-processing credentials if its charges are not billed to the current Faderlabs AWS account
+- [x] Create an empty, isolated Multiwing AWS staging stack without changing the live portal or `multiwing.faderlabs.ai` DNS
+- [x] Diagnose and safely recover the failed isolated Multiwing staging-foundation stack creation before retrying deployment
+- [x] Establish GitHub OIDC deployment automation and a separate least-privilege Multiwing deployment role
+- [x] Correct the browser-committed Multiwing staging workflow formatting and revalidate its separate deployment path
+- [ ] Adapt the Multiwing server bootstrap, configuration, database connection, storage abstraction, and safe staging flags for AWS without importing source data or enabling client-facing actions
+- [ ] Create an isolated Multiwing AWS stack with separate VPC, RDS database, S3 media bucket, CloudFront distribution, Secrets Manager secret, and deployment role
+- [ ] Replace Manus-specific authentication, storage, notification, and runtime helpers with AWS-managed equivalents
+- [ ] Migrate client, project, deliverable, comment, approval, sharing, analytics, and activity-log data into the separate Multiwing RDS database
+- [ ] Migrate all audio, video, documents, thumbnails, and proxy media to a private Multiwing S3 bucket with signed delivery
+- [ ] Replace Gmail SMTP and in-process digest scheduling with Amazon SES and an AWS-managed scheduled task
+- [ ] Preserve the existing MediaConvert pipeline with a separate least-privilege AWS event and callback design
+- [ ] Resolve current schema drift and test-environment failures before production cutover
+- [ ] Validate Multiwing staging before changing the `multiwing.faderlabs.ai` DNS record

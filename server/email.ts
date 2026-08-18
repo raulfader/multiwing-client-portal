@@ -148,6 +148,7 @@ export async function sendProjectNotification(params: {
   customMessage?: string;
   trackingToken?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  if (!isExternalEmailAllowed()) return externalEmailDisabledResult();
   try {
     const { html, text } = buildProjectNotificationEmail(params);
     await transporter.sendMail({
@@ -170,6 +171,7 @@ export async function sendShareInviteEmail(params: {
   accessLevel: "read" | "download";
   shareUrl: string;
 }): Promise<{ success: boolean; error?: string }> {
+  if (!isExternalEmailAllowed()) return externalEmailDisabledResult();
   const { to, projectTitle, accessLevel, shareUrl } = params;
   const accessLabel = accessLevel === "download" ? "view and download files" : "view deliverables";
 
@@ -257,6 +259,7 @@ export async function sendShareOtpEmail(params: {
   accessLevel: "read" | "download";
   shareUrl: string;
 }): Promise<{ success: boolean; error?: string }> {
+  if (!isExternalEmailAllowed()) return externalEmailDisabledResult();
   const { to, projectTitle, code, accessLevel, shareUrl } = params;
   const accessLabel = accessLevel === "download" ? "view and download files" : "view deliverables";
 
@@ -348,6 +351,7 @@ export async function sendAdminAlertEmail(params: {
   heading: string;
   lines: string[];
 }): Promise<{ success: boolean; error?: string }> {
+  if (!isExternalEmailAllowed()) return externalEmailDisabledResult();
   const { subject, heading, lines } = params;
 
   const rowsHtml = lines
@@ -412,6 +416,7 @@ export async function sendDigestEmail(params: {
   comments: Array<{ subject: string; detail: string | null; createdAt: Date }>;
   downloads: Array<{ subject: string; detail: string | null; createdAt: Date }>;
 }): Promise<{ success: boolean; error?: string }> {
+  if (!isExternalEmailAllowed()) return externalEmailDisabledResult();
   const { periodLabel, comments, downloads } = params;
 
   const totalEvents = comments.length + downloads.length;
@@ -590,3 +595,4 @@ export async function sendDigestEmail(params: {
     return { success: false, error: err?.message ?? "Unknown error" };
   }
 }
+import { externalEmailDisabledResult, isExternalEmailAllowed } from "./duplicateSafety";

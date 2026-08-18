@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { isExternalEmailAllowed } from "./duplicateSafety";
 import {
   createComment,
   createPillar,
@@ -1063,6 +1064,7 @@ View in admin dashboard: https://multiwing.faderlabs.ai/admin`;
 
         const recipients = ["raul@faderlabs.com", "hello@faderlabs.com"];
         for (const to of recipients) {
+          if (!isExternalEmailAllowed()) break;
           try {
             await transporter.sendMail({
               from: `"Multi-Wing Portal" <${process.env.SMTP_USER}>`,

@@ -1,0 +1,12 @@
+# Protected Provider Media Boundary
+
+The isolated Multiwing duplicate has completed the copy of direct legacy S3 media and the accessible public CloudFront thumbnails. The remaining provider links are intentionally not copied automatically.
+
+| Provider | Reference count | Observed boundary | Current action |
+|---|---:|---|---|
+| Frame.io | 19 | Share/download links require provider-managed access and do not expose direct media bytes through the public reference check. | Defer until an owner-authorized, read-only provider export or download path is available. |
+| OneDrive | 2 | Short links resolve to Microsoft-hosted HTML share pages rather than direct media bytes. | Defer until an owner-authorized, read-only provider export or download path is available. |
+
+No migration workflow may create, alter, expire, or revoke a provider share. The live portal records retain these links unchanged. Any later copy must derive its allowlist from the approved source archive, place copied bytes only in the private isolated media bucket, verify every destination object, and rewrite only the staging duplicate reference that corresponds to a verified copied object.
+
+Provider access must be read-only and owner-authorized. Credentials, shared passwords, session tokens, or one-time codes must not be sent through chat or placed in source control.

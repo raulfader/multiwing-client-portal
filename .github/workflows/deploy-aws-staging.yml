@@ -23,14 +23,26 @@ jobs:
     steps:
       - name: Check out duplicate source
         uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install duplicate runtime dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate duplicate safety guards
+        run: pnpm vitest run server/duplicateSafety.test.ts server/aws/runtimeConfig.test.ts && pnpm check
       - name: Configure isolated Multiwing deployment role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::735252691868:role/multiwing-github-deploy
           aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/setup-sam@v2
       - name: Validate non-production template
-        run: aws cloudformation validate-template --template-body file://infra/template.yaml --region "$AWS_REGION" >/dev/null
-      - name: Deploy empty isolated staging foundation
-        run: aws cloudformation deploy --template-file infra/template.yaml --stack-name "$STACK_NAME" --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com --capabilities CAPABILITY_NAMED_IAM --role-arn "$CFN_EXECUTION_ROLE_ARN" --no-fail-on-empty-changeset --region "$AWS_REGION"
+        run: sam validate --template-file infra/template.yaml
+      - name: Build duplicate Lambda artifact
+        run: rm -rf .lambda-build && mkdir -p .lambda-build && ARTIFACTS_DIR="${GITHUB_WORKSPACE}/.lambda-build" make build-DuplicateApiFunction
+      - name: Deploy isolated duplicate runtime
+        run: sam deploy --template-file infra/template.yaml --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --stack-name "$STACK_NAME" --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com
       - name: Report non-sensitive duplicate outputs
         run: aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[].[OutputKey,OutputValue]" --output table

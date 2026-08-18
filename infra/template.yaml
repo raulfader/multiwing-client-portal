@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
 <<<<<<< HEAD
 Description: Empty isolated AWS staging foundation for the Multiwing duplicate. No source data, DNS, or customer notifications are configured here.
 =======
@@ -297,6 +298,63 @@ Resources:
             "LIVE_DNS_CHANGE_ALLOWED":"false"
           }
 
+  DuplicateHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        AllowHeaders: [Content-Type, Authorization, X-Session-Token]
+        AllowOrigins: ["http://localhost:3000"]
+        AllowCredentials: true
+
+  DuplicateApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../.lambda-build
+      Handler: lambda.handlerForApiGateway
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Timeout: 30
+      MemorySize: 1024
+      VpcConfig:
+        SecurityGroupIds: [!Ref ApplicationSecurityGroup]
+        SubnetIds: [!Ref PrivateSubnetOne, !Ref PrivateSubnetTwo]
+      Environment:
+        Variables:
+          NODE_ENV: production
+          APP_SECRET_ARN: !Ref ApplicationConfig
+          RDS_MASTER_SECRET_ARN: !GetAtt MultiwingDatabase.MasterUserSecret.SecretArn
+          RDS_DATABASE_NAME: multiwing
+          RDS_HOST: !GetAtt MultiwingDatabase.Endpoint.Address
+          RDS_PORT: !GetAtt MultiwingDatabase.Endpoint.Port
+          DUPLICATE_MODE: "true"
+          CLIENT_EMAIL_ENABLED: "false"
+          SOURCE_MUTATION_ALLOWED: "false"
+          LIVE_DNS_CHANGE_ALLOWED: "false"
+          PORTAL_MEDIA_BUCKET: !Ref PrivateMediaBucket
+          PORTAL_ASSETS_BUCKET: !Ref PortalAssetsBucket
+          MIGRATION_AUDIT_BUCKET: !Ref MigrationAuditBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !Ref ApplicationConfig
+                - !GetAtt MultiwingDatabase.MasterUserSecret.SecretArn
+            - Effect: Allow
+              Action: [s3:GetObject, s3:PutObject]
+              Resource:
+                - !Sub ${PrivateMediaBucket.Arn}/*
+                - !Sub ${PortalAssetsBucket.Arn}/*
+                - !Sub ${MigrationAuditBucket.Arn}/*
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DuplicateHttpApi
+            Path: /{proxy+}
+            Method: ANY
+
 Outputs:
   VpcId:
     Value: !Ref MultiwingVpc
@@ -316,3 +374,5 @@ Outputs:
     Value: !Ref MigrationAuditBucket
   ApplicationConfigSecretArn:
     Value: !Ref ApplicationConfig
+  DuplicateApiEndpoint:
+    Value: !GetAtt DuplicateHttpApi.ApiEndpoint

@@ -42,6 +42,13 @@ jobs:
         run: sam validate --template-file infra/template.yaml
       - name: Build duplicate Lambda artifact
         run: rm -rf .lambda-build && mkdir -p .lambda-build && ARTIFACTS_DIR="${GITHUB_WORKSPACE}/.lambda-build" make build-DuplicateApiFunction
+      - name: Recover known non-production rollback state
+        run: |
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
+          if [ "$STACK_STATUS" = "UPDATE_ROLLBACK_FAILED" ]; then
+            aws cloudformation continue-update-rollback --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            aws cloudformation wait stack-update-rollback-complete --stack-name "$STACK_NAME" --region "$AWS_REGION"
+          fi
       - name: Deploy isolated duplicate runtime
         run: |
           ARTIFACT_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PortalAssetsBucketName'].OutputValue" --output text)

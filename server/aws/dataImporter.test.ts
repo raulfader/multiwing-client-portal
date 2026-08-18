@@ -44,4 +44,13 @@ describe("parseApprovedImportArchive", () => {
     const rows = parseApprovedImportArchive(archive);
     expect(rows.projects[0].title).toBe('A, "quoted" project');
   });
+
+  it("treats multiline quoted deliverable-comment content as one logical record", () => {
+    const archive = approvedArchive({
+      "deliverable_comments_20260818_184800.csv": strToU8(`${headers.deliverable_comments}\n1,1,1,"First line\nSecond line",2026-01-01,,,,\n`),
+    });
+    const rows = parseApprovedImportArchive(archive);
+    expect(rows.deliverable_comments).toHaveLength(1);
+    expect(rows.deliverable_comments[0].content).toBe("First line\nSecond line");
+  });
 });

@@ -47,7 +47,13 @@ jobs:
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
           if [ "$STACK_STATUS" = "UPDATE_ROLLBACK_FAILED" ]; then
             aws cloudformation continue-update-rollback --stack-name "$STACK_NAME" --region "$AWS_REGION"
-            aws cloudformation wait stack-update-rollback-complete --stack-name "$STACK_NAME" --region "$AWS_REGION"
+            for _ in $(seq 1 60); do
+              STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query 'Stacks[0].StackStatus' --output text)
+              [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] && break
+              [ "$STACK_STATUS" = "UPDATE_ROLLBACK_FAILED" ] && exit 1
+              sleep 10
+            done
+            [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ] || exit 1
           fi
       - name: Deploy isolated duplicate runtime
         run: |

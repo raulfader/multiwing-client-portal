@@ -49,6 +49,10 @@ Claude's direct API Messages endpoint continued to return an organization-level 
 
 Claude selected **DEFER**, stating that the AWS duplicate already holds the approved data and the remaining 19 non-urgent Frame.io bytes do not justify creating a new temporary or persistent credential. This matches the OpenAI, Grok, and coordinating-agent votes. The result is a unanimous four-way decision to retain deferral and make no Frame.io credential or source-archive change.
 
+## Standing Technical Decision Protocol
+
+The owner has instructed that future technical migration choices be decided through unanimous agreement among ChatGPT, Grok, Claude, and the coordinating agent. Where consensus supports a safe direction, the work may proceed without requiring the owner to make a technical judgment. This protocol does not override explicit owner authorization requirements for credentials, paid actions, destructive operations, or other externally consequential actions.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

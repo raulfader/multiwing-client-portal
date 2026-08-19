@@ -37,6 +37,12 @@ The export cannot start until all of the following are true:
 
 No source operation will be performed while any gate is incomplete. The separate OneDrive links remain deferred because the owner does not have provider access.
 
+## 2026-08-19 Credential Decision
+
+After the owner requested a second board review of the exact choice between creating a temporary legacy developer token and deferring, OpenAI and Grok both selected **DEFER**. Claude again did not provide a vote because its request failed with an HTTP authorization error. The coordinating agent also selects **DEFER** because the owner's requirement for four-way alignment has not been satisfied and the source archive does not require an urgent change.
+
+Accordingly, no legacy token, OAuth app, secret, preflight request, download, or export workflow will be created or run. The 19 mapped Frame.io references and the two inaccessible OneDrive links remain deferred. Reopening the export decision requires a new unanimous review after Claude access is restored and a fresh owner authorization.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

@@ -43,6 +43,12 @@ After the owner requested a second board review of the exact choice between crea
 
 Accordingly, no legacy token, OAuth app, secret, preflight request, download, or export workflow will be created or run. The 19 mapped Frame.io references and the two inaccessible OneDrive links remain deferred. Reopening the export decision requires a new unanimous review after Claude access is restored and a fresh owner authorization.
 
+## 2026-08-19 Unanimous Review Confirmation
+
+Claude's direct API Messages endpoint continued to return an organization-level permission denial even after a new Default-workspace key was created and secured. A read-only models validation succeeded only through an isolated protected variable; it did not grant message-generation permission. With the owner's explicit authorization, Claude's independent vote was therefore obtained through the signed-in Claude Console Playground using Sonnet 5.
+
+Claude selected **DEFER**, stating that the AWS duplicate already holds the approved data and the remaining 19 non-urgent Frame.io bytes do not justify creating a new temporary or persistent credential. This matches the OpenAI, Grok, and coordinating-agent votes. The result is a unanimous four-way decision to retain deferral and make no Frame.io credential or source-archive change.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

@@ -11,7 +11,7 @@
 
 ## Frame.io Credential Decision
 
-No Frame.io credential will be created. A fresh review found that OpenAI and Grok both selected deferral, while Claude was unavailable due to an API authorization error. The owner's required four-way agreement was therefore unavailable. The temporary test share created during mapping is excluded from all migration work and may be removed only through an explicit owner-authorized cleanup decision.
+No Frame.io credential will be created. A fresh review found that OpenAI and Grok both selected deferral, while Claude was unavailable due to an API authorization error. The owner's required four-way agreement was therefore unavailable. The temporary test share created during mapping was excluded from all migration work and has since been removed by the owner, restoring the 86-link baseline.
 
 ## Cost Explorer Diagnostic
 

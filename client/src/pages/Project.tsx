@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useParams, Link, useLocation } from "wouter";
+import { externalDeliverableActionLabel } from "@/lib/externalMedia";
 import {
   ArrowLeft, FolderOpen, FileText, Film, Archive, Music2,
   CheckCircle2, XCircle, Clock, Send, MessageSquare, RefreshCw,
@@ -1837,7 +1838,7 @@ function DeliverableCard({ deliverable }: { deliverable: any }) {
           <a href={deliverable.downloadUrl} target="_blank" rel="noopener noreferrer">
             <Button size="sm" className="w-full bg-[#FFD600] hover:bg-[#FFD600]/90 text-black font-semibold text-xs gap-1.5">
               <FolderOpen className="w-3.5 h-3.5" />
-              My Files
+              {externalDeliverableActionLabel(deliverable.downloadUrl)}
             </Button>
           </a>
         )}

@@ -57,6 +57,12 @@ The owner has instructed that future technical migration choices be decided thro
 
 A subsequent minimal direct Messages API check using the isolated protected key and the Console-listed `claude-opus-5` model returned HTTP 200. Claude can therefore participate in future board reviews directly without using the Console Playground. This restores the review pathway only; it does not change the unanimous decision to defer Frame.io credentials, exports, or source-archive changes.
 
+## 2026-08-19 Immutable Link Integration Decision
+
+OpenAI, Grok, and Claude unanimously selected **IMMUTABLE_LINK_INTEGRATION** over byte migration or leaving the references unavailable. The AWS duplicate will preserve the already-mapped 19 Frame.io share URLs in their existing `downloadUrl` fields and use the existing legacy external-link render path to open them in a new browser tab. This meets the exit-Manus objective while leaving Frame.io as the immutable source of those media assets.
+
+The integration must not create a Frame.io API credential, download or copy media bytes, alter any source share URL, change visibility, re-share an asset, or modify folder/file structure. Regression coverage recognizes Frame.io links without resolving or fetching them and labels the AWS portal action as **Open in Frame.io**.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

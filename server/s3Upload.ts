@@ -2,13 +2,28 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
 
+export function resolveS3Credentials(env: NodeJS.ProcessEnv = process.env) {
+  const accessKeyId = env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY;
+  const sessionToken = env.AWS_SESSION_TOKEN;
+
+  if (!accessKeyId || !secretAccessKey) {
+    return undefined;
+  }
+
+  return {
+    accessKeyId,
+    secretAccessKey,
+    ...(sessionToken ? { sessionToken } : {}),
+  };
+}
+
 function getS3Client() {
   const region = process.env.AWS_S3_REGION || "us-east-2";
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const credentials = resolveS3Credentials();
   return new S3Client({
     region,
-    ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
+    ...(credentials ? { credentials } : {}),
     // Disable automatic checksum injection — required for browser-side presigned PUT uploads
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",

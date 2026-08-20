@@ -53,6 +53,10 @@ Claude selected **DEFER**, stating that the AWS duplicate already holds the appr
 
 The owner has instructed that future technical migration choices be decided through unanimous agreement among ChatGPT, Grok, Claude, and the coordinating agent. Where consensus supports a safe direction, the work may proceed without requiring the owner to make a technical judgment. This protocol does not override explicit owner authorization requirements for credentials, paid actions, destructive operations, or other externally consequential actions.
 
+## 2026-08-19 Direct Claude Access Restored
+
+A subsequent minimal direct Messages API check using the isolated protected key and the Console-listed `claude-opus-5` model returned HTTP 200. Claude can therefore participate in future board reviews directly without using the Console Playground. This restores the review pathway only; it does not change the unanimous decision to defer Frame.io credentials, exports, or source-archive changes.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

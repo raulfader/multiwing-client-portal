@@ -344,6 +344,14 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: [Range]
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins:
+              - !Sub https://${PortalFrontendDistribution.DomainName}
+            ExposedHeaders: [Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag]
+            MaxAge: 300
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:

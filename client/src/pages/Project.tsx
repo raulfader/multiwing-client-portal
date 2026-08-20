@@ -1084,7 +1084,12 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     const onEnded = () => setIsPlaying(false);
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
-    const onError = () => { setVideoError("Failed to load video"); setIsLoading(false); setIsPlaying(false); };
+    const onError = () => {
+      console.error("[Private Media Delivery Error]", { deliverableId: deliverable.id, mediaErrorCode: video.error?.code ?? null });
+      setVideoError("Failed to load video");
+      setIsLoading(false);
+      setIsPlaying(false);
+    };
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("loadedmetadata", onMeta);
     video.addEventListener("ended", onEnded);
@@ -1194,6 +1199,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
     video.style.cursor = "pointer";
     video.style.display = "block";
     video.preload = "metadata";
+    video.crossOrigin = "anonymous";
     video.onclick = () => togglePlayRef.current();
     // @ts-ignore — assign to ref
     videoRef.current = video;

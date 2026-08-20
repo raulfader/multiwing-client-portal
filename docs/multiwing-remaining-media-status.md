@@ -26,3 +26,9 @@ The owner asked the four-way board to determine the correct next action among re
 ## 2026-08-20 AWS Portal Frontend Available
 
 The isolated Multiwing AWS frontend has been deployed successfully at `https://d1j4dnec1fpg5f.cloudfront.net`. It serves the client sign-in page through CloudFront and routes `/api/*` to the duplicate API Gateway runtime. The portal remains in duplicate mode with outbound email blocked. Existing Frame.io reference URLs are connected as immutable external links; the 19 Frame.io source assets and two inaccessible OneDrive references remain deferred for byte migration, with no source-provider modification.
+
+## 2026-08-20 Private Video Playback Verified
+
+The initial private-video playback failure was traced through browser-console evidence to portal-generated signed S3 requests returning HTTP 403. A read-only owner-admin probe confirmed that the copied object itself was healthy and range-streamable. The isolated signer code had preserved temporary Lambda access and secret keys but omitted the required session token when constructing explicit AWS credentials. The repair now includes the temporary session token when present, allowing AWS to validate the signed request.
+
+The repaired deployment completed successfully, and the owner authenticated to the AWS-hosted portal and confirmed that representative AWS-hosted videos play across multiple projects. Existing Frame.io links continue to function unchanged. No source media, Frame.io archive record, live Manus portal, client data, DNS record, or outbound email behavior was changed.

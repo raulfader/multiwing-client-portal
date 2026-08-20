@@ -32,3 +32,11 @@ The isolated Multiwing AWS frontend has been deployed successfully at `https://d
 The initial private-video playback failure was traced through browser-console evidence to portal-generated signed S3 requests returning HTTP 403. A read-only owner-admin probe confirmed that the copied object itself was healthy and range-streamable. The isolated signer code had preserved temporary Lambda access and secret keys but omitted the required session token when constructing explicit AWS credentials. The repair now includes the temporary session token when present, allowing AWS to validate the signed request.
 
 The repaired deployment completed successfully, and the owner authenticated to the AWS-hosted portal and confirmed that representative AWS-hosted videos play across multiple projects. Existing Frame.io links continue to function unchanged. No source media, Frame.io archive record, live Manus portal, client data, DNS record, or outbound email behavior was changed.
+
+## 2026-08-20 Baseline and DNS Hold Verified
+
+Unauthenticated checks returned HTTP 200 for the AWS CloudFront portal shell, the CloudFront-routed session endpoint, and the direct API session endpoint. Each session endpoint returned the expected anonymous (`null`) result rather than granting access. DNS verification confirms that `multiwing.faderlabs.ai` still resolves through `cname.manus.space`; it has not been redirected to the AWS CloudFront staging distribution. The AWS duplicate is therefore ready for a separately reviewed and owner-authorized DNS decision while the live Manus portal remains the production destination.
+
+## 2026-08-20 Owner-Browser Pathway Confirmed
+
+The configured owner-browser connection is enabled and can directly reach the authenticated AWS staging portal. The portal dashboard rendered its expected project list without any sign-in or source-system action. This creates a practical, owner-authorized pathway for future staging diagnostics when needed, while no AWS Console change, portal mutation, client communication, or DNS operation was performed.

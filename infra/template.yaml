@@ -274,8 +274,8 @@ Resources:
             HeaderBehavior: none
           QueryStringsConfig:
             QueryStringBehavior: none
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
 
   PortalFrontendDistribution:
     Type: AWS::CloudFront::Distribution

@@ -63,6 +63,10 @@ OpenAI, Grok, and Claude unanimously selected **IMMUTABLE_LINK_INTEGRATION** ove
 
 The integration must not create a Frame.io API credential, download or copy media bytes, alter any source share URL, change visibility, re-share an asset, or modify folder/file structure. Regression coverage recognizes Frame.io links without resolving or fetching them and labels the AWS portal action as **Open in Frame.io**.
 
+## 2026-08-20 AWS Portal Frontend Available
+
+The Multiwing React frontend is now hosted from a private versioned S3 bucket behind CloudFront, with `/api/*` routed to the existing isolated API Gateway runtime. The public staging URL is `https://d1j4dnec1fpg5f.cloudfront.net`. Deployment verification confirmed the sign-in view rendered, the CloudFront-routed anonymous session endpoint returned HTTP 200, and no browser-console errors were emitted. No DNS change, client notification, source archive operation, or live Manus portal change occurred.
+
 ## References
 
 [1]: https://next.developer.frame.io/platform/docs/guides/authentication/overview "Frame.io V4 Authentication"

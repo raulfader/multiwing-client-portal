@@ -22,3 +22,7 @@ The live Manus portal, source media accounts, Frame.io archive, OneDrive source,
 ## 2026-08-19 Next-Step Review
 
 The owner asked the four-way board to determine the correct next action among restoring direct Claude Messages API access, running a read-only AWS Cost Explorer diagnostic, or maintaining the present state. OpenAI, Grok, Claude (through the owner-authorized Console Playground), and the coordinating agent unanimously selected **continued deferral with no external action**. There is no outage, deadline, or operational need that justifies expanding permissions or running additional diagnostics. The current boundary therefore remains in effect until a new concrete operational need arises.
+
+## 2026-08-20 AWS Portal Frontend Available
+
+The isolated Multiwing AWS frontend has been deployed successfully at `https://d1j4dnec1fpg5f.cloudfront.net`. It serves the client sign-in page through CloudFront and routes `/api/*` to the duplicate API Gateway runtime. The portal remains in duplicate mode with outbound email blocked. Existing Frame.io reference URLs are connected as immutable external links; the 19 Frame.io source assets and two inaccessible OneDrive references remain deferred for byte migration, with no source-provider modification.

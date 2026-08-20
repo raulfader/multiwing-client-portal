@@ -3,11 +3,24 @@ import { getDb } from "./db";
 import { customSessions } from "../drizzle/schema";
 import { eq, lt } from "drizzle-orm";
 
-const PORTAL_PASSWORD = process.env.PORTAL_PASSWORD ?? "MW@2025";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "hello@faderlabs.com";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
-
 const SESSION_TTL_DAYS = 30;
+
+/**
+ * Runtime configuration is hydrated by the isolated Lambda before requests are
+ * handled. Resolve credentials at check time rather than module import time so
+ * newly hydrated duplicate-only secret values are honored.
+ */
+function portalPassword(): string {
+  return process.env.PORTAL_PASSWORD ?? "MW@2025";
+}
+
+function adminEmail(): string {
+  return process.env.ADMIN_EMAIL ?? "hello@faderlabs.com";
+}
+
+function adminPassword(): string {
+  return process.env.ADMIN_PASSWORD ?? "";
+}
 
 export function generateToken(): string {
   return randomBytes(48).toString("hex");
@@ -52,11 +65,11 @@ export async function pruneExpiredSessions(): Promise<void> {
 }
 
 export function checkClientPassword(password: string): boolean {
-  return password === PORTAL_PASSWORD;
+  return password === portalPassword();
 }
 
 export function checkAdminCredentials(email: string, password: string): boolean {
-  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD;
+  return email.toLowerCase() === adminEmail().toLowerCase() && password === adminPassword();
 }
 
 export const SESSION_COOKIE = "portal_session";

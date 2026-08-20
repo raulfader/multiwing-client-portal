@@ -253,7 +253,7 @@ Resources:
         CookiesConfig:
           CookieBehavior: all
         HeadersConfig:
-          HeaderBehavior: allViewerExcept
+          HeaderBehavior: allExcept
           Headers:
             - host
         QueryStringsConfig:

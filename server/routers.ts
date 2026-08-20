@@ -81,6 +81,7 @@ import {
 } from "./customAuth";
 import { shareSessions } from "../drizzle/schema";
 import { gt as drizzleGt } from "drizzle-orm";
+import { selectPrivatePlaybackKey } from "./privateMediaPlayback";
 
 // adminProcedure is imported from ./_core/trpc — checks ctx.user?.role === 'admin' directly
 
@@ -658,9 +659,10 @@ export const appRouter = router({
         const { getDeliverableById } = await import("./db");
         const deliverable = await getDeliverableById(input.id);
         if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
-        if (!deliverable.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "No file attached to this deliverable" });
+        const key = selectPrivatePlaybackKey(deliverable);
+        if (!key) throw new TRPCError({ code: "BAD_REQUEST", message: "No private media attached to this deliverable" });
         const { generatePresignedStreamUrl } = await import("./s3Upload");
-        const url = await generatePresignedStreamUrl(deliverable.fileKey);
+        const url = await generatePresignedStreamUrl(key);
         return { url };
       }),
 

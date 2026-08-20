@@ -869,6 +869,37 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   // ProRes / MOV files: use proxy if ready, show transcoding badge if pending/processing, fallback download card if none
   const fileExt = (deliverable.fileKey ?? "").split(".").pop()?.toLowerCase();
   const isProRes = ['mov', 'prores', 'mxf', 'dnxhd'].includes(fileExt ?? '');
+  const getStreamUrl = trpc.deliverables.getStreamUrl.useMutation();
+  const getDownloadUrl = trpc.deliverables.getDownloadUrl.useMutation();
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setStreamUrl(null);
+    setIsLoading(true);
+    setVideoError(null);
+    getStreamUrl.mutateAsync({ id: deliverable.id })
+      .then(({ url }) => {
+        if (active) setStreamUrl(url);
+      })
+      .catch(() => {
+        if (active) setVideoError("Video preview unavailable");
+      });
+    return () => { active = false; };
+  // The deliverable ID is the sole playback identity; mutation methods are stable tRPC bindings.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliverable.id]);
+
+  const handlePrivateDownload = async () => {
+    try {
+      const { url } = await getDownloadUrl.mutateAsync({ id: deliverable.id });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Download unavailable");
+    }
+  };
 
   // Poll proxyStatus every 5s while transcoding is in progress; stop once ready or failed
   const initialStatus = deliverable.proxyStatus ?? 'none';
@@ -927,9 +958,6 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
 
   // If ProRes but proxy not ready yet, show status card
   if (isProRes && proxyStatus !== 'ready') {
-    const publicUrl = deliverable.fileKey
-      ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
-      : null;
     // Use latch so the bar stays visible even if parent re-renders with stale 'none' status
     const isTranscoding = shouldShowTranscoding;
     const isFailed = liveStatus === 'failed' && !shouldShowTranscoding;
@@ -973,16 +1001,16 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
               </>
             )}
           </div>
-          {publicUrl && (
-            <a
-              href={publicUrl}
-              download
+          {deliverable.fileKey && (
+            <button
+              onClick={handlePrivateDownload}
+              disabled={getDownloadUrl.isPending}
               className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg transition-all"
               style={{ background: accentColor, color: "#0A0A0A" }}
             >
               <Download size={13} />
-              Download Original ProRes
-            </a>
+              {getDownloadUrl.isPending ? "Preparing Download…" : "Download Original ProRes"}
+            </button>
           )}
         </div>
       </div>
@@ -999,18 +1027,10 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isLoading, setIsLoading] = useState(true); // start loading while fetching stream URL
-  const [videoError, setVideoError] = useState<string | null>(null);
   const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
   const [commenterName, setCommenterName] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
-  // Use proxy URL for playback if available (ProRes transcoded to H.264), else direct S3 URL
-  const streamUrl = proxyUrl
-    ? proxyUrl
-    : (deliverable.fileKey
-      ? `https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/${deliverable.fileKey}`
-      : null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>(deliverable.reviewStatus ?? "pending");
   // Separate ref for the fullscreen scrub bar (different DOM element)
@@ -1185,6 +1205,7 @@ function DeliverableVideoPlayer({ deliverable, accentColor = "#FFD600" }: { deli
   useEffect(() => {
     if (videoRef.current && streamUrl) {
       videoRef.current.src = streamUrl;
+      videoRef.current.load();
     }
   }, [streamUrl]);
 

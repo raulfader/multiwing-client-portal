@@ -65,7 +65,8 @@ jobs:
       - name: Deploy isolated duplicate runtime
         run: |
           ARTIFACT_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PortalAssetsBucketName'].OutputValue" --output text)
-          sam deploy --template-file infra/template.yaml --s3-bucket "$ARTIFACT_BUCKET" --s3-prefix sam-artifacts --no-confirm-changeset --no-fail-on-empty-changeset --stack-name "$STACK_NAME" --role-arn "$CFN_EXECUTION_ROLE_ARN" --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com
+          PORTAL_FRONTEND_ORIGIN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PortalFrontendUrl'].OutputValue" --output text)
+          sam deploy --template-file infra/template.yaml --s3-bucket "$ARTIFACT_BUCKET" --s3-prefix sam-artifacts --no-confirm-changeset --no-fail-on-empty-changeset --stack-name "$STACK_NAME" --role-arn "$CFN_EXECUTION_ROLE_ARN" --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides EnvironmentName=staging AdminEmail=raul@faderlabs.com PortalFrontendOrigin="$PORTAL_FRONTEND_ORIGIN"
       - name: Publish immutable portal frontend to isolated AWS storage
         run: |
           FRONTEND_BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$AWS_REGION" --query "Stacks[0].Outputs[?OutputKey=='PortalFrontendBucketName'].OutputValue" --output text)

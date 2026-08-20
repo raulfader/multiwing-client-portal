@@ -12,6 +12,10 @@ Parameters:
     Type: String
     Default: raul@faderlabs.com
     Description: Owner notification and future administrator reference; no invitations are sent by this foundation stack.
+  PortalFrontendOrigin:
+    Type: String
+    Default: https://d1j4dnec1fpg5f.cloudfront.net
+    Description: Existing isolated portal frontend origin used solely for private-media CORS.
 
 Resources:
   MultiwingVpc:
@@ -349,7 +353,7 @@ Resources:
           - AllowedHeaders: [Range]
             AllowedMethods: [GET, HEAD]
             AllowedOrigins:
-              - !Sub https://${PortalFrontendDistribution.DomainName}
+              - !Ref PortalFrontendOrigin
             ExposedHeaders: [Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag]
             MaxAge: 300
       BucketEncryption:

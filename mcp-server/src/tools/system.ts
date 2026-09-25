@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { diagnose } from "../diagnostics";
 import { defineTool, idSchema } from "../tool";
 import { parseSince, sinceSchema } from "../util";
 
@@ -6,20 +7,12 @@ export const systemTools = [
   defineTool({
     name: "whoami",
     title: "Check portal connection",
-    description: "Show which portal this MCP server talks to, how it authenticates, and the role of the current session (should be admin).",
+    description:
+      "Diagnose the connection: which portal this MCP server talks to, how it authenticates, configuration problems, and whether the session is an admin session. Works even when the server is misconfigured. Run this first if other tools fail.",
     readOnly: true,
+    allowWithConfigProblems: true,
     inputSchema: {},
-    handler: async (_args, ctx) => {
-      const session = await ctx.portal.auth.me.query();
-      return {
-        apiUrl: ctx.config.apiUrl,
-        publicUrl: ctx.config.publicUrl,
-        authMode: ctx.config.authMode,
-        readOnly: ctx.config.readOnly,
-        session,
-        ok: session?.role === "admin",
-      };
-    },
+    handler: async (_args, ctx) => diagnose(ctx.config, ctx.portal),
   }),
 
   defineTool({

@@ -20,6 +20,8 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     downloadDir: path.join(os.tmpdir(), "multiwing-mcp-test-downloads"),
     fileRoots: [],
     requestTimeoutMs: 5_000,
+    problems: [],
+    warnings: [],
     ...overrides,
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@faderlabs/multiwing-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "MCP server for operating the Multi-Wing client content hub (multiwing.faderlabs.ai) from any MCP client.",
   "type": "module",
@@ -9,10 +9,11 @@
     "multiwing-mcp": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "run.sh"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.3"
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --packages=external --banner:js=\"#!/usr/bin/env node\" --outfile=dist/index.js",

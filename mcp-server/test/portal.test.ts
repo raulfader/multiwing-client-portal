@@ -33,6 +33,14 @@ describe("loadConfig", () => {
     expect(config.problems[0]).toMatch(/\*client\* portal password/);
   });
 
+  it("warns (without blocking) when admin-password login is the only credential", () => {
+    const only = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
+    expect(only.problems).toEqual([]);
+    expect(only.warnings.join(" ")).toMatch(/Prefer MULTIWING_SESSION_TOKEN/);
+    const withToken = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_SESSION_TOKEN: "t", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
+    expect(withToken.warnings).toEqual([]);
+  });
+
   it("flags half-configured admin login", () => {
     expect(loadConfig({ MULTIWING_ADMIN_EMAIL: "a@b.c" }).problems[0]).toMatch(/MULTIWING_ADMIN_PASSWORD is missing/);
   });

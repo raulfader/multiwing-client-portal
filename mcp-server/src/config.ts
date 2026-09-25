@@ -80,6 +80,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     problems.push(hints.join(" "));
   }
 
+  if (authMode === "admin-login") {
+    warnings.push(
+      "Using admin-password login only. It works only if MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD match what the running portal loaded, which the Manus secrets panel does not guarantee. Prefer MULTIWING_SESSION_TOKEN from a browser /admin session on the same site."
+    );
+  }
+
   if (parsedApi && parsedApi.protocol === "http:" && !isLoopback(parsedApi.hostname) && authMode !== "none") {
     if (parseBool(env.MULTIWING_ALLOW_INSECURE_HTTP)) {
       warnings.push(`Sending portal credentials over plain HTTP to ${parsedApi.host} (MULTIWING_ALLOW_INSECURE_HTTP is set).`);

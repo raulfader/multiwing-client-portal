@@ -121,11 +121,52 @@ Conclusion: live runs a Manus checkpoint between `8156695` and `229e8d6`, or a l
 was never synced to GitHub; git can't rule that out. It does **not** run `main` or this PR. Record the bundle
 name (`index-CRNe_Tpd.js`) as a fingerprint; if it changes, someone republished.
 
+### Manus console observation (reported by Raul, read-only, 2026-09-25)
+
+What Raul saw:
+- **Card:** Manus project Multi-Wing (`hBvNdosXzzanccAPkRLvc9`) shows a website card "Multi-Wing Content
+  Hub → `multiwing.faderlabs.ai`".
+- **Editor:** the website editor that opened from that card is labelled **Danfoss Content Hub**. Its status
+  is **Not published**, hosting is **Autoscale**, and **no domains are configured**.
+- **Secret names in that editor:**
+  - `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+  - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET`, `AWS_S3_REGION`
+  - `TRANSCODING_WEBHOOK_SECRET`, `VITE_FRONTEND_FORGE_API_URL`
+- **Absent:** `PORTAL_PASSWORD`, and anything like `DATABASE_URL`.
+- **Earlier behaviour:** that `ADMIN_PASSWORD` was rejected by live `auth.adminLogin`, while a browser
+  `/admin` session token from the live site worked.
+
+What it means:
+- **The inspected editor can't be what serves multiwing.faderlabs.ai.** A site with no domains and status
+  "Not published" doesn't serve a live custom domain. Either the card is attached to the wrong or stale
+  editor, or the serving deployment lives in another Manus site or project. Its secret values therefore say
+  nothing authoritative about live, and the rejected `ADMIN_PASSWORD` is the expected result, not a bug.
+- **Compared with what the live-era code (`229e8d6`) reads:**
+  - It reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORTAL_PASSWORD`, `AWS_*`, `TRANSCODING_WEBHOOK_SECRET`,
+    `SMTP_USER`, `SMTP_PASS`, `DATABASE_URL`, `BUILT_IN_FORGE_API_URL/KEY`, `JWT_SECRET`, `OAUTH_SERVER_URL`,
+    `OWNER_OPEN_ID` and `VITE_APP_ID`, plus client `VITE_FRONTEND_FORGE_API_URL/KEY` and
+    `VITE_OAUTH_PORTAL_URL`.
+  - Missing `PORTAL_PASSWORD` means that site would fall back to the hard-coded client password `MW@2025`.
+    That matches the email template (D2), so it's consistent either way.
+  - **Missing `SMTP_USER` / `SMTP_PASS` means that site could not send any email.** If live does send
+    notifications, live's env is not this editor's env.
+  - `DATABASE_URL` and `BUILT_IN_FORGE_*` are usually injected by the Manus platform rather than listed as
+    user secrets, so their absence proves nothing.
+
+How to confirm the right Manus site (read-only; no credentials needed in the repo):
+1. The correct site lists `multiwing.faderlabs.ai` under Domains and shows **Published**.
+2. Its published version is the one serving the bundle fingerprint above (`index-CRNe_Tpd.js` on
+   2026-09-25). Republishing changes that name.
+3. With an admin session token, `get_email_log` (read-only) shows whether live's recent sends are `sent` or
+   `failed`. That tells you whether live has working SMTP secrets without opening any secrets panel.
+4. Only after 1–2 match is that site's `ADMIN_EMAIL` / `ADMIN_PASSWORD` a candidate for admin-password auth.
+   Even then it only applies after that site's last restart or publish (D1).
+
 ### Assumptions that break when Manus env or the deployed build diverge from git
 
 | # | Assumption in repo / MCP | Where | What breaks | Handling |
 | --- | --- | --- | --- | --- |
-| D1 | Admin credentials equal the Manus secrets panel values | Live-era `server/customAuth.ts` reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORTAL_PASSWORD` into module constants **at import time** (`main` reads them per call). | Editing a Manus secret changes nothing until the live process restarts or is republished. Panel values can also differ from what the published deployment loaded. `ADMIN_EMAIL` must match too (default `hello@faderlabs.com`). This matches the observed `Invalid admin credentials`. If `ADMIN_PASSWORD` is ever missing at restart, P2 (empty-password admin) applies on live. | MCP: prefer a browser `/admin` session token from the same site; `whoami` proves it. The error hint now names this cause. Repo: fix P2 in the Manus copy. |
+| D1 | Admin credentials equal the Manus secrets panel values | Live-era `server/customAuth.ts` reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORTAL_PASSWORD` into module constants **at import time** (`main` reads them per call). | Editing a Manus secret changes nothing until the live process restarts or is republished. Panel values can also differ from what the published deployment loaded. `ADMIN_EMAIL` must match too (default `hello@faderlabs.com`). This matches the observed `Invalid admin credentials`. If `ADMIN_PASSWORD` is ever missing at restart, P2 (empty-password admin) applies on live. **Observed:** the Manus editor reached from the project card is unpublished, has no domains, and its `ADMIN_PASSWORD` is rejected by live (see above). | MCP: session-token auth is the supported operator path. `whoami` / `--check` now **warn** whenever admin-password login is the only credential, and the error hint names this cause. Repo: identify the serving Manus site, then fix P2 in that copy. |
 | D2 | The email shows the current client password | `server/email.ts` hard-codes the text `MW@2025` in the notification template (lines 107, 132). The login check uses `PORTAL_PASSWORD`. | If `PORTAL_PASSWORD` is rotated in Manus, every project email (UI or MCP) tells clients a wrong password. | MCP tool descriptions warn. Repo: render from config, or drop the password from email (P3). |
 | D3 | A server-side email guard exists | `isExternalEmailAllowed` / `DUPLICATE_MODE` exist only on `main` after 2026-06-02. | Live sends every notification, share invite and OTP unconditionally. Conversely, if `main` is ever published to Manus with `DUPLICATE_MODE=true` (e.g. copied from the AWS secret), all client email silently fails. | MCP: the `confirm` gates are the only guard on live; per-recipient failures are reported. README corrected (it previously implied the guard applied everywhere). |
 | D4 | The digest cron runs | Live-era `server/_core/index.ts` starts node-cron unconditionally; `main` only starts it when `ENABLE_LOCAL_DIGEST_CRON=true`. | Publishing `main` to Manus without that variable silently stops the 6-hour digest emails. | Repo: set `ENABLE_LOCAL_DIGEST_CRON=true` in Manus before publishing `main`-derived code. MCP: `send_activity_digest` is a manual fallback. |
@@ -143,9 +184,12 @@ name (`index-CRNe_Tpd.js`) as a fingerprint; if it changes, someone republished.
 
 - **Live is an unknown Manus checkpoint.** Verify it with `whoami` / `--check`: `backend.opsRouter`, and
   the session role. Never infer live behaviour from `main`.
-- **Credentials are whatever the running live process loaded,** not what the Manus panel shows. A browser
-  `/admin` session token from the live site is the only credential that proves itself. Admin-password auth
-  may legitimately fail until Manus restarts or republishes.
+- **Manus secrets ≠ live.** Credentials are whatever the process serving multiwing.faderlabs.ai loaded,
+  and the Manus editor currently reachable from the project card isn't that process.
+  - **Until the correct Manus site and its secrets are confirmed, use `MULTIWING_SESSION_TOKEN` only** (a
+    browser `/admin` login on the live site). It's the only credential that proves itself against live.
+  - Don't copy `ADMIN_PASSWORD` from any Manus panel into MCP config.
+  - Tokens last 30 days. When `whoami` reports the token rejected, log in at `/admin` again and replace it.
 - **Live has no server-side email guard.** Every email-sending MCP call reaches real clients once
   `confirm: true` is set.
 - **Store only values the connected server issued** (URLs, keys). Always pass existing values explicitly
@@ -164,9 +208,11 @@ name (`index-CRNe_Tpd.js`) as a fingerprint; if it changes, someone republished.
    cp .env.example .env && chmod 600 .env
    ```
 
-   Then set `MULTIWING_SESSION_TOKEN` (from a browser `/admin` login: localStorage `portal_session_token`)
-   and `MULTIWING_FILE_ROOTS` in `.env`. Optionally also set `MULTIWING_ADMIN_EMAIL` / `MULTIWING_ADMIN_PASSWORD`
-   with the **live** values as the expiry fallback.
+   Then set `MULTIWING_SESSION_TOKEN` in `.env`: log in at `https://multiwing.faderlabs.ai/admin`, then copy
+   localStorage `portal_session_token`. Also set `MULTIWING_FILE_ROOTS`.
+   - **Leave `MULTIWING_ADMIN_EMAIL` / `MULTIWING_ADMIN_PASSWORD` unset** until the serving Manus site is
+     confirmed. The Manus values seen so far are rejected by live.
+   - The token expires after 30 days; refresh it the same way when `whoami` / `--check` report it rejected.
 2. Verify headlessly on the same host, as the same user the bot runs as:
    `bash /abs/path/mcp-server/run.sh --check`. It must print `"ok": true` and exit 0.
 3. Register the stdio server:
@@ -205,7 +251,7 @@ name (`index-CRNe_Tpd.js`) as a fingerprint; if it changes, someone republished.
   - `attach_uploaded_file` requires the server-issued `publicUrl`.
   - The `--check` backend probe distinguishes pre-PR from PR-level portals, and sends no token.
 
-`pnpm test` runs 55 tests, all passing. End-to-end checks, all local:
+`pnpm test` runs 56 tests, all passing (including the new admin-password-only warning). End-to-end checks, all local:
 - The PR #1 scenario still passes: 59 tool calls against this branch's portal code.
 - A drift scenario passes against checkpoint `229e8d6`, the live-era code, via `run.sh`. It covers
   `whoami` (reports `opsRouter: false`), create/upload (stores the live-era `https://…s3…` URL),

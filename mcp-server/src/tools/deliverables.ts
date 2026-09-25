@@ -48,7 +48,7 @@ export const deliverableTools = [
   defineTool({
     name: "list_deliverables",
     title: "List project deliverables",
-    description: "List the deliverables (files/links) in a project with review status, file info and transcoding state. Optionally include per-file download counts.",
+    description: "List the deliverables (files/links) in a project with review status, file info and transcoding state. Optionally include per-file download counts (guest share-link downloads).",
     readOnly: true,
     inputSchema: {
       projectId: idSchema,
@@ -183,7 +183,8 @@ export const deliverableTools = [
   defineTool({
     name: "get_download_counts",
     title: "Get download counts",
-    description: "Return how many times each deliverable has been downloaded (by clients, guests and the team).",
+    description:
+      "Per-deliverable download counts from the portal activity log. Note: the portal only attributes guest share-link downloads to a deliverable; portal-session downloads appear in list_activity but are not counted here.",
     readOnly: true,
     inputSchema: { deliverableIds: z.array(idSchema).min(1) },
     handler: async ({ deliverableIds }, ctx) => {

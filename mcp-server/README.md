@@ -61,7 +61,7 @@ because of configuration.
 | --- | --- | --- |
 | `MULTIWING_API_URL` | yes (defaults to `http://localhost:3000`) | Portal origin serving `/api/trpc`, e.g. `https://multiwing.faderlabs.ai`. Plain `http://` is only accepted for localhost unless `MULTIWING_ALLOW_INSECURE_HTTP=true`. |
 | `MULTIWING_SESSION_TOKEN` | one of the two auth options (recommended) | An existing **admin** session token. Log in at `/admin`, then copy `portal_session_token` from the browser's localStorage (surrounding quotes are fine). Valid 30 days. |
-| `MULTIWING_ADMIN_EMAIL` + `MULTIWING_ADMIN_PASSWORD` | one of the two auth options (**not recommended for live yet**) | The admin login the process serving multiwing.faderlabs.ai loaded at its last start or publish, from the Multi-Wing Content Hub Manus site only. An admin password tried earlier was rejected by live and the cause isn't established (see [AUDIT.md](AUDIT.md#manus-projects-in-scope)). `whoami` warns when this is the only credential. The server logs in on first use and again when the session expires, and logs out on exit. If set together with a session token, it is used as the fallback when the token expires. |
+| `MULTIWING_ADMIN_EMAIL` + `MULTIWING_ADMIN_PASSWORD` | one of the two auth options (**not recommended for live yet**) | The admin login the process serving multiwing.faderlabs.ai loaded at its last start or publish, from the Manus site **Faderlabs Strategy / Multi-Wing client portal** only. An admin password tried earlier was rejected by live and the cause isn't established (see [AUDIT.md](AUDIT.md#manus-projects-in-scope)). `whoami` warns when this is the only credential. The server logs in on first use and again when the session expires, and logs out on exit. If set together with a session token, it is used as the fallback when the token expires. |
 | `MULTIWING_PUBLIC_URL` | no | Origin used in client-facing links (share invites, `portalUrl`). Defaults to `MULTIWING_API_URL`. |
 | `MULTIWING_FILE_ROOTS` | no | Folders separated by `:` (`;` on Windows) that tools may read uploads from and write downloads to. **Defaults to `MULTIWING_DOWNLOAD_DIR` only.** Set `*` to allow any path (not recommended). Credential files (`.ssh`, `.aws`, `.env*`, `*.pem`, private keys, …) are always refused. |
 | `MULTIWING_DOWNLOAD_DIR` | no | Default download folder. Default `~/Downloads/multiwing`. |
@@ -129,7 +129,7 @@ included in the report or logs.
 
 ## Live site vs this repository
 
-The live site is published from Manus checkpoints, not from GitHub `main`. At audit time it ran pre-`main` code
+The live site is published from Manus checkpoints (Manus source of truth: **Faderlabs Strategy / Multi-Wing client portal**), not from GitHub `main`. At audit time it ran pre-`main` code
 without this PR's backend routes (see [AUDIT.md → Manus deployment cross-check](AUDIT.md#manus-deployment-cross-check)).
 The MCP server therefore:
 - detects capabilities instead of assuming them (`whoami` / `--check` report `backend.opsRouter`)

@@ -214,6 +214,37 @@ describe("reply_to_comment", () => {
   });
 });
 
+describe("resolve_comment", () => {
+  it("re-sends the existing reply so older portal builds (live) don't erase it", async () => {
+    const resolve = vi.fn(async () => ({ success: true }));
+    const { call } = await connect({
+      deliverableComments: {
+        all: { query: async () => [{ id: 7, adminResponse: "Fixed in v2", resolvedAt: null, createdAt: new Date(), deliverableId: 1 }] },
+        resolve: { mutate: resolve },
+      },
+    } as never);
+    const kept = await call("resolve_comment", { commentId: 7 });
+    expect(kept.data).toMatchObject({ resolved: true, keptExistingReply: true });
+    expect(resolve).toHaveBeenLastCalledWith({ id: 7, adminResponse: "Fixed in v2" });
+    await call("resolve_comment", { commentId: 7, message: "Final" });
+    expect(resolve).toHaveBeenLastCalledWith({ id: 7, adminResponse: "Final" });
+    expect((await call("resolve_comment", { commentId: 99 })).text).toMatch(/comment 99 not found/);
+  });
+});
+
+describe("attach_uploaded_file", () => {
+  it("stores the server-issued publicUrl rather than a build-specific synthesized value", async () => {
+    const update = vi.fn(async () => ({ success: true }));
+    const { call } = await connect({
+      deliverables: { update: { mutate: update }, byId: { query: async () => ({ id: 3, projectId: 5 }) } },
+    } as never);
+    expect((await call("attach_uploaded_file", { deliverableId: 3, fileKey: "deliverables/a.mp4", fileName: "a.mp4" })).isError).toBe(true);
+    const publicUrl = "https://faderlabs-client-uploads.s3.us-east-2.amazonaws.com/deliverables/a.mp4";
+    await call("attach_uploaded_file", { deliverableId: 3, fileKey: "deliverables/a.mp4", fileName: "a.mp4", publicUrl });
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 3, downloadUrl: publicUrl, fileType: "video" }));
+  });
+});
+
 describe("update_client_request", () => {
   it("keeps existing admin notes when only the status changes", async () => {
     const request = { id: 3, status: "new", adminNotes: "Budget approved", files: [] };

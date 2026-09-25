@@ -110,7 +110,18 @@ describe("--check (headless whoami)", () => {
   it("exits 0 with an admin session", async () => {
     const out = await run(["--check"], hostEnv({ MULTIWING_API_URL: fake.url, MULTIWING_SESSION_TOKEN: "admin-tok" }));
     expect(out.code).toBe(0);
-    expect(JSON.parse(out.stdout)).toMatchObject({ ok: true, session: { role: "admin" } });
+    expect(JSON.parse(out.stdout)).toMatchObject({ ok: true, session: { role: "admin" }, backend: { opsRouter: false } });
+  }, 30_000);
+
+  it("reports when the deployed portal already has the ops router", async () => {
+    const withOps = await startFakePortal({ tokens: { "admin-tok": "admin" }, hasOpsRouter: true });
+    try {
+      const out = await run(["--check"], hostEnv({ MULTIWING_API_URL: withOps.url, MULTIWING_SESSION_TOKEN: "admin-tok" }));
+      expect(JSON.parse(out.stdout).backend).toMatchObject({ opsRouter: true });
+      expect(withOps.calls.find((c) => c.path === "ops.search")?.token).toBeNull();
+    } finally {
+      await withOps.close();
+    }
   }, 30_000);
 
   it("exits 1 and names the problem with a client session or no credentials", async () => {

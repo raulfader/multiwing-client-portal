@@ -8,7 +8,7 @@ export type FakeCall = { path: string; token: string | null; userAgent: string |
  * semantics: auth.me is public (null for unknown tokens), protected procedures
  * return 401 "(10001)", admin procedures return 403 "(10002)" (server/_core/trpc.ts).
  */
-export async function startFakePortal(options: { adminPassword?: string; tokens?: Record<string, "admin" | "client"> } = {}) {
+export async function startFakePortal(options: { adminPassword?: string; tokens?: Record<string, "admin" | "client">; hasOpsRouter?: boolean } = {}) {
   const tokens = new Map(Object.entries(options.tokens ?? {}));
   const calls: FakeCall[] = [];
   let issued = 0;
@@ -49,6 +49,9 @@ export async function startFakePortal(options: { adminPassword?: string; tokens?
           return role === "admin" ? ok([{ id: 1, title: "Launch", slug: "launch", isPublished: 1, projectStatus: "started", category: "video" }]) : fail(403, "FORBIDDEN", "You do not have required permission (10002)");
         case "shares.requestOtp":
           return fail(403, "FORBIDDEN", "Email does not match the share invitation");
+        case "ops.search":
+          if (!options.hasOpsRouter) return fail(404, "NOT_FOUND", `No procedure found on path "${path}"`);
+          return role === "admin" ? fail(400, "BAD_REQUEST", "invalid input") : fail(403, "FORBIDDEN", "You do not have required permission (10002)");
         default:
           return fail(404, "NOT_FOUND", `No procedure found on path "${path}"`);
       }

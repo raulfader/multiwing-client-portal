@@ -152,13 +152,18 @@ export const fileTools = [
   defineTool({
     name: "attach_uploaded_file",
     title: "Attach uploaded file to deliverable",
-    description: "Record a file already uploaded via create_upload_url on a deliverable (sets file key, name, size, type and download reference).",
+    description:
+      "Record a file already uploaded via create_upload_url on a deliverable (sets file key, name, size, type and download reference). Pass the publicUrl that create_upload_url returned.",
     readOnly: false,
     idempotent: true,
     inputSchema: {
       deliverableId: idSchema,
       fileKey: z.string().min(1),
       fileName: z.string().min(1),
+      publicUrl: z
+        .string()
+        .min(1)
+        .describe("The publicUrl returned by create_upload_url. Its format depends on the deployed portal build, so it is never synthesized here."),
       fileSize: z.number().int().nonnegative().optional(),
       fileType: fileTypeSchema.optional(),
       contentType: z.string().optional(),
@@ -170,7 +175,7 @@ export const fileTools = [
         fileKey: args.fileKey,
         fileName: args.fileName,
         fileSize: args.fileSize ?? null,
-        downloadUrl: `aws-media:${args.fileKey}`,
+        downloadUrl: args.publicUrl,
         fileType: args.fileType ?? detectFileType(type),
       });
       return { success: true, deliverable: await findDeliverable(ctx, args.deliverableId) };

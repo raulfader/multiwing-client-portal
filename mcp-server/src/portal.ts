@@ -163,7 +163,8 @@ export function describeError(err: unknown, config?: Pick<Config, "apiUrl">): st
     }
     let hint = "";
     if (/Invalid admin credentials/i.test(err.message)) {
-      hint = " MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD do not match the portal's ADMIN_EMAIL / ADMIN_PASSWORD. Prefer MULTIWING_SESSION_TOKEN copied from a browser /admin session.";
+      hint =
+        " MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD do not match what the running portal loaded (email and password must both match). On the Manus-hosted site that is the value from its last restart/publish, which can differ from the Manus secrets panel. Prefer MULTIWING_SESSION_TOKEN copied from a browser /admin session on the same site.";
     } else if (/\(10001\)/.test(err.message)) {
       hint = " The session token is missing, expired, or revoked.";
     } else if (/\(10002\)/.test(err.message)) {

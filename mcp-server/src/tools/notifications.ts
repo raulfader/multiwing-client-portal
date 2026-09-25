@@ -74,7 +74,7 @@ export const notificationTools = [
     name: "send_project_notification",
     title: "Send project email",
     description:
-      "Send the branded Faderlabs project email (with the project link, login password and open/click tracking) to a project's contacts. Same as Compose Notification in the admin UI.",
+      "Send the branded Faderlabs project email (with the project link, login password and open/click tracking) to a project's contacts. Same as Compose Notification in the admin UI. Note: the server template prints a hard-coded client password, not PORTAL_PASSWORD, so it is wrong if the password was rotated. Requires confirm=true.",
     readOnly: false,
     inputSchema: {
       projectId: idSchema,
@@ -100,7 +100,7 @@ export const notificationTools = [
     name: "notify_project_finished",
     title: "Mark project finished and notify client",
     description:
-      "Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true.",
+      "Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true. The email includes the server template's hard-coded client password (see send_project_notification).",
     readOnly: false,
     inputSchema: {
       projectId: idSchema,

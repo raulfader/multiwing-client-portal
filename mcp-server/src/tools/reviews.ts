@@ -72,6 +72,13 @@ async function legacyCommentInbox(ctx: ToolContext, f: InboxFilter) {
   return out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, f.limit);
 }
 
+async function existingReply(ctx: ToolContext, kind: "deliverable" | "track", commentId: number): Promise<string | undefined> {
+  const rows = kind === "track" ? await ctx.portal.comments.all.query() : await ctx.portal.deliverableComments.all.query();
+  const row = rows.find((r) => r.id === commentId);
+  if (!row) throw new Error(`${kind === "track" ? "Track" : "Deliverable"} comment ${commentId} not found`);
+  return row.adminResponse ?? undefined;
+}
+
 async function legacyReviewSummary(ctx: ToolContext, projectId?: number) {
   const projects = (await ctx.portal.projects.listAdmin.query()).filter((p) => projectId == null || p.id === projectId);
   const allComments = await ctx.portal.deliverableComments.all.query();
@@ -174,8 +181,11 @@ export const reviewTools = [
     },
     handler: async ({ kind, commentId, message }, ctx) => {
       const api = kind === "track" ? ctx.portal.comments : ctx.portal.deliverableComments;
-      await api.resolve.mutate({ id: commentId, adminResponse: message });
-      return { success: true, kind, commentId, resolved: true };
+      // Portal builds before the resolve fix (including the Manus-hosted live site) null the
+      // reply when none is passed, so always send the existing one explicitly.
+      const adminResponse = message ?? (await existingReply(ctx, kind, commentId));
+      await api.resolve.mutate({ id: commentId, adminResponse });
+      return { success: true, kind, commentId, resolved: true, keptExistingReply: message === undefined && adminResponse !== undefined };
     },
   }),
 

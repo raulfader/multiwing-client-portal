@@ -45,6 +45,7 @@ vi.mock("./db", () => ({
   setSiteSetting: vi.fn().mockResolvedValue(undefined),
   insertActivityLog: vi.fn().mockResolvedValue(undefined),
   getActivityLogSince: vi.fn().mockResolvedValue([]),
+  insertIdOf: vi.fn((result: { insertId?: number }) => result?.insertId ?? null),
 }));
 
 vi.mock("./_core/notification", () => ({
@@ -109,7 +110,7 @@ describe("pillars.create", () => {
   it("allows admin to create a pillar", async () => {
     const caller = appRouter.createCaller(makeAdminCtx());
     const result = await caller.pillars.create({ title: "New Pillar", description: "Test" });
-    expect(result.success).toBe(true);
+    expect(result).toEqual({ success: true, id: 3 });
   });
 
   it("rejects non-admin users", async () => {

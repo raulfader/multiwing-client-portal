@@ -1,7 +1,14 @@
-import { and, asc, count, desc, eq, gte } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, max, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projectShares, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
+import { activityLog, approvals, clientProjectRequests, comments, deliverableComments, deliverables, InsertActivityLogEntry, InsertUser, pillars, projectContacts, projectShares, projects, siteSettings, trackApprovals, tracks, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
+
+/** Extracts the auto-increment id from a mysql2 insert result (`[ResultSetHeader, fields]`). */
+export function insertIdOf(result: unknown): number | null {
+  const header = Array.isArray(result) ? result[0] : result;
+  const id = (header as { insertId?: unknown } | null | undefined)?.insertId;
+  return typeof id === "number" && id > 0 ? id : null;
+}
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -215,9 +222,10 @@ export async function createComment(data: {
 export async function resolveComment(id: number, adminResponse?: string) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // Resolving without a response keeps any reply the team already posted.
   await db.update(comments).set({
     resolvedAt: new Date(),
-    adminResponse: adminResponse ?? null,
+    ...(adminResponse !== undefined ? { adminResponse } : {}),
   }).where(eq(comments.id, id));
 }
 
@@ -492,7 +500,7 @@ export async function resolveDeliverableComment(id: number, adminResponse?: stri
   if (!db) throw new Error("DB not available");
   await db.update(deliverableComments).set({
     resolvedAt: new Date(),
-    adminResponse: adminResponse ?? null,
+    ...(adminResponse !== undefined ? { adminResponse } : {}),
   }).where(eq(deliverableComments.id, id));
 }
 
@@ -740,4 +748,328 @@ export async function getDownloadCountsByDeliverables(deliverableIds: number[]):
     }
   }
   return map;
+}
+
+// ── Operations (cross-project read views for the admin / MCP tooling) ─────────
+
+export type CommentInboxFilter = {
+  /** open = unresolved, unanswered = unresolved with no team reply */
+  status?: "open" | "unanswered" | "resolved" | "all";
+  source?: "deliverables" | "tracks" | "all";
+  /** Deliverable comments only — sonic-branding track comments are not tied to a project row. */
+  projectId?: number;
+  since?: Date;
+  limit?: number;
+};
+
+export type CommentInboxEntry = {
+  kind: "deliverable" | "track";
+  id: number;
+  commenterName: string | null;
+  content: string;
+  timestampSeconds: number | null;
+  adminResponse: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  deliverableId: number | null;
+  deliverableTitle: string | null;
+  reviewStatus: string | null;
+  projectId: number | null;
+  projectTitle: string | null;
+  projectSlug: string | null;
+  trackId: number | null;
+  trackTitle: string | null;
+  pillarId: number | null;
+  pillarTitle: string | null;
+};
+
+function commentStatusCondition(
+  table: typeof comments | typeof deliverableComments,
+  status: NonNullable<CommentInboxFilter["status"]>
+) {
+  switch (status) {
+    case "open":
+      return isNull(table.resolvedAt);
+    case "unanswered":
+      return and(isNull(table.resolvedAt), isNull(table.adminResponse));
+    case "resolved":
+      return isNotNull(table.resolvedAt);
+    default:
+      return undefined;
+  }
+}
+
+/** Unified review-comment feed across deliverables and sonic-branding tracks, newest first. */
+export async function getCommentInbox(filter: CommentInboxFilter = {}): Promise<CommentInboxEntry[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const status = filter.status ?? "open";
+  const source = filter.source ?? "all";
+  const limit = filter.limit ?? 100;
+
+  const deliverableRows =
+    source === "tracks"
+      ? []
+      : await db
+          .select({
+            id: deliverableComments.id,
+            commenterName: deliverableComments.commenterName,
+            content: deliverableComments.content,
+            timestampSeconds: deliverableComments.timestampSeconds,
+            adminResponse: deliverableComments.adminResponse,
+            resolvedAt: deliverableComments.resolvedAt,
+            createdAt: deliverableComments.createdAt,
+            deliverableId: deliverableComments.deliverableId,
+            deliverableTitle: deliverables.title,
+            reviewStatus: deliverables.reviewStatus,
+            projectId: deliverables.projectId,
+            projectTitle: projects.title,
+            projectSlug: projects.slug,
+          })
+          .from(deliverableComments)
+          .leftJoin(deliverables, eq(deliverableComments.deliverableId, deliverables.id))
+          .leftJoin(projects, eq(deliverables.projectId, projects.id))
+          .where(
+            and(
+              commentStatusCondition(deliverableComments, status),
+              filter.projectId != null ? eq(deliverables.projectId, filter.projectId) : undefined,
+              filter.since ? gte(deliverableComments.createdAt, filter.since) : undefined
+            )
+          )
+          .orderBy(desc(deliverableComments.createdAt))
+          .limit(limit);
+
+  const trackRows =
+    source === "deliverables" || filter.projectId != null
+      ? []
+      : await db
+          .select({
+            id: comments.id,
+            commenterName: comments.commenterName,
+            content: comments.content,
+            timestampSeconds: comments.timestampSeconds,
+            adminResponse: comments.adminResponse,
+            resolvedAt: comments.resolvedAt,
+            createdAt: comments.createdAt,
+            trackId: comments.trackId,
+            trackTitle: tracks.title,
+            pillarId: tracks.pillarId,
+            pillarTitle: pillars.title,
+          })
+          .from(comments)
+          .leftJoin(tracks, eq(comments.trackId, tracks.id))
+          .leftJoin(pillars, eq(tracks.pillarId, pillars.id))
+          .where(
+            and(
+              commentStatusCondition(comments, status),
+              filter.since ? gte(comments.createdAt, filter.since) : undefined
+            )
+          )
+          .orderBy(desc(comments.createdAt))
+          .limit(limit);
+
+  const empty = {
+    deliverableId: null, deliverableTitle: null, reviewStatus: null,
+    projectId: null, projectTitle: null, projectSlug: null,
+    trackId: null, trackTitle: null, pillarId: null, pillarTitle: null,
+  };
+  const merged: CommentInboxEntry[] = [
+    ...deliverableRows.map((r) => ({ ...empty, ...r, kind: "deliverable" as const })),
+    ...trackRows.map((r) => ({ ...empty, ...r, kind: "track" as const })),
+  ];
+  merged.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return merged.slice(0, limit);
+}
+
+export type ProjectReviewSummary = {
+  projectId: number;
+  title: string;
+  slug: string;
+  projectStatus: string;
+  isPublished: boolean;
+  deliverables: { total: number; pending: number; approved: number; needsChanges: number };
+  comments: { total: number; open: number; lastCommentAt: Date | null };
+  /** Every deliverable approved, no open comments, and the project is not yet marked completed. */
+  readyToComplete: boolean;
+};
+
+/** Per-project roll-up of deliverable review status and open client comments. */
+export async function getReviewSummary(projectId?: number): Promise<ProjectReviewSummary[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const projectFilter = projectId != null ? eq(projects.id, projectId) : undefined;
+  const deliverableFilter = projectId != null ? eq(deliverables.projectId, projectId) : undefined;
+
+  const projectRows = await db
+    .select()
+    .from(projects)
+    .where(projectFilter)
+    .orderBy(asc(projects.sortOrder), asc(projects.createdAt));
+
+  const statusRows = await db
+    .select({ projectId: deliverables.projectId, reviewStatus: deliverables.reviewStatus, total: count() })
+    .from(deliverables)
+    .where(deliverableFilter)
+    .groupBy(deliverables.projectId, deliverables.reviewStatus);
+
+  const commentRows = await db
+    .select({
+      projectId: deliverables.projectId,
+      total: count(),
+      open: sql<string>`sum(case when ${deliverableComments.resolvedAt} is null then 1 else 0 end)`,
+      lastCommentAt: max(deliverableComments.createdAt),
+    })
+    .from(deliverableComments)
+    .innerJoin(deliverables, eq(deliverableComments.deliverableId, deliverables.id))
+    .where(deliverableFilter)
+    .groupBy(deliverables.projectId);
+
+  return projectRows.map((p) => {
+    const counts = { total: 0, pending: 0, approved: 0, needsChanges: 0 };
+    for (const row of statusRows) {
+      if (row.projectId !== p.id) continue;
+      const n = Number(row.total);
+      counts.total += n;
+      if (row.reviewStatus === "approved") counts.approved += n;
+      else if (row.reviewStatus === "needs_changes") counts.needsChanges += n;
+      else counts.pending += n;
+    }
+    const c = commentRows.find((row) => row.projectId === p.id);
+    const commentCounts = {
+      total: c ? Number(c.total) : 0,
+      open: c ? Number(c.open ?? 0) : 0,
+      lastCommentAt: c?.lastCommentAt ?? null,
+    };
+    return {
+      projectId: p.id,
+      title: p.title,
+      slug: p.slug,
+      projectStatus: p.projectStatus,
+      isPublished: p.isPublished === 1,
+      deliverables: counts,
+      comments: commentCounts,
+      readyToComplete:
+        counts.total > 0 &&
+        counts.approved === counts.total &&
+        commentCounts.open === 0 &&
+        p.projectStatus !== "completed",
+    };
+  });
+}
+
+export async function getActivityLog(filter: {
+  since?: Date;
+  eventType?: "comment" | "download";
+  deliverableId?: number;
+  limit?: number;
+} = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(activityLog)
+    .where(
+      and(
+        filter.since ? gte(activityLog.createdAt, filter.since) : undefined,
+        filter.eventType ? eq(activityLog.eventType, filter.eventType) : undefined,
+        filter.deliverableId != null ? eq(activityLog.deliverableId, filter.deliverableId) : undefined
+      )
+    )
+    .orderBy(desc(activityLog.createdAt))
+    .limit(filter.limit ?? 100);
+}
+
+function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+}
+
+/** Case-insensitive substring search across the main content-hub tables. */
+export async function searchHub(query: string, limit = 20) {
+  const db = await getDb();
+  const empty = { projects: [], deliverables: [], comments: [], tracks: [], contacts: [], clientRequests: [] };
+  if (!db) return empty;
+  const q = likePattern(query.trim());
+
+  const [projectHits, deliverableHits, commentHits, trackHits, contactHits, requestHits] = await Promise.all([
+    db
+      .select({ id: projects.id, title: projects.title, slug: projects.slug, projectStatus: projects.projectStatus, category: projects.category })
+      .from(projects)
+      .where(or(like(projects.title, q), like(projects.slug, q), like(projects.description, q), like(projects.category, q)))
+      .limit(limit),
+    db
+      .select({
+        id: deliverables.id,
+        title: deliverables.title,
+        fileName: deliverables.fileName,
+        reviewStatus: deliverables.reviewStatus,
+        projectId: deliverables.projectId,
+        projectTitle: projects.title,
+      })
+      .from(deliverables)
+      .leftJoin(projects, eq(deliverables.projectId, projects.id))
+      .where(or(like(deliverables.title, q), like(deliverables.description, q), like(deliverables.fileName, q)))
+      .limit(limit),
+    db
+      .select({
+        id: deliverableComments.id,
+        deliverableId: deliverableComments.deliverableId,
+        deliverableTitle: deliverables.title,
+        commenterName: deliverableComments.commenterName,
+        content: deliverableComments.content,
+        resolvedAt: deliverableComments.resolvedAt,
+        createdAt: deliverableComments.createdAt,
+      })
+      .from(deliverableComments)
+      .leftJoin(deliverables, eq(deliverableComments.deliverableId, deliverables.id))
+      .where(or(like(deliverableComments.content, q), like(deliverableComments.commenterName, q), like(deliverableComments.adminResponse, q)))
+      .orderBy(desc(deliverableComments.createdAt))
+      .limit(limit),
+    db
+      .select({ id: tracks.id, title: tracks.title, pillarId: tracks.pillarId, pillarTitle: pillars.title })
+      .from(tracks)
+      .leftJoin(pillars, eq(tracks.pillarId, pillars.id))
+      .where(or(like(tracks.title, q), like(tracks.description, q)))
+      .limit(limit),
+    db
+      .select({
+        id: projectContacts.id,
+        projectId: projectContacts.projectId,
+        firstName: projectContacts.firstName,
+        lastName: projectContacts.lastName,
+        email: projectContacts.email,
+      })
+      .from(projectContacts)
+      .where(or(like(projectContacts.firstName, q), like(projectContacts.lastName, q), like(projectContacts.email, q)))
+      .limit(limit),
+    db
+      .select({
+        id: clientProjectRequests.id,
+        title: clientProjectRequests.title,
+        submitterName: clientProjectRequests.submitterName,
+        submitterEmail: clientProjectRequests.submitterEmail,
+        status: clientProjectRequests.status,
+        createdAt: clientProjectRequests.createdAt,
+      })
+      .from(clientProjectRequests)
+      .where(
+        or(
+          like(clientProjectRequests.title, q),
+          like(clientProjectRequests.description, q),
+          like(clientProjectRequests.submitterName, q),
+          like(clientProjectRequests.submitterEmail, q),
+          like(clientProjectRequests.submitterCompany, q)
+        )
+      )
+      .orderBy(desc(clientProjectRequests.createdAt))
+      .limit(limit),
+  ]);
+
+  return {
+    projects: projectHits,
+    deliverables: deliverableHits,
+    comments: commentHits,
+    tracks: trackHits,
+    contacts: contactHits,
+    clientRequests: requestHits,
+  };
 }

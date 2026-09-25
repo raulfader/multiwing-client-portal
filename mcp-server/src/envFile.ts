@@ -33,7 +33,12 @@ export function loadEnvFile(env: NodeJS.ProcessEnv = process.env, defaultPath = 
   const explicit = env.MULTIWING_ENV_FILE?.trim();
   const file = explicit || defaultPath;
   if (!fs.existsSync(file)) {
-    return { file: explicit ? file : undefined, loaded: [] as string[], error: explicit ? `MULTIWING_ENV_FILE not found: ${file}` : undefined };
+    return {
+      file: explicit ? file : undefined,
+      loaded: [] as string[],
+      error: explicit ? `MULTIWING_ENV_FILE not found: ${file}` : undefined,
+      warning: undefined as string | undefined,
+    };
   }
   const parsed = parseEnvFile(fs.readFileSync(file, "utf8"));
   const loaded: string[] = [];
@@ -43,5 +48,8 @@ export function loadEnvFile(env: NodeJS.ProcessEnv = process.env, defaultPath = 
       loaded.push(key);
     }
   }
-  return { file, loaded, error: undefined };
+  // The file can hold an admin session token; POSIX group/other access is a leak risk.
+  const insecure = process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0;
+  const warning = insecure ? `${file} is readable by other users; run: chmod 600 '${file}'` : undefined;
+  return { file, loaded, error: undefined, warning };
 }

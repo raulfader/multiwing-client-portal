@@ -23,6 +23,7 @@ function loadRuntimeConfig(): Config {
   const envFile = loadEnvFile();
   const config = loadConfig();
   if (envFile.error) config.problems.push(envFile.error);
+  if (envFile.warning) config.warnings.push(envFile.warning);
   if (typeof AbortSignal.any !== "function") {
     config.problems.push(`Node.js ${process.version} is too old; this server needs Node.js >= 20.3 (set MULTIWING_NODE for run.sh).`);
   }

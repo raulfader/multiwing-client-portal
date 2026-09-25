@@ -86,6 +86,15 @@ describe("env file", () => {
     expect(env).toMatchObject({ MULTIWING_API_URL: "https://host.example", MULTIWING_SESSION_TOKEN: "from-file" });
   });
 
+  it.skipIf(process.platform === "win32")("warns when the env file is readable by other users", async () => {
+    const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "mw-env-")), ".env");
+    await fs.writeFile(file, "MULTIWING_SESSION_TOKEN=x\n");
+    await fs.chmod(file, 0o644);
+    expect(loadEnvFile({}, file).warning).toMatch(/chmod 600/);
+    await fs.chmod(file, 0o600);
+    expect(loadEnvFile({}, file).warning).toBeUndefined();
+  });
+
   it("reports an explicit MULTIWING_ENV_FILE that does not exist", () => {
     expect(loadEnvFile({ MULTIWING_ENV_FILE: "/nope/.env" }).error).toMatch(/not found/);
   });

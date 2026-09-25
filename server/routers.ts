@@ -57,6 +57,7 @@ import {
   getActivityLogSince,
   getDownloadCountsByDeliverables,
   getGuestEmailByShareId,
+  insertIdOf,
 } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendProjectNotification, sendAdminAlertEmail, sendDigestEmail } from "./email";
@@ -70,6 +71,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { sharesRouter } from "./routers/shares";
+import { opsRouter } from "./routers/ops";
 import { nanoid } from "nanoid";
 import {
   checkClientPassword,
@@ -85,9 +87,16 @@ import { selectPrivatePlaybackKey } from "./privateMediaPlayback";
 
 // adminProcedure is imported from ./_core/trpc — checks ctx.user?.role === 'admin' directly
 
+async function withSignedThumbnail<T extends { thumbnailUrl: string | null }>(row: T): Promise<T> {
+  if (!row.thumbnailUrl?.startsWith("aws-thumbnail:")) return row;
+  const { generatePresignedStreamUrl } = await import("./s3Upload");
+  return { ...row, thumbnailUrl: await generatePresignedStreamUrl(row.thumbnailUrl.slice("aws-thumbnail:".length)) };
+}
+
 export const appRouter = router({
   system: systemRouter,
   shares: sharesRouter,
+  ops: opsRouter,
 
   auth: router({
     // Returns current session info — reads token from x-session-token header or cookie
@@ -167,8 +176,8 @@ export const appRouter = router({
         sortOrder: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
-        await createPillar(input);
-        return { success: true };
+        const result = await createPillar(input);
+        return { success: true, id: insertIdOf(result) };
       }),
 
     update: adminProcedure
@@ -234,7 +243,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const count = await countTracksByPillar(input.pillarId); // used only for sortOrder default
-        await createTrack({
+        const result = await createTrack({
           pillarId: input.pillarId,
           title: input.title,
           description: input.description,
@@ -243,7 +252,7 @@ export const appRouter = router({
           durationSeconds: input.durationSeconds,
           sortOrder: input.sortOrder ?? count,
         });
-        return { success: true };
+        return { success: true, id: insertIdOf(result) };
       }),
 
     delete: adminProcedure
@@ -500,6 +509,14 @@ export const appRouter = router({
         return project;
       }),
 
+    byId: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const project = await getProjectById(input.id);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        return project;
+      }),
+
     create: adminProcedure
       .input(z.object({
         title: z.string().min(1),
@@ -510,8 +527,8 @@ export const appRouter = router({
         sortOrder: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
-        await createProject(input);
-        return { success: true };
+        const result = await createProject(input);
+        return { success: true, id: insertIdOf(result) };
       }),
 
     update: adminProcedure
@@ -565,10 +582,15 @@ export const appRouter = router({
       .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {
         const rows = await getDeliverablesByProject(input.projectId);
-        const { generatePresignedStreamUrl } = await import("./s3Upload");
-        return Promise.all(rows.map(async (row) => row.thumbnailUrl?.startsWith("aws-thumbnail:")
-          ? { ...row, thumbnailUrl: await generatePresignedStreamUrl(row.thumbnailUrl.slice("aws-thumbnail:".length)) }
-          : row));
+        return Promise.all(rows.map(withSignedThumbnail));
+      }),
+
+    byId: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const deliverable = await getDeliverableById(input.id);
+        if (!deliverable) throw new TRPCError({ code: "NOT_FOUND", message: "Deliverable not found" });
+        return withSignedThumbnail(deliverable);
       }),
 
     create: adminProcedure
@@ -582,8 +604,8 @@ export const appRouter = router({
         sortOrder: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
-        await createDeliverable(input);
-        return { success: true };
+        const result = await createDeliverable(input);
+        return { success: true, id: insertIdOf(result) };
       }),
 
     update: adminProcedure

@@ -7,6 +7,7 @@ import {
   guessContentType,
   normalizeContentType,
   putFileToPresignedUrl,
+  resolveDownloadDir,
   resolveDownloadTarget,
   resolveReadableFile,
   sanitizeFileName,
@@ -213,8 +214,7 @@ export const fileTools = [
     },
     handler: async ({ projectId, saveTo, reviewStatus }, ctx) => {
       const project = await findProject(ctx, { projectId });
-      const dir = path.join(saveTo ?? ctx.config.downloadDir, sanitizeFileName(project.slug));
-      await fs.mkdir(dir, { recursive: true });
+      const dir = await resolveDownloadDir(path.join(saveTo ?? ctx.config.downloadDir, sanitizeFileName(project.slug)), ctx.config);
       const rows = (await ctx.portal.deliverables.byProject.query({ projectId })).filter((d) =>
         reviewStatus ? d.reviewStatus === reviewStatus : true
       );

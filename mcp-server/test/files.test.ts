@@ -10,6 +10,7 @@ import {
   guessContentType,
   normalizeContentType,
   putFileToPresignedUrl,
+  resolveDownloadDir,
   resolveDownloadTarget,
   resolveReadableFile,
   slugify,
@@ -93,15 +94,46 @@ describe("local paths", () => {
     expect(await resolveDownloadTarget(path.join(tmp, "named.mov"), "x.mov", config)).toBe(path.join(tmp, "named.mov"));
   });
 
-  it("enforces MULTIWING_FILE_ROOTS for reads and writes", async () => {
+  it("never overwrites existing files and never lets portal names escape the folder", async () => {
+    const dir = path.join(tmp, "nooverwrite");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "cut.mov"), "existing");
+    await fs.writeFile(path.join(dir, "cut (1).mov"), "existing");
+    const config = testConfig();
+    expect(await resolveDownloadTarget(dir, "cut.mov", config)).toBe(path.join(dir, "cut (2).mov"));
+    expect(await resolveDownloadTarget(dir, "..", config)).toBe(path.join(dir, "file"));
+    expect(await resolveDownloadTarget(dir, "../../.bashrc", config)).toBe(path.join(dir, ".._.._.bashrc"));
+  });
+
+  it("enforces MULTIWING_FILE_ROOTS for reads and writes, including through symlinks", async () => {
     const allowed = path.join(tmp, "allowed");
     await fs.mkdir(allowed, { recursive: true });
     await fs.writeFile(path.join(allowed, "ok.txt"), "ok");
     await fs.writeFile(path.join(tmp, "secret.txt"), "no");
+    await fs.symlink(path.join(tmp, "secret.txt"), path.join(allowed, "link.txt"));
+    await fs.symlink(tmp, path.join(allowed, "escape"));
     const config = testConfig({ fileRoots: [allowed] });
     await expect(resolveReadableFile(path.join(allowed, "ok.txt"), config)).resolves.toMatchObject({ size: 2 });
-    await expect(resolveReadableFile(path.join(allowed, "..", "secret.txt"), config)).rejects.toThrow("outside MULTIWING_FILE_ROOTS");
-    await expect(resolveDownloadTarget(path.join(tmp, "elsewhere.mov"), "x", config)).rejects.toThrow("outside MULTIWING_FILE_ROOTS");
+    await expect(resolveReadableFile(path.join(allowed, "..", "secret.txt"), config)).rejects.toThrow("outside the allowed folders");
+    await expect(resolveReadableFile(path.join(allowed, "link.txt"), config)).rejects.toThrow("outside the allowed folders");
+    await expect(resolveDownloadTarget(path.join(tmp, "elsewhere.mov"), "x", config)).rejects.toThrow("outside the allowed folders");
+    await expect(resolveDownloadTarget(path.join(allowed, "escape", "x.mov"), "x", config)).rejects.toThrow("outside the allowed folders");
+    await expect(resolveDownloadDir(path.join(tmp, "not-created"), config)).rejects.toThrow("outside the allowed folders");
+    await expect(fs.stat(path.join(tmp, "not-created"))).rejects.toThrow();
+  });
+
+  it("refuses to upload credential files even inside allowed folders", async () => {
+    const home = path.join(tmp, "home");
+    for (const rel of [".ssh/id_ed25519", ".aws/credentials", "project/.env", "project/.env.local", "project/server.pem"]) {
+      await fs.mkdir(path.dirname(path.join(home, rel)), { recursive: true });
+      await fs.writeFile(path.join(home, rel), "secret");
+    }
+    await fs.writeFile(path.join(home, "project", "deck.key"), "keynote");
+    const config = testConfig({ fileRoots: [home] });
+    for (const rel of [".ssh/id_ed25519", ".aws/credentials", "project/.env", "project/.env.local", "project/server.pem"]) {
+      await expect(resolveReadableFile(path.join(home, rel), config), rel).rejects.toThrow("credential or secret");
+    }
+    await expect(resolveReadableFile(path.join(home, "project", "deck.key"), config)).resolves.toMatchObject({ name: "deck.key" });
   });
 });
 

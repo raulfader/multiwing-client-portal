@@ -24,10 +24,15 @@ describe("tool registry", () => {
     }
   });
 
-  it("requires confirm=true on destructive delete/remove tools", () => {
-    for (const tool of allTools.filter((t) => t.destructive && /^(delete|remove)_/.test(t.name))) {
+  it("requires confirm on destructive tools and on tools that email outsiders or grant access", () => {
+    const external = ["send_project_notification", "notify_project_finished", "share_project", "resend_share_verification_code"];
+    for (const tool of allTools.filter((t) => t.destructive || external.includes(t.name))) {
       expect(Object.keys(tool.inputSchema), tool.name).toContain("confirm");
     }
+  });
+
+  it("only whoami runs while the server is misconfigured", () => {
+    expect(allTools.filter((t) => t.allowWithConfigProblems).map((t) => t.name)).toEqual(["whoami"]);
   });
 
   it("never marks a mutating tool as read-only", () => {

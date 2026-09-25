@@ -75,10 +75,20 @@ describe("notify_project_finished", () => {
     expect(portal.email.sendNotification.mutate).not.toHaveBeenCalled();
   });
 
+  it("does nothing without confirm=true", async () => {
+    const portal = stubs();
+    const { call } = await connect(portal);
+    const res = await call("notify_project_finished", { projectId: 5 });
+    expect(res.isError).toBe(true);
+    expect(res.text).toMatch(/confirm: true/);
+    expect(portal.projects.setStatus.mutate).not.toHaveBeenCalled();
+    expect(portal.email.sendNotification.mutate).not.toHaveBeenCalled();
+  });
+
   it("marks the project completed and emails the selected contacts", async () => {
     const portal = stubs();
     const { call } = await connect(portal);
-    const res = await call("notify_project_finished", { projectId: 5, contactIds: [12] });
+    const res = await call("notify_project_finished", { projectId: 5, contactIds: [12], confirm: true });
     expect(res.data).toMatchObject({ success: true, markedCompleted: true, sent: 1, failed: 0 });
     expect(portal.projects.setStatus.mutate).toHaveBeenCalledWith({ id: 5, status: "completed" });
     expect(portal.email.sendNotification.mutate).toHaveBeenCalledWith(
@@ -220,7 +230,23 @@ describe("share_project", () => {
   it("builds invite links on the public portal origin", async () => {
     const create = vi.fn(async () => ({ success: true, shareToken: "t", shareUrl: "https://multiwing.example/share/t" }));
     const { call } = await connect({ shares: { create: { mutate: create } } });
-    await call("share_project", { projectId: 5, email: "vendor@example.com", accessLevel: "download" });
+    expect((await call("share_project", { projectId: 5, email: "vendor@example.com", accessLevel: "download" })).isError).toBe(true);
+    expect(create).not.toHaveBeenCalled();
+    await call("share_project", { projectId: 5, email: "vendor@example.com", accessLevel: "download", confirm: true });
     expect(create).toHaveBeenCalledWith({ projectId: 5, email: "vendor@example.com", accessLevel: "download", origin: "https://multiwing.example" });
+  });
+});
+
+describe("configuration problems", () => {
+  it("blocks portal tools but keeps whoami working", async () => {
+    const listAdmin = vi.fn(async () => []);
+    const { call } = await connect({ projects: { listAdmin: { query: listAdmin } } }, { config: { authMode: "none", problems: ["No admin credentials configured."] } });
+    const res = await call("list_projects");
+    expect(res.isError).toBe(true);
+    expect(res.text).toMatch(/running but not configured[\s\S]*No admin credentials/);
+    const who = await call("whoami");
+    expect(who.isError).toBe(false);
+    expect(who.data).toMatchObject({ ok: false, problems: ["No admin credentials configured."] });
+    expect(listAdmin).not.toHaveBeenCalled();
   });
 });

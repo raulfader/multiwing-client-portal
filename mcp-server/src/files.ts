@@ -70,34 +70,90 @@ export function detectFileType(contentType: string): "video" | "audio" | "image"
   return "document";
 }
 
+/** Portal file names can come from public request submissions, so they are never trusted as paths. */
 export function sanitizeFileName(name: string): string {
   const cleaned = name.replace(/[/\\?%*:|"<>\u0000-\u001f]/g, "_").trim();
-  return cleaned || "file";
+  return !cleaned || /^\.+$/.test(cleaned) ? "file" : cleaned;
 }
 
-function assertWithinRoots(resolved: string, config: Config) {
+/** Credential stores that must never be uploaded, even inside an allowed root. */
+const SENSITIVE_SEGMENTS = new Set([".ssh", ".aws", ".gnupg", ".kube", ".docker", ".azure", ".config/gcloud", ".password-store"]);
+const SENSITIVE_NAME = /^(\.env(\..*)?|\.npmrc|\.netrc|\.pgpass|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|.*\.(pem|p12|pfx|keystore|jks))$/i;
+
+function assertNotSensitive(realPath: string) {
+  const segments = realPath.split(path.sep);
+  const joined = segments.join("/");
+  const hit =
+    segments.some((s) => SENSITIVE_SEGMENTS.has(s)) ||
+    [...SENSITIVE_SEGMENTS].some((s) => s.includes("/") && joined.includes(`/${s}/`)) ||
+    SENSITIVE_NAME.test(path.basename(realPath));
+  if (hit) throw new Error(`Refusing to upload ${realPath}: it looks like a credential or secret file.`);
+}
+
+/** realpath of the deepest existing ancestor + the not-yet-existing remainder. */
+async function realpathLoose(p: string): Promise<string> {
+  let current = p;
+  const rest: string[] = [];
+  for (;;) {
+    try {
+      return path.join(await fs.realpath(current), ...rest.reverse());
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return p;
+      rest.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+async function assertWithinRoots(resolved: string, config: Config) {
   if (config.fileRoots.length === 0) return;
-  const allowed = config.fileRoots.some((root) => {
-    const rel = path.relative(root, resolved);
+  const real = await realpathLoose(resolved);
+  const roots = await Promise.all(config.fileRoots.map(realpathLoose));
+  const allowed = roots.some((root) => {
+    const rel = path.relative(root, real);
     return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
   });
   if (!allowed) {
-    throw new Error(`Path ${resolved} is outside MULTIWING_FILE_ROOTS (${config.fileRoots.join(path.delimiter)}).`);
+    throw new Error(
+      `Path ${resolved} is outside the allowed folders (${config.fileRoots.join(path.delimiter)}). Add its folder to MULTIWING_FILE_ROOTS.`
+    );
   }
 }
 
 export async function resolveReadableFile(filePath: string, config: Config) {
   const resolved = path.resolve(expandHome(filePath));
-  assertWithinRoots(resolved, config);
   const stat = await fs.stat(resolved).catch(() => null);
   if (!stat?.isFile()) throw new Error(`File not found: ${resolved}`);
-  return { path: resolved, size: stat.size, name: path.basename(resolved) };
+  const real = await fs.realpath(resolved);
+  await assertWithinRoots(real, config);
+  assertNotSensitive(real);
+  return { path: real, size: stat.size, name: path.basename(resolved) };
+}
+
+/** Resolves a directory for bulk downloads, checking roots before anything is created. */
+export async function resolveDownloadDir(dir: string, config: Config) {
+  const resolved = path.resolve(expandHome(dir));
+  await assertWithinRoots(resolved, config);
+  await fs.mkdir(resolved, { recursive: true });
+  return resolved;
+}
+
+/** `name.ext` -> `name (1).ext` … so downloads never overwrite existing files. */
+async function uniquePath(target: string): Promise<string> {
+  const ext = path.extname(target);
+  const stem = target.slice(0, target.length - ext.length);
+  let candidate = target;
+  for (let n = 1; await fs.stat(candidate).then(() => true, () => false); n++) {
+    candidate = `${stem} (${n})${ext}`;
+  }
+  return candidate;
 }
 
 /**
  * Resolves where a download should be written. `saveTo` may be a directory
  * (existing, or ending in a path separator) or a full file path; it defaults
- * to MULTIWING_DOWNLOAD_DIR.
+ * to MULTIWING_DOWNLOAD_DIR. Existing files are never overwritten.
  */
 export async function resolveDownloadTarget(saveTo: string | undefined, suggestedName: string, config: Config) {
   const fileName = sanitizeFileName(suggestedName);
@@ -110,9 +166,9 @@ export async function resolveDownloadTarget(saveTo: string | undefined, suggeste
     const isDir = stat?.isDirectory() || /[\\/]$/.test(saveTo);
     target = isDir ? path.join(resolved, fileName) : resolved;
   }
-  assertWithinRoots(target, config);
+  await assertWithinRoots(target, config);
   await fs.mkdir(path.dirname(target), { recursive: true });
-  return target;
+  return uniquePath(target);
 }
 
 /** Streams a local file to a presigned S3 PUT URL (S3 requires an explicit Content-Length). */

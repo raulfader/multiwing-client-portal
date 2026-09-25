@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { confirmFlag, defineTool, idSchema, type ToolContext } from "../tool";
+import { confirmFlag, defineTool, idSchema, requireConfirm, sendConfirmFlag, type ToolContext } from "../tool";
 import { findProject, projectUrl } from "./projects";
 
 const contactIdsSchema = z
@@ -81,10 +81,12 @@ export const notificationTools = [
       subject: z.string().min(1).optional().describe('Defaults to "Your <project> is ready for review".'),
       message: z.string().optional().describe("Custom message body (HTML allowed). Defaults to the standard ready-for-review text."),
       contactIds: contactIdsSchema,
+      confirm: sendConfirmFlag,
     },
-    handler: async ({ projectId, subject, message, contactIds }, ctx) => {
+    handler: async ({ projectId, subject, message, contactIds, confirm }, ctx) => {
       const project = await findProject(ctx, { projectId });
       await resolveRecipients(ctx, projectId, contactIds);
+      requireConfirm(confirm, "Emailing project contacts");
       return send(ctx, {
         projectId,
         subject: subject ?? `Your ${project.title} is ready for review`,
@@ -98,7 +100,7 @@ export const notificationTools = [
     name: "notify_project_finished",
     title: "Mark project finished and notify client",
     description:
-      "Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Use dryRun=true to preview recipients and copy without changing or sending anything.",
+      "Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true.",
     readOnly: false,
     inputSchema: {
       projectId: idSchema,
@@ -107,8 +109,9 @@ export const notificationTools = [
       contactIds: contactIdsSchema,
       markCompleted: z.boolean().default(true).describe("Set the project status to completed before emailing."),
       dryRun: z.boolean().default(false),
+      confirm: sendConfirmFlag,
     },
-    handler: async ({ projectId, subject, message, contactIds, markCompleted, dryRun }, ctx) => {
+    handler: async ({ projectId, subject, message, contactIds, markCompleted, dryRun, confirm }, ctx) => {
       const project = await findProject(ctx, { projectId });
       const recipients = await resolveRecipients(ctx, projectId, contactIds);
       const email = {
@@ -130,6 +133,7 @@ export const notificationTools = [
         };
       }
 
+      requireConfirm(confirm, "Completing the project and emailing its contacts");
       if (willMarkCompleted) await ctx.portal.projects.setStatus.mutate({ id: projectId, status: "completed" });
       try {
         const delivery = await send(ctx, {

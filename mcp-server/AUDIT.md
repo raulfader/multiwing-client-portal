@@ -10,6 +10,8 @@ Method:
 - reproductions with the built `dist/index.js` over real stdio
 - a local portal (this repo's `createApp`, MariaDB with the repo's migrations, fake S3, `DUPLICATE_MODE=true`
   so no email leaves the machine)
+- the live-era checkpoint `229e8d6`, run locally on the same scratch database
+- unauthenticated, read-only GETs of live public responses, for the Manus cross-check
 
 Nothing was run against, or changed on, multiwing.faderlabs.ai.
 
@@ -17,6 +19,10 @@ Nothing was run against, or changed on, multiwing.faderlabs.ai.
 - **Fixed on this branch:** all MCP-package findings (M-series).
 - **Documented only:** portal findings (P-series). They predate PR #1 and are outside the MCP-only scope of
   this audit; suggested patches are included.
+
+**Deployment reality:** the live site runs a Manus checkpoint from before June 2026, not GitHub `main` or
+this PR. The MCP now assumes that and verifies it at runtime. See
+[Manus deployment cross-check](#manus-deployment-cross-check).
 
 ## Root cause of "connected with ~70 tools, then Not connected"
 
@@ -93,6 +99,62 @@ only against the local portal.
 Only a *browser admin token*, or the *live* admin password, can drive this MCP server. That's why a real
 admin browser token works against live `auth.me` while the Manus-side admin password doesn't.
 
+## Manus deployment cross-check
+
+Manus hosts multiwing.faderlabs.ai and is its deployment source of truth. GitHub is not. This section records
+what is actually deployed, where the repo and this MCP server assume otherwise, and what they should assume.
+I used no Manus credentials. The live evidence comes only from unauthenticated, read-only GETs of public
+responses.
+
+### What is deployed (evidence, 2026-09-25)
+
+| Check | Result | Meaning |
+| --- | --- | --- |
+| Response headers on `/` | `x-manus-proxy-mode: transparent/1`, `server: cloudflare`, `x-powered-by: Express` | Served by Manus behind Cloudflare. |
+| `GET /api/trpc/ops.search`, `/projects.byId` (no auth) | `404 No procedure found` | PR #1's backend is **not** live. |
+| `GET /api/trpc/deliverables.getDownloadCounts` (no auth) | `403 (10002)`, so the procedure exists | Live includes checkpoint `8156695` (2026-05-31) or later. |
+| Live client bundle `/assets/index-CRNe_Tpd.js` | Has `getDownloadCounts`, `retranscode`, `My Files`. **Lacks** `Open in Frame.io` and `aws-media:`. | Live UI predates `main`'s post-June client changes. |
+| Git history | The last Manus-authored commit is checkpoint `229e8d6` (2026-06-02). All 43 later commits are GitHub-only (AWS duplicate work). | GitHub `main` ≠ live. Merging to `main` doesn't deploy anything to Manus. |
+| Error bodies | No `stack` field | Live runs with `NODE_ENV=production`. |
+
+Conclusion: live runs a Manus checkpoint between `8156695` and `229e8d6`, or a later Manus checkpoint that
+was never synced to GitHub; git can't rule that out. It does **not** run `main` or this PR. Record the bundle
+name (`index-CRNe_Tpd.js`) as a fingerprint; if it changes, someone republished.
+
+### Assumptions that break when Manus env or the deployed build diverge from git
+
+| # | Assumption in repo / MCP | Where | What breaks | Handling |
+| --- | --- | --- | --- | --- |
+| D1 | Admin credentials equal the Manus secrets panel values | Live-era `server/customAuth.ts` reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PORTAL_PASSWORD` into module constants **at import time** (`main` reads them per call). | Editing a Manus secret changes nothing until the live process restarts or is republished. Panel values can also differ from what the published deployment loaded. `ADMIN_EMAIL` must match too (default `hello@faderlabs.com`). This matches the observed `Invalid admin credentials`. If `ADMIN_PASSWORD` is ever missing at restart, P2 (empty-password admin) applies on live. | MCP: prefer a browser `/admin` session token from the same site; `whoami` proves it. The error hint now names this cause. Repo: fix P2 in the Manus copy. |
+| D2 | The email shows the current client password | `server/email.ts` hard-codes the text `MW@2025` in the notification template (lines 107, 132). The login check uses `PORTAL_PASSWORD`. | If `PORTAL_PASSWORD` is rotated in Manus, every project email (UI or MCP) tells clients a wrong password. | MCP tool descriptions warn. Repo: render from config, or drop the password from email (P3). |
+| D3 | A server-side email guard exists | `isExternalEmailAllowed` / `DUPLICATE_MODE` exist only on `main` after 2026-06-02. | Live sends every notification, share invite and OTP unconditionally. Conversely, if `main` is ever published to Manus with `DUPLICATE_MODE=true` (e.g. copied from the AWS secret), all client email silently fails. | MCP: the `confirm` gates are the only guard on live; per-recipient failures are reported. README corrected (it previously implied the guard applied everywhere). |
+| D4 | The digest cron runs | Live-era `server/_core/index.ts` starts node-cron unconditionally; `main` only starts it when `ENABLE_LOCAL_DIGEST_CRON=true`. | Publishing `main` to Manus without that variable silently stops the 6-hour digest emails. | Repo: set `ENABLE_LOCAL_DIGEST_CRON=true` in Manus before publishing `main`-derived code. MCP: `send_activity_digest` is a manual fallback. |
+| D5 | Media reference formats | Live-era `generatePresignedUploadUrl` returns `publicUrl = https://<bucket>.s3.<region>.amazonaws.com/<key>`, and `getDownloadUrl` returns that unsigned URL (the bucket must stay public). `main` returns `aws-media:<key>` and presigned URLs, which only `main`'s client understands. The live UI renders `<a href={downloadUrl}>` and detects video from `downloadUrl`. | v0.2.0's `attach_uploaded_file` wrote `aws-media:<key>`. **On live that would break the link and playback for that deliverable.** Publishing `main`'s server without its client (or the reverse) breaks media the same way. | **Fixed:** `attach_uploaded_file` requires and stores the `publicUrl` the connected server issued. `upload_file_to_project`/`upload_track` already did. Verified against checkpoint `229e8d6` locally. |
+| D6 | Bucket selection | `main` prefers `PORTAL_MEDIA_BUCKET` over `AWS_S3_BUCKET`; live-era code reads only `AWS_S3_BUCKET`. | If `main` is published with `PORTAL_MEDIA_BUCKET` present in Manus env (e.g. the AWS duplicate's private bucket name), uploads land in a different bucket than existing media. | Repo: audit the Manus env before publishing. MCP: unaffected; it uses server-issued URLs. |
+| D7 | Resolving keeps the reply | Fixed only in PR #1's backend. Live still sets `adminResponse = null` on resolve without a message. | v0.2.0's `resolve_comment` without a message would **erase the team's reply on live**. | **Fixed:** the MCP always re-sends the existing reply. Verified on checkpoint `229e8d6`: the reply survives. |
+| D8 | PR #1 routes exist | `ops.*`, `projects.byId`, `deliverables.byId`, create returning `id`. | They're absent on live. | Fallbacks cover everything except `search_hub` / `list_activity`. **New:** `whoami` / `--check` report `backend.opsRouter` using an unauthenticated 404-vs-403 probe (no data access). |
+| D9 | Manus platform services exist | `notifyOwner` and `uploadImage` (`storagePut`) call the Manus forge API (`BUILT_IN_FORGE_*`). `deliverableComments.add` / `comments.add` **await** `notifyOwner`. | They work on Manus. Off Manus (the AWS duplicate or a local run without forge settings), `add_comment`, client comments, `notify_owner` and `upload_image` fail. | Expected; errors surface. The repo's migration plan lists replacing these. |
+| D10 | Links point at the environment being used | `email.ts` `PORTAL_BASE_URL`, email tracking URLs, and the `email.sendNotification` project URL are hard-coded to `https://multiwing.faderlabs.ai`. Client-request alerts go to hard-coded addresses. | Pointing the MCP at staging or a duplicate still produces emails with live links. Only share invites use `MULTIWING_PUBLIC_URL`. | Documented. Don't send emails from non-live environments. |
+| D11 | Sessions are portable | Tokens live in each deployment's own `custom_sessions` table. | A live token doesn't work against the AWS duplicate or local, and the reverse. | `whoami` checks the token against `MULTIWING_API_URL`. |
+| D12 | Types describe live | The MCP types come from this branch's `AppRouter`. | The deployed build can lack procedures or return different shapes (e.g. public vs presigned URLs). | The MCP handles outputs defensively and probes capabilities. Don't treat compile-time types as a statement about live. |
+| D13 | Unpublished or unsynced Manus changes | Manus may hold checkpoints that aren't in GitHub, or a published checkpoint older than the newest one. | Building a Manus publish from GitHub code could revert those. Merging PR #1 on GitHub deploys nothing. | Before any publish, export the current Manus checkpoint to a branch (e.g. `manus/live-YYYY-MM-DD`), diff it against the intended change, and note the bundle fingerprint afterwards. |
+
+### What the MCP and repo should assume
+
+- **Live is an unknown Manus checkpoint.** Verify it with `whoami` / `--check`: `backend.opsRouter`, and
+  the session role. Never infer live behaviour from `main`.
+- **Credentials are whatever the running live process loaded,** not what the Manus panel shows. A browser
+  `/admin` session token from the live site is the only credential that proves itself. Admin-password auth
+  may legitimately fail until Manus restarts or republishes.
+- **Live has no server-side email guard.** Every email-sending MCP call reaches real clients once
+  `confirm: true` is set.
+- **Store only values the connected server issued** (URLs, keys). Always pass existing values explicitly
+  where older builds null them.
+- **Deploying PR #1's backend means porting it into Manus.** Cherry-pick `a45be72` onto the Manus
+  checkpoint. It conflicts in one hunk, `deliverables.byProject`, because of `main`'s AWS thumbnail signing:
+  keep the checkpoint's `byProject` and add `byId`. I verified this on `229e8d6`: `tsc` is clean and the
+  backend tests pass (26). Do **not** publish all of `main` to get it, because D3, D4, D5 and D6 ride along.
+
 ## Recommended Grok Bot registration
 
 1. On the Grok Bot host:
@@ -138,11 +200,23 @@ admin browser token works against live `auth.me` while the Manus-side admin pass
 - `test/tools.test.ts` and `test/registry.test.ts`: confirm requirements, and the config-problem gate with
   `whoami` still working.
 
-`pnpm test` runs 52 tests; all pass, stable across 6 consecutive runs. The PR #1 local end-to-end scenario
-also still passes after these changes: 59 tool calls against the real portal code.
+- Manus follow-up:
+  - `resolve_comment` re-sends the existing reply.
+  - `attach_uploaded_file` requires the server-issued `publicUrl`.
+  - The `--check` backend probe distinguishes pre-PR from PR-level portals, and sends no token.
+
+`pnpm test` runs 55 tests, all passing. End-to-end checks, all local:
+- The PR #1 scenario still passes: 59 tool calls against this branch's portal code.
+- A drift scenario passes against checkpoint `229e8d6`, the live-era code, via `run.sh`. It covers
+  `whoami` (reports `opsRouter: false`), create/upload (stores the live-era `https://…s3…` URL),
+  `attach_uploaded_file`, download URL format, inbox fallback, and reply surviving resolve.
 
 ## Files touched in this audit
 
+- Manus follow-up: `src/diagnostics.ts` (backend probe), `src/portal.ts` (credential hint),
+  `src/tools/files.ts` (`attach_uploaded_file`), `src/tools/reviews.ts` (`resolve_comment`),
+  `src/tools/notifications.ts` (password note), `test/{fakePortal,stdio.test,tools.test}.ts`, `README.md`,
+  `AUDIT.md`
 - `mcp-server/src/config.ts`, `src/envFile.ts` (new), `src/diagnostics.ts` (new), `src/index.ts`,
   `src/portal.ts`, `src/tool.ts`, `src/server.ts`, `src/files.ts`
 - `mcp-server/src/tools/system.ts`, `tools/notifications.ts`, `tools/shares.ts`, `tools/files.ts`,

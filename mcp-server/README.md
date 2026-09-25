@@ -123,8 +123,20 @@ included in the report or logs.
   written by clients and the public, and an agent must not be talked into uploading local files.
 - Downloads never overwrite existing files (`name (1).ext`), and portal-supplied file names can't escape the
   target folder.
-- Emails go to real clients. The portal's own guard still applies: with `DUPLICATE_MODE=true` and without
-  `CLIENT_EMAIL_ENABLED=true`, sends are recorded as failed and no email leaves the server.
+- Emails go to real clients. **The live Manus-hosted site has no server-side email guard**, so the `confirm`
+  gates above are the only safety net there. The `DUPLICATE_MODE` / `CLIENT_EMAIL_ENABLED` guard exists only in
+  builds from GitHub `main` after 2026-06-02 (the AWS duplicate and local runs).
+
+## Live site vs this repository
+
+The live site is published from Manus checkpoints, not from GitHub `main`. At audit time it ran pre-`main` code
+without this PR's backend routes (see [AUDIT.md → Manus deployment cross-check](AUDIT.md#manus-deployment-cross-check)).
+The MCP server therefore:
+- detects capabilities instead of assuming them (`whoami` / `--check` report `backend.opsRouter`)
+- only stores values the connected server issued
+- sends the existing reply when resolving comments, so older builds don't erase it
+
+Its TypeScript types describe this branch, not necessarily the deployed build.
 
 ## Backend compatibility
 
@@ -139,6 +151,9 @@ This package ships with a few thin backend additions (in the same PR):
 Until those are deployed, the core tools still work against the current production backend. The comment
 inbox, review summary, id lookups and create-then-upload fall back to older procedures. `search_hub` and
 `list_activity` need the new backend; on an older portal they return an error that says so.
+
+To reach the live site, these changes must be applied **in Manus** and published there. Merging to GitHub
+alone does not deploy them.
 
 ## Tool inventory
 
@@ -187,7 +202,7 @@ inbox, review summary, id lookups and create-then-upload fall back to older proc
 | --- | --- | --- |
 | `upload_file_to_project` | write | Upload a local file to a project as a deliverable, using the same presigned-S3 flow as the admin UI (any size). Creates a new deliverable unless deliverableId is given, in which case that deliverable's file is replaced. MOV/ProRes/MXF files are queued for browser-proxy transcoding automatically. |
 | `create_upload_url` | write | Get a presigned S3 PUT URL (valid 1h) for uploading a file yourself, e.g. from another machine. PUT the raw bytes with the returned Content-Type header, then call attach_uploaded_file. |
-| `attach_uploaded_file` | write | Record a file already uploaded via create_upload_url on a deliverable (sets file key, name, size, type and download reference). |
+| `attach_uploaded_file` | write | Record a file already uploaded via create_upload_url on a deliverable (sets file key, name, size, type and download reference). Pass the publicUrl that create_upload_url returned. |
 | `download_deliverable_file` | read | Download a deliverable's file from a project to the local machine (or return a signed URL with urlOnly). Deliverables that only have an external link return that link instead. Downloads are logged in the portal's activity log like UI downloads. |
 | `download_project_files` | read | Download every stored file in a project into a local folder (<saveTo>/<project-slug>/). External-link deliverables are listed rather than downloaded. |
 | `upload_image` | write | Upload a local image to portal storage and return its URL. Optionally set it directly as a project's cover image or a deliverable's thumbnail. |
@@ -222,8 +237,8 @@ inbox, review summary, id lookups and create-then-upload fall back to older proc
 | `list_project_contacts` | read | Email recipients configured for a project's notifications. |
 | `add_project_contact` | write | Add an email recipient to a project's notification list. |
 | `remove_project_contact` | write, destructive | Remove an email recipient from a project (their email history is kept). |
-| `send_project_notification` | write | Send the branded Faderlabs project email (with the project link, login password and open/click tracking) to a project's contacts. Same as Compose Notification in the admin UI. |
-| `notify_project_finished` | write | Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true. |
+| `send_project_notification` | write | Send the branded Faderlabs project email (with the project link, login password and open/click tracking) to a project's contacts. Same as Compose Notification in the admin UI. Note: the server template prints a hard-coded client password, not PORTAL_PASSWORD, so it is wrong if the password was rotated. Requires confirm=true. |
+| `notify_project_finished` | write | Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true. The email includes the server template's hard-coded client password (see send_project_notification). |
 | `get_email_log` | read | Sent-notification history with delivery status and open/click tracking, for one project or all projects. |
 
 ### Guest / vendor shares

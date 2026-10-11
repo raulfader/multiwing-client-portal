@@ -17,8 +17,10 @@ const LOGOUT_TIMEOUT_MS = 2_000;
 /**
  * Authenticated connection to the portal's tRPC API.
  *
- * Uses the portal's existing admin session model: a pre-issued session token
- * and/or `auth.adminLogin` with the admin credentials. Missing or expired
+ * Uses the portal's existing admin session model: `auth.adminLogin` with the admin
+ * credentials (default whenever they are configured) and/or a pre-issued session
+ * token (used first only in session-token mode; otherwise kept as the fallback when
+ * the portal rejects the admin login). Missing or expired
  * sessions surface as 401 on protected procedures and 403 on admin procedures
  * (server/_core/trpc.ts), so both trigger one fresh admin login when admin
  * credentials are configured.
@@ -29,13 +31,20 @@ export class PortalSession {
   private pendingLogin: Promise<string> | undefined;
   private loginFailure: { error: Error; at: number } | undefined;
   private issuedByLogin = false;
+  /** Session token held back while admin login is the primary mode; used once if the login is rejected. */
+  private fallbackToken: string | undefined;
 
   constructor(
     private readonly config: Config,
     private readonly fetchImpl: FetchLike = globalThis.fetch,
     private readonly now: () => number = Date.now
   ) {
-    this.token = config.sessionToken;
+    if (config.authMode === "admin-login") {
+      this.token = undefined;
+      this.fallbackToken = config.sessionToken;
+    } else {
+      this.token = config.sessionToken;
+    }
     this.client = createTRPCClient<AppRouter>({
       links: [
         httpLink({
@@ -77,8 +86,15 @@ export class PortalSession {
         return token;
       })
       .catch((err: unknown) => {
-        if (err instanceof TRPCClientError && (err.data as { code?: string } | undefined)?.code === "UNAUTHORIZED") {
-          this.loginFailure = { error: err, at: this.now() };
+        const rejected = err instanceof TRPCClientError && (err.data as { code?: string } | undefined)?.code === "UNAUTHORIZED";
+        if (rejected) this.loginFailure = { error: err as Error, at: this.now() };
+        const fallback = this.fallbackToken;
+        if (rejected && fallback) {
+          // Admin login rejected: fall back to the configured session token (once).
+          this.fallbackToken = undefined;
+          this.token = fallback;
+          this.issuedByLogin = false;
+          return fallback;
         }
         throw err;
       })
@@ -164,7 +180,7 @@ export function describeError(err: unknown, config?: Pick<Config, "apiUrl">): st
     let hint = "";
     if (/Invalid admin credentials/i.test(err.message)) {
       hint =
-        " MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD do not match what the running portal loaded (email and password must both match). On the Manus-hosted site that is the value from its last restart/publish, which can differ from the Manus secrets panel. Prefer MULTIWING_SESSION_TOKEN copied from a browser /admin session on the same site.";
+        " MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD do not match what the running portal loaded (email and password must both match). On the Manus-hosted site that is the value from its last restart/publish, which can differ from the Manus secrets panel. Update them, or set MULTIWING_SESSION_TOKEN copied from a browser /admin session on the same site as the fallback.";
     } else if (/\(10001\)/.test(err.message)) {
       hint = " The session token is missing, expired, or revoked.";
     } else if (/\(10002\)/.test(err.message)) {

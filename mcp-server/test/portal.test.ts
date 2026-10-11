@@ -33,21 +33,43 @@ describe("loadConfig", () => {
     expect(config.problems[0]).toMatch(/\*client\* portal password/);
   });
 
-  it("warns (without blocking) when admin-password login is the only credential", () => {
+  it("prefers admin login whenever email and password are present", () => {
     const only = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
-    expect(only.problems).toEqual([]);
-    expect(only.warnings.join(" ")).toMatch(/Prefer MULTIWING_SESSION_TOKEN/);
-    const withToken = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_SESSION_TOKEN: "t", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
-    expect(withToken.warnings).toEqual([]);
+    expect(only).toMatchObject({ authMode: "admin-login", authModeSetting: "auto", problems: [], warnings: [] });
+    expect(describeAuth(only)).toBe("admin-login");
+    const both = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_SESSION_TOKEN: "t", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
+    expect(both).toMatchObject({ authMode: "admin-login", sessionToken: "t", problems: [], warnings: [] });
+    expect(describeAuth(both)).toBe("admin-login (falls back to session-token)");
+  });
+
+  it("falls back to a session token when no admin login is configured, with an expiry warning", () => {
+    const config = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_SESSION_TOKEN: "t" });
+    expect(config).toMatchObject({ authMode: "session-token", sessionToken: "t", problems: [] });
+    expect(config.warnings.join(" ")).toMatch(/expire after 30 days/);
+  });
+
+  it("MULTIWING_AUTH_MODE=admin-login ignores a (possibly stale) host-injected session token", () => {
+    const config = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_AUTH_MODE: "admin-login", MULTIWING_SESSION_TOKEN: "stale", MULTIWING_ADMIN_EMAIL: "a@b.c", MULTIWING_ADMIN_PASSWORD: "pw" });
+    expect(config).toMatchObject({ authMode: "admin-login", authModeSetting: "admin-login", sessionToken: undefined, problems: [] });
+    expect(config.warnings.join(" ")).toMatch(/ignoring MULTIWING_SESSION_TOKEN/);
+    expect(describeAuth(config)).toBe("admin-login");
+    const missing = loadConfig({ MULTIWING_API_URL: "https://x.example", MULTIWING_AUTH_MODE: "admin-login", MULTIWING_SESSION_TOKEN: "t" });
+    expect(missing.authMode).toBe("none");
+    expect(missing.problems[0]).toMatch(/MULTIWING_AUTH_MODE=admin-login requires/);
+  });
+
+  it("rejects unknown MULTIWING_AUTH_MODE values", () => {
+    expect(loadConfig({ MULTIWING_AUTH_MODE: "magic", MULTIWING_SESSION_TOKEN: "t" }).problems[0]).toMatch(/MULTIWING_AUTH_MODE must be/);
   });
 
   it("flags half-configured admin login", () => {
     expect(loadConfig({ MULTIWING_ADMIN_EMAIL: "a@b.c" }).problems[0]).toMatch(/MULTIWING_ADMIN_PASSWORD is missing/);
   });
 
-  it("prefers a session token, strips devtools quotes and normalises URLs", () => {
+  it("MULTIWING_AUTH_MODE=session-token keeps the token first, strips devtools quotes and normalises URLs", () => {
     const config = loadConfig({
       MULTIWING_API_URL: "https://multiwing.example/",
+      MULTIWING_AUTH_MODE: "session-token",
       MULTIWING_SESSION_TOKEN: ' "abc123" ',
       MULTIWING_ADMIN_EMAIL: "a@b.c",
       MULTIWING_ADMIN_PASSWORD: "pw",
@@ -131,6 +153,30 @@ describe("PortalSession", () => {
     ]);
   });
 
+  it("uses admin login first when both credentials are configured", async () => {
+    const p = await portal({ adminPassword: "right", tokens: { tok: "admin" } });
+    const session = new PortalSession(testConfig({ apiUrl: p.url, authMode: "admin-login", sessionToken: "tok", adminEmail: "a@b.c", adminPassword: "right" }));
+    await expect(session.client.projects.listAdmin.query()).resolves.toHaveLength(1);
+    expect(p.calls.map((c) => [c.path, c.token])).toEqual([
+      ["auth.adminLogin", null],
+      ["projects.listAdmin", "login-1"],
+    ]);
+  });
+
+  it("falls back to the session token when the portal rejects the admin login", async () => {
+    const p = await portal({ adminPassword: "live-password", tokens: { tok: "admin" } });
+    const session = new PortalSession(testConfig({ apiUrl: p.url, authMode: "admin-login", sessionToken: "tok", adminEmail: "a@b.c", adminPassword: "old-password" }));
+    await expect(session.client.projects.listAdmin.query()).resolves.toHaveLength(1);
+    await expect(session.client.projects.listAdmin.query()).resolves.toHaveLength(1);
+    expect(p.calls.map((c) => [c.path, c.token])).toEqual([
+      ["auth.adminLogin", null],
+      ["projects.listAdmin", "tok"],
+      ["projects.listAdmin", "tok"],
+    ]);
+    await session.close();
+    expect(p.paths().at(-1)).toBe("projects.listAdmin");
+  });
+
   it("does not retry business-rule FORBIDDEN errors", async () => {
     const p = await portal({ adminPassword: "right", tokens: { tok: "admin" } });
     const session = new PortalSession(testConfig({ apiUrl: p.url, sessionToken: "tok", adminEmail: "a@b.c", adminPassword: "right" }));
@@ -157,7 +203,7 @@ describe("PortalSession", () => {
     );
     for (let i = 0; i < 3; i++) {
       const err = await session.client.projects.listAdmin.query().catch((e) => e);
-      expect(describeError(err)).toMatch(/Invalid admin credentials.*Prefer MULTIWING_SESSION_TOKEN/);
+      expect(describeError(err)).toMatch(/Invalid admin credentials.*MULTIWING_SESSION_TOKEN .*as the fallback/);
     }
     expect(p.paths()).toEqual(["auth.adminLogin"]);
     now = 61_000;

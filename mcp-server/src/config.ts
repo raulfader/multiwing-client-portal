@@ -2,6 +2,8 @@ import os from "node:os";
 import path from "node:path";
 
 export type AuthMode = "session-token" | "admin-login" | "none";
+/** MULTIWING_AUTH_MODE: "auto" (default) prefers admin login when email+password are set. */
+export type AuthModeSetting = "auto" | "admin-login" | "session-token";
 
 export type Config = {
   /** Portal origin serving `/api/trpc` (the same backend the web app uses). */
@@ -10,6 +12,8 @@ export type Config = {
   publicUrl: string;
   /** Primary auth mode. "none" means tools report `problems` instead of calling the portal. */
   authMode: AuthMode;
+  /** What MULTIWING_AUTH_MODE asked for (default "auto"). */
+  authModeSetting?: AuthModeSetting;
   sessionToken?: string;
   adminEmail?: string;
   adminPassword?: string;
@@ -64,14 +68,46 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     problems.push(`MULTIWING_API_URL is not a valid URL: ${apiUrl}`);
   }
 
-  const sessionToken = cleanToken(env.MULTIWING_SESSION_TOKEN);
+  const rawMode = env.MULTIWING_AUTH_MODE?.trim().toLowerCase() || "auto";
+  let authModeSetting: AuthModeSetting = "auto";
+  if (rawMode === "auto" || rawMode === "admin-login" || rawMode === "session-token") {
+    authModeSetting = rawMode;
+  } else {
+    problems.push(`MULTIWING_AUTH_MODE must be "auto", "admin-login" or "session-token" (got "${rawMode}").`);
+  }
+
+  let sessionToken = cleanToken(env.MULTIWING_SESSION_TOKEN);
   const adminEmail = env.MULTIWING_ADMIN_EMAIL?.trim() || undefined;
   const adminPassword = env.MULTIWING_ADMIN_PASSWORD || undefined;
   const hasAdminLogin = Boolean(adminEmail && adminPassword);
 
-  let authMode: AuthMode = sessionToken ? "session-token" : hasAdminLogin ? "admin-login" : "none";
+  // MULTIWING_AUTH_MODE=admin-login: ignore any session token entirely. Hosts can inject a stale
+  // MULTIWING_SESSION_TOKEN that cannot be unset from the box (FORBIDDEN 10002 on every call).
+  if (authModeSetting === "admin-login" && sessionToken) {
+    warnings.push("MULTIWING_AUTH_MODE=admin-login: ignoring MULTIWING_SESSION_TOKEN.");
+    sessionToken = undefined;
+  }
+
+  // Default ("auto"): admin login whenever email + password are present, session token otherwise.
+  // "session-token": token first, admin login only as the fallback when the token is rejected.
+  let authMode: AuthMode;
+  if (authModeSetting === "session-token") {
+    authMode = sessionToken ? "session-token" : "none";
+  } else if (authModeSetting === "admin-login") {
+    authMode = hasAdminLogin ? "admin-login" : "none";
+  } else {
+    authMode = hasAdminLogin ? "admin-login" : sessionToken ? "session-token" : "none";
+  }
+
   if (authMode === "none") {
-    const hints = ["No admin credentials configured. Set MULTIWING_SESSION_TOKEN (an admin browser session token), or MULTIWING_ADMIN_EMAIL and MULTIWING_ADMIN_PASSWORD."];
+    const hints: string[] = [];
+    if (authModeSetting === "admin-login") {
+      hints.push("MULTIWING_AUTH_MODE=admin-login requires MULTIWING_ADMIN_EMAIL and MULTIWING_ADMIN_PASSWORD.");
+    } else if (authModeSetting === "session-token") {
+      hints.push("MULTIWING_AUTH_MODE=session-token requires MULTIWING_SESSION_TOKEN (an admin browser session token).");
+    } else {
+      hints.push("No admin credentials configured. Set MULTIWING_ADMIN_EMAIL and MULTIWING_ADMIN_PASSWORD, or MULTIWING_SESSION_TOKEN (an admin browser session token).");
+    }
     if (env.MULTIWING_PORTAL_PASSWORD || env.PORTAL_PASSWORD) {
       hints.push("MULTIWING_PORTAL_PASSWORD / PORTAL_PASSWORD is the shared *client* portal password; it cannot authorize the admin tools this server exposes.");
     }
@@ -80,9 +116,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     problems.push(hints.join(" "));
   }
 
-  if (authMode === "admin-login") {
+  if (authMode === "session-token" && authModeSetting === "auto") {
     warnings.push(
-      "Using admin-password login only. It works only if MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD match what the running portal loaded, which the Manus secrets panel does not guarantee. Prefer MULTIWING_SESSION_TOKEN from a browser /admin session on the same site."
+      "Using MULTIWING_SESSION_TOKEN only. Session tokens expire after 30 days; set MULTIWING_ADMIN_EMAIL / MULTIWING_ADMIN_PASSWORD so the server can log in by itself."
     );
   }
 
@@ -109,6 +145,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     apiUrl,
     publicUrl: trimTrailingSlash(env.MULTIWING_PUBLIC_URL?.trim() || apiUrl),
     authMode,
+    authModeSetting,
     sessionToken,
     adminEmail,
     adminPassword,
@@ -128,6 +165,9 @@ export function hasAdminLogin(config: Config): boolean {
 
 /** Human-readable auth description that never includes secret values. */
 export function describeAuth(config: Config): string {
+  if (config.authMode === "admin-login") {
+    return config.sessionToken ? "admin-login (falls back to session-token)" : "admin-login";
+  }
   if (config.authMode === "session-token") {
     return hasAdminLogin(config) ? "session-token (falls back to admin-login)" : "session-token";
   }

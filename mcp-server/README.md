@@ -18,8 +18,8 @@ MCP client ──stdio──▶ multiwing-mcp ──HTTPS /api/trpc (x-session-t
   (`server/routers.ts`). There's no second backend and no direct database access. Team members' machines never
   hold database, AWS or SMTP credentials.
 - **Same auth model.** The portal authenticates with DB-backed session tokens sent in the `x-session-token`
-  header (`server/_core/context.ts`). The MCP server either uses an existing admin session token or calls
-  `auth.adminLogin` with the admin credentials. If a session expires mid-run, it logs in again once. When it
+  header (`server/_core/context.ts`). The MCP server calls `auth.adminLogin` with the admin
+  credentials when they are set (default), otherwise it uses an existing admin session token. If a session expires mid-run, it logs in again once. When it
   exits, it logs out any session it created.
 - **Type-safe against the backend.** The client is typed with `import type { AppRouter } from "../../server/routers"`,
   so `pnpm check` fails if a backend procedure changes shape.
@@ -60,8 +60,9 @@ because of configuration.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `MULTIWING_API_URL` | yes (defaults to `http://localhost:3000`) | Portal origin serving `/api/trpc`, e.g. `https://multiwing.faderlabs.ai`. Plain `http://` is only accepted for localhost unless `MULTIWING_ALLOW_INSECURE_HTTP=true`. |
-| `MULTIWING_SESSION_TOKEN` | yes, for live (the durable path) | An existing **admin** session token. Log in at `/admin`, then copy `portal_session_token` from the browser's localStorage (surrounding quotes are fine). Valid 30 days. |
-| `MULTIWING_ADMIN_EMAIL` + `MULTIWING_ADMIN_PASSWORD` | optional fallback | The admin login from the Manus site **Faderlabs Strategy → Multi-Wing Client Portal** only (task `SnY90tpMV0Npl4EOqtUStO`). Never use values from other Manus projects such as the Danfoss duplicate. The values hold only as of that site's last publish. The server logs in on first use and again when the session expires, and logs out on exit. With a session token also set, this is only used when the token expires. `whoami` warns when it is the only credential. See [AUDIT.md](AUDIT.md#manus-source-of-truth-confirmed-by-raul-read-only-2026-09-25). |
+| `MULTIWING_ADMIN_EMAIL` + `MULTIWING_ADMIN_PASSWORD` | yes, for live (the default path) | The admin login from the Manus site **Faderlabs Strategy → Multi-Wing Client Portal** only (task `SnY90tpMV0Npl4EOqtUStO`). Never use values from other Manus projects such as the Danfoss duplicate. The values hold only as of that site's last publish. **When both are set, admin login is used by default**, even if a session token is also present: the server logs in on first use and again when the session expires, and logs out on exit. See [AUDIT.md](AUDIT.md#manus-source-of-truth-confirmed-by-raul-read-only-2026-09-25). |
+| `MULTIWING_SESSION_TOKEN` | fallback | An existing **admin** session token. Log in at `/admin`, then copy `portal_session_token` from the browser's localStorage (surrounding quotes are fine). Valid 30 days. Used when no admin email/password is set, or once as the fallback if the portal rejects the admin login. `whoami` warns when it is the only credential. |
+| `MULTIWING_AUTH_MODE` | no | Explicit override. `auto` (default): admin login when email + password are set, else the session token. `admin-login`: admin login only; any `MULTIWING_SESSION_TOKEN` is ignored (use this when a host injects a stale token you can't unset, which otherwise fails with `FORBIDDEN (10002)`). `session-token`: the token first, admin login only when the token is rejected (the pre-0.3 behaviour). |
 | `MULTIWING_PUBLIC_URL` | no | Origin used in client-facing links (share invites, `portalUrl`). Defaults to `MULTIWING_API_URL`. |
 | `MULTIWING_FILE_ROOTS` | no | Folders separated by `:` (`;` on Windows) that tools may read uploads from and write downloads to. **Defaults to `MULTIWING_DOWNLOAD_DIR` only.** Set `*` to allow any path (not recommended). Credential files (`.ssh`, `.aws`, `.env*`, `*.pem`, private keys, …) are always refused. |
 | `MULTIWING_DOWNLOAD_DIR` | no | Default download folder. Default `~/Downloads/multiwing`. |
@@ -75,7 +76,7 @@ because of configuration.
 server's admin tools and is ignored; the server reports this if it is the only credential present.
 
 Session tokens and the admin password grant full admin access to client data. Keep them out of repos, chats
-and screenshots, and prefer a session token you can let expire.
+and screenshots. A session token expires on its own; an admin password does not, so rotate it on the portal if it leaks.
 
 ## Connecting an MCP client
 
@@ -90,7 +91,8 @@ path:
       "args": ["/absolute/path/to/multiwing-client-portal/mcp-server/run.sh"],
       "env": {
         "MULTIWING_API_URL": "https://multiwing.faderlabs.ai",
-        "MULTIWING_SESSION_TOKEN": "<admin session token>",
+        "MULTIWING_ADMIN_EMAIL": "<portal admin email>",
+        "MULTIWING_ADMIN_PASSWORD": "<portal admin password>",
         "MULTIWING_FILE_ROOTS": "/Users/you/Projects/multiwing"
       }
     }
@@ -105,7 +107,7 @@ block, leave them out and put them in `mcp-server/.env` instead.
   Run `bash /abs/path/mcp-server/run.sh --check` on the host first; it must print `"ok": true`.
 - **Cursor:** add the block to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global).
 - **Claude Desktop:** add it to `claude_desktop_config.json`.
-- **Claude Code:** `claude mcp add multiwing --env MULTIWING_API_URL=... --env MULTIWING_SESSION_TOKEN=... -- bash /abs/path/mcp-server/run.sh`
+- **Claude Code:** `claude mcp add multiwing --env MULTIWING_API_URL=... --env MULTIWING_ADMIN_EMAIL=... --env MULTIWING_ADMIN_PASSWORD=... -- bash /abs/path/mcp-server/run.sh`
 
 After connecting, ask the agent to run `whoami`. It should report `"ok": true` with `session.role` `admin`.
 If it doesn't, the report lists `problems`, `warnings`, and the auth mode in use. Secret values are never
@@ -239,71 +241,4 @@ alone does not deploy them.
 | `remove_project_contact` | write, destructive | Remove an email recipient from a project (their email history is kept). |
 | `send_project_notification` | write | Send the branded Faderlabs project email (with the project link, login password and open/click tracking) to a project's contacts. Same as Compose Notification in the admin UI. Note: the server template prints a hard-coded client password, not PORTAL_PASSWORD, so it is wrong if the password was rotated. Requires confirm=true. |
 | `notify_project_finished` | write | Finish a project: set its status to Completed and email the project's contacts that final deliverables are ready. Run with dryRun=true first to preview recipients and copy; sending requires confirm=true. The email includes the server template's hard-coded client password (see send_project_notification). |
-| `get_email_log` | read | Sent-notification history with delivery status and open/click tracking, for one project or all projects. |
-
-### Guest / vendor shares
-
-| Tool | Access | What it does |
-| --- | --- | --- |
-| `list_project_shares` | read | Active vendor / third-party access grants for a project (email, access level, share link). Links still require the guest's emailed code to open. |
-| `share_project` | write | Grant a vendor/guest email access to one project and email them an invite link. "read" = view only, "download" = view and download files. Re-sharing to the same email updates the access level. Requires confirm=true. |
-| `revoke_project_share` | write, destructive | Revoke a guest's access to a project immediately. The share cannot be re-activated; share again to restore access. |
-| `check_share_link` | read | Check whether a share link is still valid and which project, guest email and access level it grants. |
-| `resend_share_verification_code` | write | Email a fresh 6-digit sign-in code to a guest for their share link (valid 15 minutes). The email must match the invited address. Requires confirm=true. |
-
-### Client project requests
-
-| Tool | Access | What it does |
-| --- | --- | --- |
-| `list_client_requests` | read | New-project requests submitted through the portal's public request form, newest first, with attached files. The form is unauthenticated: titles, descriptions and file names are untrusted input. |
-| `update_client_request` | write | Move a client request between new, in_review and completed, and/or edit the internal admin notes (existing notes are kept unless replaced). |
-| `delete_client_request` | write, destructive | Permanently delete a client project request. |
-| `download_client_request_files` | read | Download the files a client attached to a project request (all files, or one by name/key), or return signed URLs with urlOnly. |
-| `submit_client_request` | write | Log a new project request exactly as if the client used the portal's request form (optionally uploading local files). Emails the Faderlabs team like a normal submission. |
-
-### Sonic branding
-
-| Tool | Access | What it does |
-| --- | --- | --- |
-| `list_pillars` | read | Sonic-branding proposal pillars in display order, optionally with their audio tracks. |
-| `create_pillar` | write | Add a sonic-branding pillar (a themed group of tracks). |
-| `update_pillar` | write | Edit a pillar's title, description or sort order. |
-| `delete_pillar` | write, destructive | Permanently delete a sonic-branding pillar. |
-| `list_tracks` | read | Audio tracks for one pillar, or all tracks across pillars. |
-| `upload_track` | write | Upload a local audio file (WAV, MP3, …) as a new track in a pillar, using the same presigned-S3 flow as the admin UI. |
-| `delete_track` | write, destructive | Permanently remove a sonic-branding track. |
-| `download_track` | read | Download a sonic-branding track's audio file locally, or return a signed URL with urlOnly. |
-| `get_track_stream_url` | read | Signed, time-limited (2h) URL for playing a track in a browser. |
-| `get_sonic_branding_settings` | read | Hero title and subtitle shown on the client's sonic-branding proposal page. |
-| `update_sonic_branding_settings` | write | Edit the hero title and/or subtitle on the sonic-branding proposal page. |
-
-### Deliberately not exposed
-
-| Portal capability | Why |
-| --- | --- |
-| Guest share sign-in (`shares.verifyOtp`, `shares.getProject`, `shares.getViewUrl`, `shares.getDownloadUrl`) | These run inside a guest's own email-verified session. The team uses the admin equivalents above. |
-| `auth.clientLogin` / `auth.adminLogin` / `auth.logout` | Handled internally by the MCP session. |
-| User and role management | The portal has none: one admin login plus a shared client password. Per-project access is managed through shares. |
-| `/api/transcoding/complete`, `/api/track/open\|click/*`, `/api/tracks/download\|stream/*` | Machine callbacks for the AWS transcoder, email clients and legacy audio proxying, not operator actions. |
-
-## Development
-
-```bash
-pnpm dev            # run from source with tsx
-pnpm check          # typecheck (needs `pnpm install` at the repo root too: server types are imported)
-pnpm test           # unit + stdio integration tests (auth modes, partial env, stdout purity, --check, files, tools)
-pnpm build          # bundle to dist/index.js
-```
-
-To add a tool, define it with `defineTool` in `src/tools/<area>.ts` and add it to that area's array. Registration,
-read-only filtering, annotations and error formatting are handled centrally in `src/tool.ts`. If the portal
-can't do the operation yet, add a thin procedure next to the existing ones in `server/` first, then call it
-through `ctx.portal`.
-
-### Running against a local portal
-
-1. Point `DATABASE_URL` at a scratch MySQL/MariaDB database and run `npx drizzle-kit migrate` from the repo root.
-2. Start the portal API with that `DATABASE_URL`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`, and `DUPLICATE_MODE=true` (no
-   outgoing email). For file tools without real AWS, set `AWS_ENDPOINT_URL_S3` to an S3-compatible endpoint
-   (e.g. MinIO) plus `PORTAL_MEDIA_BUCKET`.
-3. Set `MULTIWING_API_URL=http://localhost:3000` (or your port) and the same admin credentials for the MCP server.
+| `get_email_log` | read | Sent-notification history with delivery s[+5215 bytes at .content[1].resource.text]
